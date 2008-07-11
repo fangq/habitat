@@ -1,0 +1,35 @@
+^/<style type="text\/css">\
+div.taskblock{\
+        border:1px solid;\
+        border-left-width: 8px;\
+        border-left-style: solid;\
+        border-left-color: #333333;\
+        padding: 10pt;\
+        margin-top: 10pt;\
+        background-repeat:no-repeat;\
+        background-color:white;\
+}\
+div.taskprobg{\
+        background-color:white;\
+        width:200px;\
+	border:0px;\
+        height:20px;\
+}\
+div.taskprofg{\
+        background-color:red;\
+	border:0px;\
+	height:20px;\
+}<\/style><script src="?keywords=plugin\/task\/postview&raw=1"><\/script>
+&lt;taskid&gt;/&keyfield=taskid&keyval=
+&lt;\/taskid&gt;/&keyblock=taskblock" class=wikipageedit>修改<\/a><\/td>
+&lt;scode&gt;U/<td><a href="http:\/\/wenq.org\/?CanvasRange#
+&lt;\/scode&gt;/">Start<\/a><\/td>
+&lt;ip&gt;/<td>
+&lt;\/ip&gt;/<\/td>
+&lt;taskblock&gt;/<tr>
+&lt;\/taskblock&gt;/<\/tr>
+&lt;progress&gt;/<td><div class="taskprobg"><div class="taskprofg" style="width:
+&lt;\/progress&gt;/%"><\/div><\/div><\/td>
+&lt;assignee&gt;/<td>
+&lt;\/assignee&gt;/<\/td>
+$/<script>setglobalprogress();<\/script>

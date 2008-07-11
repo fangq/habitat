@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+		<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+		<meta http-equiv="Content-Language" content="en-us" />
+		
+		<title>Couloir.org: Resizing, Fading Slideshow Demo (November 28, 2005)</title>
+		
+		<meta name="ROBOTS" content="ALL" />
+		<meta http-equiv="imagetoolbar" content="no" />
+		<meta name="MSSmartTagsPreventParsing" content="true" />
+		
+		<!-- scriptaculous -->
+		<script type="text/javascript" src="js/prototype.js"></script>
+		<script type="text/javascript" src="js/scriptaculous.js"></script>
+		<script type="text/javascript" src="js/behaviour.js"></script>
+		<script type="text/javascript" src="js/soundmanager.js"></script>
+		<script type="text/javascript" src="js/slideshow.js"></script>
+
+<script type="text/javascript">
+// Define each photo's name, height, width, and caption
+var photoArray = new Array(
+	// Source, Width, Height, Caption
+	new Array("IMG_0470.jpg", "600", "450", "Cycling from Telluride to Moab"),
+	new Array("IMG_2441.jpg", "582", "350", "Mt. Toll as seen from the slopes of Mt. Audubon"),
+	new Array("IMG_2449.jpg", "600", "300", "Taking flight from the summit of Paiute"),
+	new Array("IMG_0677.jpg", "650", "488", "Plodding up Queen's Way Couloir on Apache"),
+	new Array("P3220073.jpg", "600", "400", "A storm brews in the distance (Red Rocks, NV)")
+	);
+
+// Number of photos in this gallery
+var photoNum = photoArray.length;
+</script>
+		<link rel="stylesheet" href="css/master.css?nov282005" type="text/css" media="screen" />
+	</head>
+	
+	<body>		
+		<!-- slideshow -->
+		<div id="Masthead">&nbsp;</div>
+		<div id="OuterContainer">
+			<div id="Container">
+				<img id="Photo" src="img/c.gif" alt="Photo: Couloir" />
+				<div id="LinkContainer">
+				    <a href="#" id="PrevLink" title="Previous Photo"><span>Previous</span></a>
+				    <a href="#" id="NextLink" title="Next Photo"><span>Next</span></a>
+			    </div>
+			    <div id="Loading"><img src="img/loading_animated2.gif" width="48" height="47" alt="Loading..." /></div>
+			</div>
+		</div>
+		
+		<div id="CaptionContainer">
+		    <p><span id="Counter">&nbsp;</span> <span id="Caption">&nbsp;</span></p>
+		</div>
+		
+		<script type="text/javascript">
+ 		// <![CDATA[
+ 		Behaviour.register(myrules);
+ 		// ]]>
+ 		</script>
+	</body>
+</html>

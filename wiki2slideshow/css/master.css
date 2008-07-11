@@ -1,0 +1,132 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+
+/*
+body {
+	margin: 0;
+	text-align: center;
+	background: #B7BCC3 url(../img/body_bg.gif) repeat-x;
+	font-family: 'Lucida Grande', 'Trebuchet MS', verdana, arial, sans-serif; 
+	color: #666;
+	font-size: 65.5%;
+}
+
+a:link, a:visited { color: #069; text-decoration: none; }
+a:hover, a:visited:hover { text-decoration: underline; }
+*/
+
+#Masthead {
+	height: 0px;
+/*	background: transparent url(../img/logo_digitalis.gif) center center no-repeat;*/
+}
+
+#OuterContainer {
+	padding: 0;
+	margin: 0 auto;
+}
+
+#Container {
+	position: relative;
+	height: 200px;
+	width: 200px;
+	margin: 0 auto;
+	background-color: #dedede;
+	border: 5px solid #ccc;
+	font-size: 0px;
+}
+
+#Photo {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 5;
+}
+
+#Loading {
+	height: 25%;
+	width: 100%;
+	position: absolute;
+	top: 40%;
+	left: 0%;
+	text-align: center;
+	z-index: 0;
+	line-height: 0;
+}
+
+#LinkContainer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: 100%;
+	z-index: 10;
+	/* filter:alpha(opacity:80); /* Specify opacity for IE */
+}
+
+#PrevLink, #NextLink {
+	cursor: pointer;
+	width: 48%;
+	height: 100%;
+	background: transparent url(../img/c.gif) no-repeat; /* Trick IE into showing hover */
+	display: block;
+}
+
+#PrevLink span, #NextLink span { display: none; }
+
+#PrevLink { left: 0; float: left; }
+#NextLink { right: 0; float: right; }
+
+/* background image for IE */
+#PrevLink:hover, #PrevLink:visited:hover { background: url(../img/prev_minus.gif) 20% 50% no-repeat; }
+#NextLink:hover, #NextLink:visited:hover { background: url(../img/next_plus.gif) 80% 50% no-repeat; }
+
+/* backgroudn image for compliant browsers */
+#LinkContainer>#PrevLink:hover, #LinkContainer>#PrevLink:visited:hover { background: url(../img/prev_chevron.png) 20% 50% no-repeat; }
+#LinkContainer>#NextLink:hover, #LinkContainer>#NextLink:visited:hover { background: url(../img/next_chevron.png) 80% 50% no-repeat; }
+
+#CaptionContainer {
+	margin: 0 auto;
+	width: 200px;
+	text-align: left;
+	background-color: #ccc;
+	color: black;
+	}
+
+#CaptionContainer p {
+	padding: 5px 10px 10px 10px;
+	font-size: 11px;
+}
+
+#Counter {
+	font-weight: bold;
+	color: #999;
+	padding-right: 5px;
+}
+
+#About p {
+	margin: 0 20px;
+	padding: 5px 0;
+	font-size: 12px;
+	font-weight: bold;
+}
+
+#About {
+	width: 100%;
+	text-align: left;
+	background-color: #efefef;
+	border-bottom: 1px solid #dedede;
+}
+
+#AboutBody {
+	margin-top: 15px;
+}
+
+#AboutBody p {
+	font-weight: normal;
+	font-size: 11px;
+	line-height: 1.4em;
+	margin: 0 20px 10px 20px;
+	padding: 0;
+}

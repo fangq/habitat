@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- SoundManager Flash configuration -->
+<!-- Sound IDs are referenced from JS -->
+
+<items baseHref="sound/" defaultVol="100">
+
+ <sound id="beep" href="beep.mp3" />
+ <sound id="select" href="select.mp3" />
+
+</items>

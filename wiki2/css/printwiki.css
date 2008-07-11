@@ -1,0 +1,348 @@
+/* The following is a sample CSS file for UseModWiki 1.0.
+   It is not pretty, but it demonstrates all of the new DIVs and
+   tag classes. */
+
+BODY {
+        background-color : #F0F0F0;
+	font-size: 10pt; 
+	font-family: Verdana,Arial;
+}
+a:link
+	{color:#6699CC;
+	text-decoration: none;
+	}
+a:hover
+	{color:#00CC00;
+	text-decoration: none;
+	}	
+a:visited
+	{color:#777777;
+	text-decoration: none;
+}
+hr.break
+{
+      page-break-after:always;
+}
+hr {
+    height: 1px;
+    color: #aaaaaa;
+    background-color: #aaaaaa;
+    border: 0;
+/*    margin: 0.2em 0 0.2em 0;*/
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: Black;
+    background: none;
+    font-weight: normal;
+    margin: 0;
+    padding-top: 0.5em;
+    padding-bottom: 0.17em;
+    border-bottom: 1px solid #aaaaaa;
+}
+h1 { 
+  font-size: 250%; 
+}
+h2 { 
+	font-size: 150%; 
+	border-bottom : 1px solid #aaaaaa;
+}
+h3, h4, h5, h6 { 
+    border-bottom: none;
+    font-weight: bold;
+}
+h3 { font-size: 132%; }
+h4 { font-size: 116%; }
+h5 { font-size: 100%; }
+h6 { font-size: 80%;  }
+
+DIV.wikieditform {
+/*        position: absolute;*/
+        left: 220px;
+/*        top: 50px;*/
+        width: 70%;
+        /*background-color : white;
+        border-color:gray;
+        border-width:1px;
+        border-style:solid;*/
+        padding:1em;
+
+}
+span.wikitext{
+/*        position: absolute;*/
+        left: 20px;
+/*        top: 50px;*/
+/*        width: 70%;*/
+        background-color : white;
+}
+div.wikititle{
+/*        font-size: 10pt;
+        position: absolute;*/
+        left: 30px;
+        top: 29px;
+        height: 15px;
+        padding:0px;
+	margin:0px;
+        border-style:none;
+}
+
+DIV.wikitext {
+  	position: relative;
+	top: 0px;
+        left: 20px;	
+  width: 90%;
+/*        width: 650px;*/
+/*	background-color : white;
+  border-color:#aaaaaa;
+	border-width:1px;
+	border-style:solid;*/
+	border: none;
+	padding:1em;
+	text-align: justify;
+	page-break-inside: auto;
+}
+DIV.wikipreview {
+/*        position: absolute;*/
+        left: 20px;
+        top: 50px;
+        width: 70%;
+  background-color : Lightgreen;
+}
+DIV.wikilogo {
+        position: absolute;
+        left: 20px;
+        top: 30px;
+/*        width: 150px;*/
+        border-style:none;
+        display: none;
+}
+
+DIV.wikiheader {
+/*        position: absolute;*/
+        left: 20px;
+        top: 200px;
+	width: 150px;
+        max-width: 150px;
+	background-color : white;
+        padding:1em;
+        border-color:blue;
+        border-width:1px;
+        border-style:solid;
+	display: none;
+}
+DIV.wikirc {
+/*        position: absolute;*/
+        left: 20px;
+        top: 50px;
+        width: 70%;
+        /*background-color : white;
+        border-color:gray;
+        border-width:1px;
+        border-style:dotted;*/
+        padding:1em;
+}
+DIV.wikifooter {
+/*        position: absolute;*/
+        left: 20px;
+        top: 350px;
+        width: 150px;
+        max-width: 150px;
+/*	width:expression(document.body.clientWidth > 150? "150px": "auto" );*/
+        background-color : white;
+        padding:1em;
+        /*border-color:red;
+        border-width:1px;
+        border-style:solid;*/
+        display: none;
+
+}
+DIV.wikipref {
+/*        position: absolute;*/
+        left: 20px;
+        top: 50px;
+        width: 70%;
+        background-color : white;
+        /*
+        border-color:gray;
+        border-width:1px;
+        border-style:dotted;
+        */
+        padding:1em;
+}
+HR {
+  height : 1px;
+  color : black;
+}
+HR.wikilinefooter {
+  visibility:hidden;
+  height : 2px;
+  color : dodgerblue;
+}
+HR.wikilineheader {
+  visibility:hidden;
+  height : 2px;
+  color : dodgerblue;
+}
+HR.wikiline {
+    height: 1px;
+    color: #aaaaaa;
+    background-color: #aaaaaa;
+    border: 0;
+}
+HR.wikilinepref {
+  color : red;
+  height : 2px;
+}
+
+
+A.wikipagelink {
+}
+A.wikiauthorlink {
+}
+A.wikipreflink {
+}
+A.wikihistorylink {
+}
+A.wikipageedit {
+	color : orange;
+}
+
+
+TABLE.wikidiffold {
+  background-color : orange;
+}
+TABLE.wikidiffnew {
+  background-color : Lightgreen;
+}
+.wikilatex {
+  /* background-color : Lightgrey; */
+  font-family:serif;
+}
+.wikilatexmodelink {
+  color : black;
+  /*  background-color : dimgray */
+}
+.wikicurrentlatexmode {
+  color : White;
+  background-color : dimgray;
+}
+pre {
+    /*border: 1pt dashed black;*/
+    white-space: pre;
+    font-size: 10pt;
+    overflow: auto;
+    padding: 1em 0;
+    /*border: 1px dashed #2f6fab;*/
+    background-color: #f9f9f9;
+}
+td.usertab
+{
+        font-size: 10pt;
+        height: 15px;
+        background-color : white;
+        padding:2px;
+        border-color:#FF0000;
+        border-width:1px;
+        border-style:solid;
+        border-bottom-style:none;
+        vertical-align:top;
+        white-space: nowrap;
+        display: none;
+}
+
+td.activetab
+{
+        font-size: 10pt;
+        height: 15px;
+        background-color : white;
+        padding:2px;
+        border-color:#D6A04A;
+        border-width:1px;
+        border-style:solid;
+        border-bottom-style:none;
+	vertical-align:top;
+	white-space: nowrap;
+        display: none;
+
+}
+td.inactivetab
+{
+	width:5px;
+        display: none;
+
+}
+
+table.noborder
+{
+        border-width:0px;
+	border-style:none;
+        background-color : transparent;
+        white-space: nowrap;
+}
+tr.noborder
+{
+        border-style:none;
+}
+img {
+    border: none;
+    vertical-align: middle;
+     max-width: 100%;
+}
+dl
+{
+  display: none; 
+}
+img.logo{
+    border: none;
+    vertical-align: middle;
+     max-width: none;
+}
+
+ul.wikiheaderlist { 
+    line-height: 1.5em;
+    list-style-type: square;
+    margin: 0.3em 0 0 1.5em;
+    padding:0;
+}
+table#grid { border-collapse: collapse ;background-color:#CCCCCC;}
+table#grid tr td { width:1px; height:1px; border: 0px; padding:0 }
+DIV.fontpreview {
+        background-color : white;
+        padding:1em;
+        border-color:blue;
+        border-width:1px;
+        border-style:solid;
+}
+
+table.viewgrid {border-collapse: collapse; background-color:#CCCCCC;}
+table.viewgrid tr td { width:10px; height:10px; border: 0px; padding:0;}
+table
+{
+        font-size: 8pt;
+        border-collapse:separate;
+	empty-cells:show;
+        border-spacing:0;
+        border:solid black 1px;
+        background-color:#EFEFFF;
+
+}
+td
+{
+        text-align:left;
+}
+#tomo img
+{ 
+    max-height: 8cm;
+   max-width: 8cm;   
+}
+#recon h2 h3
+{ 
+
+}
+#recon img
+{ 
+    max-height: 14cm;
+    max-width: 20cm;  
+      page-break-after:always;         
+}
+

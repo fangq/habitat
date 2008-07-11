@@ -1,0 +1,18 @@
+^/<script src="?keywords=plugin\/todo\/postview&raw=1"><\/script>
+&lt;assignee&gt;/<br><b>参与者<\/b><span class="todoperson">:
+&lt;\/assignee&gt;/<\/span><br>
+&lt;todopriority&gt;/<b>优先级<\/b><span class="todopriority">:
+&lt;\/todopriority&gt;/<\/span><br>
+&lt;todostatus&gt;/<b>任务状态<\/b><span class="todostatus">:
+&lt;\/todostatus&gt;/<\/span><br>
+&lt;todotitle&gt;/<b>任务名称<\/b><span class="todotitle">:
+&lt;\/todotitle&gt;/<\/span><br>
+&lt;description&gt;/<br><b>任务内容<\/b>: <hr><span class="tododescription">
+&lt;\/description&gt;/<\/span><hr>
+&lt;todoblock&gt;/<html><div class="todoblock"><\/html>
+&lt;\/todoblock&gt;/<html><\/div><\/html>
+&lt;timestamp&gt;/更新时间
+&lt;\/timestamp&gt;/<br>
+&lt;todoid&gt;/&keyfield=todoid&keyval=
+&lt;\/todoid&gt;/&keyblock=todoblock" class=wikipageedit>修改本任务<\/a>(加入任务请修改负责人，更新进度请在任务内容中说明)<hr>
+$/<script>setblockcolor();setdisslink();<\/script>

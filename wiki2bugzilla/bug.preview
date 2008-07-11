@@ -1,0 +1,26 @@
+^/<html><h2><a href="?action=edit&editmode=prepend&id=<\/html>\
+&lt;fullpagename&gt;<html>">点击提交Bug或添加回复:<\/a><\/h2>\
+<style type="text\/css">\
+pre{\
+	margin:1px;\
+	padding:1px;\
+	background-color:transparent;\
+}\
+img.wikiimg{\
+	float:none;\
+}\
+div.bugblock{\
+        border:1px solid;\
+	border-left-width: 8px;\
+        border-left-style: solid;\
+        border-left-color: #333333;\
+        padding: 10pt;\
+	background-repeat:no-repeat;\
+        margin-top: 10pt;\
+}\
+span.bugtext{\
+        color:yellow;\
+}\
+<\/style><\/html>
+\@/&lt;at&gt;
+<bugid>/<html><a href="?action=edit&id=&lt;fullpagename&gt;<\/html><bugid>

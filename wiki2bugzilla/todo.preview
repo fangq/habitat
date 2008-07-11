@@ -1,0 +1,19 @@
+^/<html><h2><a href="?action=edit&editmode=prepend&id=<\/html>\
+&lt;fullpagename&gt;<html>">点击添加新任务:<\/a><\/h2>\
+<style type="text\/css">\
+div.todoblock{\
+        border:1px solid;\
+	border-left-width: 8px;\
+        border-left-style: solid;\
+        border-left-color: #333333;\
+        padding: 10pt;\
+        margin-top: 10pt;\
+	background-repeat:no-repeat;\
+	background-color:white;\
+}\
+span.todotext{\
+        color:yellow;\
+}\
+<\/style><\/html>
+\@/&lt;at&gt;
+<todoid>/<html><a href="?action=edit&id=&lt;fullpagename&gt;<\/html><todoid>

@@ -1,0 +1,432 @@
+/* The following is a sample CSS file for UseModWiki 1.0.
+   It is not pretty, but it demonstrates all of the new DIVs and
+   tag classes. */
+
+BODY {
+        background-color : white;
+	font-size: 10pt; 
+	font-family: Verdana,Arial;
+	padding:0 0 0 0;
+	margin:0 0 0 0;
+}
+a:link
+	{color:#3399ff;
+	text-decoration: none;
+	}
+a:hover
+	{color:#00CC00;
+	text-decoration: none;
+	}	
+a:visited
+	{color:#770000;
+	text-decoration: none;
+}
+H1{
+	width:100%;
+	font-size: 18pt;
+        font-weight: normal;
+}	
+hr {
+    height: 1px;
+    color: #aaaaaa;
+    background-color: #aaaaaa;
+    border: 0;
+/*    margin: 0.2em 0 0.2em 0;*/
+}
+
+h1, h2, h3, h4, h5, h6 {
+/*    color: Black;*/
+    background: none;
+    font-weight: normal;
+    margin: 0;
+    padding-top: 0.5em;
+    padding-bottom: 0.17em;
+    border-bottom: 1px solid #aaaaaa;
+}
+h1 { font-size: 188%; }
+h2 { 
+	font-size: 150%; 
+        font-variant: small-caps;
+	border-bottom : 1px solid #aaaaaa;
+        border-left : 3px solid #aaaaaa;
+	padding: 5px 15px 5px 5px;
+	padding-left: 10pt;
+	margin-bottom: 10pt;
+	margin-top:3px;
+}
+h3, h4, h5, h6 { 
+    border-bottom: none;
+    font-weight: bold;
+}
+h3 { font-size: 132%; }
+h4 { font-size: 116%; }
+h5 { font-size: 100%; }
+h6 { font-size: 80%;  }
+
+span.wikitext{
+        position: absolute;
+        left: 180px;
+        top: 100px;
+        width: 70%;
+        background-color : white;
+}
+div.wikititle{
+        position: absolute;
+        left: 0px;
+        top: 80px;
+        height: 1.8em;
+        padding: 0px;
+	padding-left:180px;
+	margin:0px;
+        border-style:none;
+	border-top: black solid 1px;
+	width:100%;
+}
+div.wikiwrapper{
+        position: absolute;
+	left:12em;
+	top:105px;
+	width: 100%;
+/*	float: right;*/
+	margin: 0 0 .6em -12.2em;
+	padding: 0;
+        border-color:#666666;
+        border-width:1px 0 0 0;
+        border-style:solid;
+/*        border-left: solid black 500px;*/
+        background-color:transparent;
+/*	background-color:#333333;*/
+
+}
+div.wikitext, div.wikirc, div.wikipref,div.wikieditform, div.wikiinfo {
+	margin-left: 12em;
+	margin-top:  0em;
+/*	background-color : black;*/
+        border-color:#444444;
+/*        top: 140px;*/
+	border-width:0 0 0 0;
+	border-style:solid;
+	padding:1em;
+/*	background-image:url(./images/banner_bottom.jpg);
+	background-repeat: no-repeat;
+	background-position: 450px 0px;*/
+	z-index: 2;
+}
+DIV.wikipreview {
+        position: absolute;
+        left: 180px;
+        top: 120px;
+        width: 70%;
+	background-color : transparent;
+        border-width:1px 0 0 0;
+
+}
+DIV.wikilogo {
+        top: 0px;
+        left: 0px;
+	text-align: left;
+	width:100%;
+        border-style:none;
+	height: 80px;
+}
+
+DIV.wikitree{
+    /*border:1px solid #2f6fab;*/
+    border:1px solid #aaaaaa;
+    background-color:#333333;
+    padding:1px;
+    margin: 10pt;
+    padding:0px;
+    max-width: 15%;
+    float:right;
+    position: relative;
+
+}
+div.wikitreeblock
+{
+    overflow: hidden;
+}
+ul.pagetree{
+    line-height: 1em;
+    margin: 0em 0 0 1em;
+    padding:0px;
+    width:100%;
+}
+
+div.wikiheader {
+        position: absolute;
+        left: 0px;
+        top: 105px;
+/*	float:left;
+        clear:right;*/
+	width: 11em;
+        max-width: 11em;
+	background-color : #AAAAAA;
+        padding:1em;
+	padding-top: 5px;
+        border-color:#444444;
+        border-width:1px 0 0 0;
+        border-style:solid;
+	font-size:9pt;
+        z-index: 3;
+}
+DIV.wikifooter {
+/*        float:right;
+        clear:left;*/
+        position: absolute;
+        left: 0px;
+        top: 19em;
+        width: 11em;
+        max-width: 11em;
+        background-color : #CCCCCC;
+        padding:1em;
+	border-color:#444444;
+        border-width:1px 0 0 0;
+        border-style:solid;
+        font-size:9pt;
+        z-index: 4;
+}
+HR {
+  height : 1px;
+  color : black;
+}
+HR.wikilinefooter {
+  visibility:hidden;
+  height : 2px;
+  color : dodgerblue;
+}
+HR.wikilineheader {
+  visibility:hidden;
+  height : 2px;
+  color : dodgerblue;
+}
+HR.wikiline {
+    height: 1px;
+    color: #aaaaaa;
+    background-color: #aaaaaa;
+    border: 0;
+}
+HR.wikilinepref {
+  color : red;
+  height : 2px;
+}
+
+
+A.wikipagelink {
+}
+A.wikiauthorlink {
+}
+A.wikipreflink {
+}
+A.wikihistorylink {
+}
+A.wikipageedit {
+	color : orange;
+}
+table.wikidiffold {
+  background-color : orange;
+/*  color: white;*/
+}
+table.wikidiffnew {
+  background-color : Lightgreen;
+  color: green;
+}
+.wikilatex {
+  /* background-color : Lightgrey; */
+  font-family:serif;
+}
+.wikilatexmodelink {
+  color : black;
+  /*  background-color : dimgray */
+}
+.wikicurrentlatexmode {
+  color : White;
+  background-color : dimgray;
+}
+pre {
+    border: 1pt dashed black;
+    white-space: pre;
+    font-size: 10pt;
+    overflow: auto;
+    padding: 2px;
+    color: green;
+    border: 1px solid #AAAAAA;
+    background-color: #EFEFEF;
+    margin: 0px;
+}
+td.bc{
+	background-color:black;
+}
+td.usertab
+{
+        font-size: 10pt;
+        height: 15px;
+        padding:2px;
+/*
+        border-color:#FF0000;
+        border-width:0px;
+        border-style:solid;
+        border-bottom-style:none;
+*/
+        vertical-align:top;
+        white-space: nowrap;
+}
+
+td.activetab
+{
+        font-size: 10pt;
+        height: 15px;
+        padding:2px;
+/*        border-color:#D6A04A;
+        border-width:0px;
+        border-style:solid;
+        border-bottom-style:none;
+*/
+	vertical-align:top;
+	white-space: nowrap;
+/*	max-width: 200px;*/
+	clip: rect(0px, 100px, 15px, 100px);
+}
+td.inactivetab
+{
+	width:5px;
+/*	border-left-width:1px;
+	border-style:solid;
+	border-color:white;
+*/
+}
+
+table.noborder
+{
+        border-width:0px;
+	border-style:none;
+        background-color : transparent;
+        white-space: nowrap;
+}
+tr.noborder
+{
+        border-style:none;
+}
+img {
+    border: none;
+    vertical-align: middle;
+}
+ul.wikiheaderlist { 
+    line-height: 1.5em;
+    list-style-type: square;
+    margin: 0.3em 0 0 1.5em;
+    padding:0;
+}
+table#grid { border-collapse: collapse ;background-color:#CCCCCC;}
+table#grid tr td { width:1px; height:1px; border: 0px; padding:0 }
+div.fontpreview {
+        background-color : white;
+        padding:1em;
+        border-color:blue;
+        border-width:1px;
+        border-style:solid;
+}
+
+div.wikitext table
+{
+        font-size: 10pt;
+        border-collapse: collapse;
+	empty-cells:show;
+/*        border:solid #444444 1px;*/
+        text-align:left;
+	background-color:transparent;
+        margin-left: 12px;
+}
+div.wikitext td
+{
+	text-align:left;
+	border: 1px solid #444444;
+	padding:2px;
+}
+div.wikitext th
+{
+	text-align:left;
+	font-variant: small-caps;
+	font-weight:bold;
+        border: 1px solid #444444;
+	color: yellow;
+	background-color:#333333;
+}
+.wikilatex td th tr table
+{
+    border: none;
+}
+table.viewgrid {border-collapse: collapse; background-color:#CCCCCC;}
+table.viewgrid tr td { width:10px; height:10px; border: 0px; padding:0;}
+
+div.embedpage
+{
+	background-color:transparent;
+}
+img.wikiuploadimg
+{
+	float:left;
+	clear: left; 
+	margin: 1em 1em 1em 0em;
+}
+img.wikiimg, img.wikilinkimg
+{
+        float:right;
+/*        clear: right;*/
+        margin: 1em 1em 1em 0em;
+}
+span.wikilatex
+{
+        font-size: 11pt;
+}
+span.wikilatex tr td
+{
+        font-size: 11pt;
+        border-style: none;
+        text-align:center;
+}
+div.wikilogo {
+	background-image:url(images/wqy_header_bk.png);
+	background-repeat: repeat-x;
+        background-position: 0px -20px;
+}
+div.wikititle{
+	background-image:url(images/wqy_header_bk.png);
+	background-repeat: repeat-x;
+        background-position: 0px -110px;
+}
+table.viewgrid {border-collapse: collapse; background-color:#EEEEEE;}
+table.viewgrid tr td { width:10px; height:10px; border: 0px; padding:0;}
+table
+{
+        font-size: 13px;
+}
+span.rcdiscuss{
+        color: black;
+        background-color : orange;
+}
+span.rcstroke{
+        color: black;
+        background-color : #FADDCC;
+}
+span.rcbitmap{
+        color: black;
+        background-color : #DDEEFF;
+}
+table.wikitable tr td {
+	border:1px solid;
+        border-collapse: collapse;
+}
+span.zenheibig{
+        font-family:WenQuanYi Zen Hei;
+        font-size:100px;
+}
+span.zenheismall{
+        font-family:WenQuanYi Zen Hei;
+        font-size:14px;
+}
+span.wqybitmap12pt{
+        font-family:WenQuanYi Bitmap Song;
+        font-size:16px;
+}
+

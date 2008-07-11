@@ -1,0 +1,11 @@
+^/<style type="text\/css">\
+#text, #btn_save, #btn_preview{display:none;}\
+<\/style>\
+<input type="hidden" name="editmode" value="ireplace"  \/>\
+<input type="hidden" name="keyval" value=""  \/>\
+<input type="hidden" name="keyfield" value="taskid"  \/>\
+<input type="hidden" name="keyblock" value="taskblock"  \/>\
+承包人: <br><input type="text" name="taskperson" value="" size="60" maxlength="200" \/>\
+<br>进度<br><input type="text" name="progress" value="" size="10">\
+<br><input type="button" name="sendcomment" value="发送" onClick="submitform();"\/>\
+<script src="?keywords=plugin\/task\/preedit&raw=1"><\/script>
