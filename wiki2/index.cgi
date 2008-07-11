@@ -70,7 +70,8 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UserBody $StartUID $ParseParas $AuthorFooter $UseUpload $AllUpload
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton 
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2 
-  $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree );
+  $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree 
+  $AMathML $AMathMLPath $MathColor);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
@@ -220,7 +221,11 @@ $BracketImg   = 1;      # 1 = [url url.gif] becomes image link, 0 = no img
 $PageEmbed    = 1;      # 1 = {{page|name}} format
 $MaxEmbedDepth= 5;    # maximum depth for page embedding
 $IsPrintTree  = 1;    # print tree for subpages
-$MaxTreeDepth =8 ;
+$MaxTreeDepth = 8;
+$AMathML      = 0;           # 1 = allow <amath> tags, 0 = no amath markup
+$AMathMLPath  = "";
+$MathColor    = "yellow";
+
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ('bn.com', 'amazon.com', 'search');
@@ -254,7 +259,6 @@ $RcFile      = "$DataDir/rclog";    # New RecentChanges logfile
 $RcOldFile   = "$DataDir/oldrclog"; # Old RecentChanges logfile
 $IndexFile   = "$DataDir/pageidx";  # List of all pages
 $EmailFile   = "$DataDir/emails";   # Email notification lists
-
 
 if ($RepInterMap) {
   push @ReplaceableFiles, $InterFile;
@@ -2242,6 +2246,7 @@ sub CommonMarkup {
     # The <pre> tag wraps the stored text with the HTML <pre> tag
     s/\&lt;pre\&gt;((.|\n)*?)\&lt;\/pre\&gt;/&StorePre($1, "pre")/ige;
     s/\&lt;code\&gt;((.|\n)*?)\&lt;\/code\&gt;/&StorePre($1, "code")/ige;
+    s/\&lt;amathml\&gt;/<script type="text\/javascript" src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMathML;
 
     # remove variable definitions  added by FangQ, 2006/4/16
     s/\{\{\{$FreeLinkPattern\}((.|\n)*?)\}\}/$2/g;

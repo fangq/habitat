@@ -66,7 +66,7 @@ $ReplaceFile = 'ReplaceFile';   # 0 = disable, 'PageName' = indicator tag
 $TableSyntax = 1;           # 1 = wiki syntax tables, 0 = no table syntax
 $NewFS       = 0;           # 1 = new multibyte $FS,  0 = old $FS
 $UseUpload   = 0;           # 1 = allow uploads,      0 = no uploads
-$AMathML     = 0;           # 1 = allow <amath> tags, 0 = no amath markup
+$AMathML     = 0;           # 1 = allow <amathml> tags, 0 = no amath markup
 
 # Minor options:
 $LogoLeft     = 0;      # 1 = logo on left,       0 = logo on right
@@ -167,5 +167,7 @@ $EmailFile   = "$DataDir/emails";   # Email notification lists
 $PageEmbed    = 1;      # 1 = {{page|name}} format
 $MaxEmbedDepth= 10;    # maximum depth for page embedding
 $IsPrintTree  = 1;    # print tree for subpages
+$AMathMLPath  = "plugin/math/ASCIIMathML.js";
+$MathColor    = "blue";
 
 # == End of Configuration =================================================
