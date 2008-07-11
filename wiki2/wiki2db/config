@@ -146,22 +146,22 @@ $RcOldFile   = "$DataDir/oldrclog"; # Old RecentChanges logfile
 $IndexFile   = "$DataDir/pageidx";  # List of all pages
 $EmailFile   = "$DataDir/emails";   # Email notification lists
 
-%NameSpaceV0=("$strDiscussID\$","$DataDir/plugin/discuss.preview"
-  ,"_BUG\$","$DataDir/plugin/bug.preview"
-  ,"_TASK\$","$DataDir/plugin/task.preview"
-  ,"_TODO\$","$DataDir/plugin/todo.preview");
-%NameSpaceV1=("$strDiscussID\$","$DataDir/plugin/discuss.postview"
-  ,"_BUG\$","$DataDir/plugin/bug.postview"
-  ,"_TASK\$","$DataDir/plugin/task.postview"
-  ,"_TODO\$","$DataDir/plugin/todo.postview");
-%NameSpaceE0=("$strDiscussID\$","$DataDir/plugin/discuss.preedit"
-  ,"_BUG\$","$DataDir/plugin/bug.preedit"
-  ,"_TASK\$","$DataDir/plugin/task.preedit"
-  ,"_TODO\$","$DataDir/plugin/todo.preedit");
-%NameSpaceE1=("$strDiscussID\$","$DataDir/plugin/discuss.postedit"
-  ,"_BUG\$","$DataDir/plugin/bug.postedit"
-  ,"_TODO\$","$DataDir/plugin/todo.postedit"
-  ,"_TASK\$","$DataDir/plugin/task.postedit");
+%NameSpaceV0=("$strDiscussID\$","plugin/wiki2bugzilla/discuss.preview"
+  ,"_BUG\$","plugin/wiki2bugzilla/bug.preview"
+  ,"_TASK\$","plugin/wiki2bugzilla/task.preview"
+  ,"_TODO\$","plugin/wiki2bugzilla/todo.preview");
+%NameSpaceV1=("$strDiscussID\$","plugin/wiki2bugzilla/discuss.postview"
+  ,"_BUG\$","plugin/wiki2bugzilla/bug.postview"
+  ,"_TASK\$","plugin/wiki2bugzilla/task.postview"
+  ,"_TODO\$","plugin/wiki2bugzilla/todo.postview");
+%NameSpaceE0=("$strDiscussID\$","plugin/wiki2bugzilla/discuss.preedit"
+  ,"_BUG\$","plugin/wiki2bugzilla/bug.preedit"
+  ,"_TASK\$","plugin/wiki2bugzilla/task.preedit"
+  ,"_TODO\$","plugin/wiki2bugzilla/todo.preedit");
+%NameSpaceE1=("$strDiscussID\$","plugin/wiki2bugzilla/discuss.postedit"
+  ,"_BUG\$","plugin/wiki2bugzilla/bug.postedit"
+  ,"_TODO\$","plugin/wiki2bugzilla/todo.postedit"
+  ,"_TASK\$","plugin/wiki2bugzilla/task.postedit");
 
 
 $PageEmbed    = 1;      # 1 = {{page|name}} format
