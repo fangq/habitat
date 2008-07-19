@@ -21,7 +21,7 @@ $StyleSheet  = "css/wiki.css";   # URL for CSS stylesheet (like "/wiki.css")
 $NotFoundPg  = "";              # Page for not-found links ("" for blank pg)
 $EmailFrom   = "wiki2";          # Text for "From: " field of email notes.
 $SendMail    = "/usr/sbin/sendmail";  # Full path to sendmail executable
-$FooterNote  = '<a href="http://wenq.org/"><b>&copy; WenQuanYi</b></a>';              # HTML for bottom of every page
+$FooterNote  = '<a href="http://wenq.org/wiki2/"><b>Powered by Wiki<sup>2</sup></b></a>';              # HTML for bottom of every page
 $EditNote    = "";              # HTML notice above buttons on edit page
 $MaxPost     = 1024 * 210;      # Maximum 210K posts (about 200K for pages)
 $NewText     = "New Page";      # New page text ("" for default message)
@@ -49,7 +49,7 @@ $UploadUrl   = '';              # Full URL (like http://foo.com/uploads)
 
 # Major options:
 $UseSubpage  = 1;           # 1 = use subpages,       0 = do not use subpages
-$UseCache    = 1;           # 1 = cache HTML pages,   0 = generate every page
+$UseCache    = 0;           # 1 = cache HTML pages,   0 = generate every page
 $EditAllowed = 0;           # 1 = editing allowed,    0 = read-only
 $RawHtml     = 1;           # 1 = allow <HTML> tag,   0 = no raw HTML in pages
 $HtmlTags    = 1;           # 1 = "unsafe" HTML tags, 0 = only minimal tags

@@ -161,11 +161,11 @@ div.wikiheader {
         clear:right;*/
 	width: 11em;
         max-width: 11em;
-	background-color : #AAAAAA;
+/*	background-color : #AAAAAA;*/
         padding:1em;
 	padding-top: 5px;
         border-color:#444444;
-        border-width:1px 0 0 0;
+        border-width:0 0 1px 0;
         border-style:solid;
 	font-size:9pt;
         z-index: 3;
@@ -178,10 +178,10 @@ DIV.wikifooter {
         top: 19em;
         width: 11em;
         max-width: 11em;
-        background-color : #CCCCCC;
+/*        background-color : #CCCCCC;*/
         padding:1em;
 	border-color:#444444;
-        border-width:1px 0 0 0;
+        border-width:0 0 1px 0;
         border-style:solid;
         font-size:9pt;
         z-index: 4;
