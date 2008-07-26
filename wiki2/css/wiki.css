@@ -94,14 +94,14 @@ div.wikiwrapper{
         border-width:1px 0 0 0;
         border-style:solid;
 /*        border-left: solid black 500px;*/
-        background-color:transparent;
-/*	background-color:#333333;*/
+/*        background-color:transparent;*/
+	background-color:#F9F9F9;
 
 }
 div.wikitext, div.wikirc, div.wikipref,div.wikieditform, div.wikiinfo {
 	margin-left: 12em;
 	margin-top:  0em;
-/*	background-color : black;*/
+	background-color : white;
         border-color:#444444;
 /*        top: 140px;*/
 	border-width:0 0 0 0;
@@ -365,15 +365,16 @@ div.embedpage
 }
 img.wikiuploadimg
 {
-	float:left;
+/*	float:left;
 	clear: left; 
 	margin: 1em 1em 1em 0em;
+*/
 }
 img.wikiimg, img.wikilinkimg
 {
-        float:right;
-/*        clear: right;*/
-        margin: 1em 1em 1em 0em;
+/*        float:right;
+        clear: right;
+        margin: 1em 1em 1em 0em;*/
 }
 span.wikilatex
 {

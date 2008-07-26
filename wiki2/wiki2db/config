@@ -13,7 +13,7 @@ $RcDefault   = 30;              # Default number of RecentChanges days
 @RcDays      = qw(1 3 7 30 90); # Days for links on RecentChanges
 $KeepDays    = 30;              # Days to keep old revisions
 $SiteBase    = "";              # Full URL for <BASE> header
-$FullUrl     = "http://wenq.org/dev/index.cgi";              # Set if the auto-detected URL is wrong
+$FullUrl     = "";              # Set if the auto-detected URL is wrong
 $RedirType   = 1;               # 1 = CGI.pm, 2 = script, 3 = no redirect
 $AdminPass   = "`tWtI:T6"; # Set to non-blank to enable password(s)
 $EditPass    = "";              # Like AdminPass, but for editing only
