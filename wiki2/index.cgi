@@ -73,7 +73,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton 
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2 
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree 
-  $AMathML $AMathMLPath $MathColor CapchaKey);
+  $AMathML $AMathMLPath $MathColor $CapchaKey);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
