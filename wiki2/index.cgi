@@ -42,6 +42,8 @@
 
 package UseModWiki;
 use strict;
+use Crypt::DES;
+
 no strict 'refs';
 
 local $| = 1;  # Do not buffer output (localized for mod_perl)
@@ -71,7 +73,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton 
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2 
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree 
-  $AMathML $AMathMLPath $MathColor);
+  $AMathML $AMathMLPath $MathColor CapchaKey);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
@@ -225,6 +227,7 @@ $MaxTreeDepth = 8;
 $AMathML      = 0;           # 1 = allow <amath> tags, 0 = no amath markup
 $AMathMLPath  = "";
 $MathColor    = "yellow";
+$CapchaKey = pack("H16","0928AD813FED0277");
 
 
 # Names of sites.  (The first entry is used for the number link.)
@@ -646,7 +649,7 @@ sub BuildRuleStack
 		if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-		if(length($rules)>1){ unshift(@$ViewerPreRule,$rules); }
+		if(length($rules)>1){ push(@$ViewerPreRule,$rules); }
 	}
         $fname=$dirname . "/.v1";
         if(-f $PageDir."/".$toptree."/".$dirname . "/.v1.db")
@@ -656,7 +659,7 @@ sub BuildRuleStack
                 if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if(length($rules)>1){ unshift(@$ViewerPostRule,$rules); }
+                if(length($rules)>1){ push(@$ViewerPostRule,$rules); }
         }
         $fname=$dirname . "/.e0";
         if(-f $PageDir."/".$toptree."/".$dirname . "/.e0.db")
@@ -666,7 +669,7 @@ sub BuildRuleStack
                 if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if(length($rules)>1){ unshift(@$EditorPreRule,$rules); }
+                if(length($rules)>1){ push(@$EditorPreRule,$rules); }
         }
         $fname=$dirname . "/.e1";
         if(-f $PageDir."/".$toptree."/".$dirname . "/.e1.db")
@@ -676,7 +679,7 @@ sub BuildRuleStack
                 if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if(length($rules)>1){ unshift(@$EditorPostRule,$rules); }
+                if(length($rules)>1){ push(@$EditorPostRule,$rules); }
         }
    }
    if($isadmin) {$pagetype .="|ADMIN|";}
@@ -794,7 +797,7 @@ sub BrowsePage {
      if($kfid ne "" && $kid ne "" && $kstr ne ""){
           @vv=split(/(<\/$kid>)/,$$Text{'text'});
           for(my $i=0;$i<@vv;$i++){
-                if($vv[$i]=~/$kstr/)
+                if($vv[$i]=~/$kstr\s*<\/$kfid>/)
                 {
                   $$Text{'text'}=$vv[$i]."\n</$kid>";
 		  $UseCache=0;last;
@@ -1265,7 +1268,8 @@ EOF
   if ($UseDiff) {
     my $label = $strCompare;
     print "<tr><td align='center'><input type='submit' "
-          . "value='$label'/>&nbsp;&nbsp;</td></table></form>\n";
+          . "value='$label'/>&nbsp;&nbsp;</td></tr>" if $html ne "";
+    print "</table></form>\n";
     print "<hr class=wikilinediff>\n";
     print &GetDiffHTML(&GetParam('defaultdiff', 1), $id, '', '', $newText);
   }
@@ -1295,6 +1299,8 @@ sub GetHistoryLine {
   %sect = split(/$FS2/, $section, -1);
   %revtext = split(/$FS3/, $sect{'data'});
   $rev = $sect{'revision'};
+  if($rev == 0){return "";}
+
   $summary = $revtext{'summary'};
   if ((defined($sect{'host'})) && ($sect{'host'} ne '')) {
     $host = $sect{'host'};
@@ -1510,9 +1516,9 @@ sub GetAuthorLink {
   my ($host, $userName, $uid) = @_;
   my ($html, $title, $userNameShow);
 
-  if(length($host)>20) 
+  if(length($host)>15) 
   {
-    $host=substr($host,0,10).'...';
+    $host=ShortString($host,15);
   }
 
   $userNameShow = $userName;
@@ -1559,6 +1565,18 @@ sub GetHistoryLink {
   return &ScriptLinkClass("action=history&id=$id", $text, 'wikihistorylink');
 }
 
+sub ShortString
+{
+   my ($id,$len)=@_;
+   my $shortname;
+
+   $shortname=substr($id,0,$len);
+   if(UrlEncode($shortname)=~/\%[eE][0-9A-Fa-f]$/) {chop($shortname);}
+   if(UrlEncode($shortname)=~/\%[eE][0-9A-Fa-f]\%8[0-9A-Fa-f]$/) {chop($shortname);chop($shortname);}
+   $shortname.="...";
+   return $shortname;
+}
+
 sub GetHeader {
   my ($id, $title, $oldId) = @_;
   my $header = "";
@@ -1583,6 +1601,11 @@ sub GetHeader {
 #    }
     $result .= '<div class=wikilogo>'. &ScriptLink($HomePage, "<$logoImage>") .'</div>';
   }
+#  $shortname=$id;
+#  if(length($id)>20)
+#  {
+#        $shortname=ShortString($shortname,20);
+#  }
 
   $result .= '<div class=wikiheader>';
 
@@ -2611,13 +2634,12 @@ sub StoreBracketInterPage {
     return "[$id]"  if ($url eq "");
     $text = &GetBracketUrlIndex($id);
   }
-  $url .= $remotePage;
+  $url .= UrlEncode($remotePage);
   if ($BracketImg && $useImage && &ImageAllowed($text)) {
     $text = "<img src=\"$text\">";
   } else {
     $text = "[$text]";
   }
-  $url=UrlEncode($url);
   return &StoreRaw("<a href=\"$url\">$text</a>");
 }
 
@@ -4166,6 +4188,8 @@ sub DoEdit {
 	  if ($EditNote ne '') {
 	    print T($EditNote) . '<br>';  # Allow translation
 	  }
+          print PrintCapcha();
+
 	  print $q->submit(-name=>'Save', -id=>'btn_save', -value=>$strSave), "\n";
 	  $userName = &GetParam("username", "");
 	  if ($userName ne "") {
@@ -4830,6 +4854,9 @@ sub DoPost {
     return;
   }
 
+  if( (not &UserIsAdmin()) && (not &UserIsEditor()) && not VerifyCapcha(&GetParam("capchaans"), &GetParam("capchaopt") ))
+  {   die("Wrong Capcha answer");    }
+
   $string  = &RemoveFS($string);
   $summary = &RemoveFS($summary);
   $summary =~ s/[\r\n]//g;
@@ -4962,7 +4989,9 @@ sub DoPost {
 			   delete $vv[$i];
                 	   $string.=join("",@vv);
 		   }else{
-			$vv[$i]=$string;
+                        $string=~ s/^\s*//s;
+                        $string=~ s/\s*$//s;
+                        $vv[$i] =~ s/(\s*)<.*>(\s*)/$1$string$2/gs;
 			$string=join("",@vv);
 		   }
                    last;
@@ -6197,6 +6226,37 @@ sub CleanupCachedFiles
 	closedir DIR;
 	rmdir $dir or print "error - $!";
 }
+
+sub PrintCapcha
+{
+        my ($opA,$opB,$opR,$opt,$cryres,$plusbuf);
+        my $cipher = new Crypt::DES($CapchaKey);
+
+        $opA=int(rand(24)+1);
+        $opB=int(rand(24)+1);
+        #$opR=(rand()>0.5)?"+":"-";
+        $opR="+";
+        $plusbuf=" " x int(rand(3));
+
+        $opt=(rand()>0.5)?"$opA$opR$plusbuf$opB":"$opA$plusbuf$opR$opB";
+        $opt.=" "x(8-length($opt));
+
+        $cryres = unpack("H16",$cipher->encrypt($opt));
+
+        return "<span class='wikicapcha'>$opA+$opB=<input type='text' id='capchaans' size='4'
+name='capchaans' title='type your answer here'/> <input type='hidden' name='capchaopt'
+id='capchaopt' value='$cryres' /></span>\n";
+}
+
+sub VerifyCapcha{
+        my ($userans,$cryres)=@_;
+
+        my $cipher = new Crypt::DES($CapchaKey);
+        my $trueans=eval($cipher->decrypt(pack('H16',$cryres)));
+
+        return ($userans==$trueans);
+}
+
 
 #END_OF_OTHER_CODE
 

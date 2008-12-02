@@ -303,7 +303,7 @@ table.noborder
         background-color : transparent;
         white-space: nowrap;
 }
-tr.noborder
+table.noborder tr td
 {
         border-style:none;
 }
