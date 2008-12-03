@@ -418,16 +418,7 @@ table.wikitable tr td {
 	border:1px solid;
         border-collapse: collapse;
 }
-span.zenheibig{
-        font-family:WenQuanYi Zen Hei;
-        font-size:100px;
+span.wikicaptcha{
+        color:red;
+        font-weight:bold;
 }
-span.zenheismall{
-        font-family:WenQuanYi Zen Hei;
-        font-size:14px;
-}
-span.wqybitmap12pt{
-        font-family:WenQuanYi Bitmap Song;
-        font-size:16px;
-}
-

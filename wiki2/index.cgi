@@ -73,7 +73,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton 
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2 
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree 
-  $AMathML $AMathMLPath $MathColor $CapchaKey);
+  $AMathML $AMathMLPath $MathColor $CaptchaKey);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
@@ -227,7 +227,7 @@ $MaxTreeDepth = 8;
 $AMathML      = 0;           # 1 = allow <amath> tags, 0 = no amath markup
 $AMathMLPath  = "";
 $MathColor    = "yellow";
-$CapchaKey = pack("H16","0928AD813FED0277");
+$CaptchaKey = pack("H16","0928AD813FED0277");
 
 
 # Names of sites.  (The first entry is used for the number link.)
@@ -4188,7 +4188,7 @@ sub DoEdit {
 	  if ($EditNote ne '') {
 	    print T($EditNote) . '<br>';  # Allow translation
 	  }
-          print PrintCapcha();
+          print PrintCaptcha();
 
 	  print $q->submit(-name=>'Save', -id=>'btn_save', -value=>$strSave), "\n";
 	  $userName = &GetParam("username", "");
@@ -4854,8 +4854,9 @@ sub DoPost {
     return;
   }
 
-  if( (not &UserIsAdmin()) && (not &UserIsEditor()) && not VerifyCapcha(&GetParam("capchaans"), &GetParam("capchaopt") ))
-  {   die("Wrong Capcha answer");    }
+  if( (not &UserIsAdmin()) && (not &UserIsEditor()) && not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){   
+	PrintMsg("Wrong CAPTCHA Answers","Error",1);    
+  }
 
   $string  = &RemoveFS($string);
   $summary = &RemoveFS($summary);
@@ -6227,10 +6228,10 @@ sub CleanupCachedFiles
 	rmdir $dir or print "error - $!";
 }
 
-sub PrintCapcha
+sub PrintCaptcha
 {
         my ($opA,$opB,$opR,$opt,$cryres,$plusbuf);
-        my $cipher = new Crypt::DES($CapchaKey);
+        my $cipher = new Crypt::DES($CaptchaKey);
 
         $opA=int(rand(24)+1);
         $opB=int(rand(24)+1);
@@ -6243,20 +6244,27 @@ sub PrintCapcha
 
         $cryres = unpack("H16",$cipher->encrypt($opt));
 
-        return "<span class='wikicapcha'>$opA+$opB=<input type='text' id='capchaans' size='4'
-name='capchaans' title='type your answer here'/> <input type='hidden' name='capchaopt'
-id='capchaopt' value='$cryres' /></span>\n";
+        return "<span class='wikicaptcha'>$opA+$opB=<input type='text' id='captchaans' size='4'
+name='captchaans' title='type your answer here'/> <input type='hidden' name='captchaopt'
+id='captchaopt' value='$cryres' /></span>\n";
 }
 
-sub VerifyCapcha{
+sub VerifyCaptcha{
         my ($userans,$cryres)=@_;
 
-        my $cipher = new Crypt::DES($CapchaKey);
+        my $cipher = new Crypt::DES($CaptchaKey);
         my $trueans=eval($cipher->decrypt(pack('H16',$cryres)));
 
         return ($userans==$trueans);
 }
 
+sub PrintMsg{
+        my ($msg,$msgtype,$exitflag)=@_;
+        print &GetHeader('', T($msgtype), '');
+        print '<div class="wikitext"><span class="wikimsg">', T($msg),"</span></div>";
+        print &GetCommonFooter();
+        if($exitflag) {exit;}
+}
 
 #END_OF_OTHER_CODE
 
