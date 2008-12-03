@@ -6253,9 +6253,13 @@ sub VerifyCaptcha{
         my ($userans,$cryres)=@_;
 
         my $cipher = new Crypt::DES($CaptchaKey);
-        my $trueans=eval($cipher->decrypt(pack('H16',$cryres)));
-
-        return ($userans==$trueans);
+	my $opt=$cipher->decrypt(pack('H16',$cryres));
+        my $trueans;
+        if($opt=~/([0-9]+)\s*\+\s*([0-9]+)/) {
+		$trueans=$1+$2;
+	}
+	if($opt eq "" || $cryres eq ""){ return 0;}
+        else{ return ($userans==$trueans); }
 }
 
 sub PrintMsg{
