@@ -169,6 +169,7 @@ $MaxEmbedDepth= 10;    # maximum depth for page embedding
 $IsPrintTree  = 1;    # print tree for subpages
 $AMathMLPath  = "plugin/math/ASCIIMathML.js";
 $MathColor    = "blue";
+$UseCaptcha   = 1;    # flag to enable captcha
 $CaptchaKey = pack("H16","09AB1F28916C42DA");
 
 # == End of Configuration =================================================

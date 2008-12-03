@@ -73,7 +73,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton 
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2 
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree 
-  $AMathML $AMathMLPath $MathColor $CaptchaKey);
+  $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
@@ -227,7 +227,8 @@ $MaxTreeDepth = 8;
 $AMathML      = 0;           # 1 = allow <amath> tags, 0 = no amath markup
 $AMathMLPath  = "";
 $MathColor    = "yellow";
-$CaptchaKey = pack("H16","0928AD813FED0277");
+$UseCaptcha   = 1;    # flag to enable captcha
+$CaptchaKey   = pack("H16","0928AD813FED0277"); # you must change this or redefine in config file
 
 
 # Names of sites.  (The first entry is used for the number link.)
@@ -4188,7 +4189,7 @@ sub DoEdit {
 	  if ($EditNote ne '') {
 	    print T($EditNote) . '<br>';  # Allow translation
 	  }
-          print PrintCaptcha();
+          print PrintCaptcha() if $UseCaptcha;
 
 	  print $q->submit(-name=>'Save', -id=>'btn_save', -value=>$strSave), "\n";
 	  $userName = &GetParam("username", "");
@@ -4854,7 +4855,7 @@ sub DoPost {
     return;
   }
 
-  if( (not &UserIsAdmin()) && (not &UserIsEditor()) && not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){   
+  if( $UseCaptcha && (not &UserIsAdmin()) && (not &UserIsEditor()) && not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){   
 	PrintMsg("Wrong CAPTCHA Answers","Error",1);    
   }
 
