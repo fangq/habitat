@@ -110,7 +110,7 @@ use vars qw($strHomePage $strPreferences $strRecentChanges $strEditThisPage
 $DataDir     = "./wiki2db"; # Main wiki directory
 $UseConfig   = 1;       # 1 = use config file,    0 = do not look for config
 $ConfigFile  = "$DataDir/config";   # Configuration file
-$LangID	     = "cn";
+$LangID	     = "en";
 $LangFile    = "$DataDir/i18n/lang.$LangID";   # Configuration file
 
 # Default configuration (used if UseConfig is 0)
@@ -125,7 +125,8 @@ $RcDefault   = 30;              # Default number of RecentChanges days
 @RcDays      = qw(1 3 7 30 90); # Days for links on RecentChanges
 $KeepDays    = 14;              # Days to keep old revisions
 $SiteBase    = "";              # Full URL for <BASE> header
-$FullUrl     = "http://wenq.org/wiki2/index.cgi";              # Set if the auto-detected URL is wrong
+$FullUrl     = "http://wenq.org/wiki2/index.cgi";              
+# Set if the auto-detected URL is wrong
 $RedirType   = 1;               # 1 = CGI.pm, 2 = script, 3 = no redirect
 $AdminPass   = "";              # Set to non-blank to enable password(s)
 $EditPass    = "";              # Like AdminPass, but for editing only
@@ -617,7 +618,7 @@ sub DoBrowseRequest {
 sub BuildRuleStack
 {
    my ($id)=@_;
-   my (@dirs,$toptree,$fname,$dirname,$rules,$i,$j,$pagetype,$isadmin,$levelcount,$iseditor,$ishide);
+   my (@dirs,$toptree,$fname,$dirname,$rules,$i,$j,$pagetype,$isadmin,$levelcount,$iseditor,$ishide,$iswriteonly);
 
    if($id=~/\/\.[^\/]+$/) { return; }
 
@@ -650,6 +651,7 @@ sub BuildRuleStack
 		if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
+                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
 		if(length($rules)>1){ push(@$ViewerPreRule,$rules); }
 	}
         $fname=$dirname . "/.v1";
@@ -660,6 +662,7 @@ sub BuildRuleStack
                 if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
+                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
                 if(length($rules)>1){ push(@$ViewerPostRule,$rules); }
         }
         $fname=$dirname . "/.e0";
@@ -670,6 +673,7 @@ sub BuildRuleStack
                 if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
+                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
                 if(length($rules)>1){ push(@$EditorPreRule,$rules); }
         }
         $fname=$dirname . "/.e1";
@@ -680,12 +684,14 @@ sub BuildRuleStack
                 if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
                 if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
                 if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
+                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
                 if(length($rules)>1){ push(@$EditorPostRule,$rules); }
         }
    }
    if($isadmin) {$pagetype .="|ADMIN|";}
    if($iseditor) {$pagetype .="|EDITOR|";}
    if($ishide) {$pagetype .="|PRIVATE|";}
+   if($iswriteonly) {$pagetype .="|WRITEONLY|";}
    return $pagetype;
 }
 
@@ -716,11 +722,15 @@ sub BrowsePage {
   }
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0)) {
-     if(&BuildRuleStack($id) =~ /\|ADMIN\|/ && (not &UserIsAdmin() )){
+     my $pagetype=&BuildRuleStack($id);
+     if($pagetype =~ /\|ADMIN\|/ && (not &UserIsAdmin() )){
                 return "";
      }
-     elsif(&BuildRuleStack($id) =~ /\|EDITOR\|/ && (not &UserIsEditor() )){
+     elsif($pagetype =~ /\|EDITOR\|/ && (not &UserIsEditor() )){
                 return "";
+     }
+     elsif($pagetype =~ /\|WRITEONLY\|/ && (not &UserIsAdmin() )){
+                $$Text{'text'}="";
      }
      print &GetHttpHeader('text/plain');
      print $$Text{'text'};
@@ -1244,6 +1254,11 @@ sub DoHistory {
   my ($html, $canEdit, $row, $newText);
 
   print &GetHeader('', Ts($strHistoryOf, $id), '') . '<br>';
+  if(&BuildRuleStack($id) ne "" && (not &UserIsAdmin() )){
+        print "<div class=wikiwrapper><div class=wikiinfo>no permission</div></div>\n";
+	print &GetCommonFooter();
+	return;
+  }
   &OpenPage($id);
   &OpenDefaultText();
   $newText = $$Text{'text'};
@@ -3498,8 +3513,7 @@ sub UserCanEdit {
   {
     return 0  if (! &UserIsAdmin());  # Requires more privledges
   }
-  if(($id=~/$strDiscussID$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/)&&
-      ($ENV{HTTP_REFERER}=~m/^http:\/\/wenq\.org/||$ENV{HTTP_REFERER}=~m/^http:\/\/www\.wenq\.org/))
+  if($id=~/$strDiscussID$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/||$id eq "SandBox")
   {
 	return 1;
   }
