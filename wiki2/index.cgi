@@ -699,7 +699,7 @@ sub BuildRuleStack
 sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept);
-  my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr);
+  my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr,$expires);
   my $tmpstr;
   my $contentlen;
   my $pagehtml;
@@ -708,6 +708,7 @@ sub BrowsePage {
   &OpenPage($id);
   &OpenDefaultText();
   $openKept = 0;
+  $expires=&GetParam('expires', '');
   $revision = &GetParam('revision', '');
   $revision =~ s/\D//g;           # Remove non-numeric chars
   $goodRevision = $revision;      # Non-blank only if exists
@@ -732,7 +733,7 @@ sub BrowsePage {
      elsif($pagetype =~ /\|WRITEONLY\|/ && (not &UserIsAdmin() )){
                 $$Text{'text'}="";
      }
-     print &GetHttpHeader('text/plain');
+     print &GetHttpHeader('text/plain',$expires);
      print $$Text{'text'};
      return;
   }
@@ -1603,7 +1604,7 @@ sub GetHeader {
   my $action;
   my $userName;
 
-  $result = &GetHttpHeader('');
+  $result = &GetHttpHeader('',&GetParam('expires', ''));
   if ($FreeLinks) {
     $title =~ s/_/ /g;   # Display as spaces
   }
@@ -1701,8 +1702,11 @@ if(&UserCanEdit())
 }
 
 sub GetHttpHeader {
-  my ($type) = @_;
-  my $cookie;
+  my ($type,$expire) = @_;
+  my ($cookie,$exptime);
+
+  if($expire eq "") {$exptime="'now'";}
+  else{$exptime="'$expire'";}
 
   $type = 'text/html'  if ($type eq '');
   if (defined($SetCookie{'id'})) {
@@ -1713,14 +1717,16 @@ sub GetHttpHeader {
             . "&lang&". $SetCookie{'lang'};
     $cookie .= ";expires=Fri, 08-Sep-2013 19:48:23 GMT";
     if ($HttpCharset ne '') {
-      return $q->header(-cookie=>$cookie,
+      return $q->header(-cookie=>$cookie,-expires=>$exptime,
                         -type=>"$type; charset=$HttpCharset");
     }
-    return $q->header(-cookie=>$cookie);
+    return $q->header(-cookie=>$cookie,-expires=>$exptime);
   }
   if ($HttpCharset ne '') {
+    return $q->header(-type=>"$type; charset=$HttpCharset",-expires=>$exptime) if $expire ne "";
     return $q->header(-type=>"$type; charset=$HttpCharset");
   }
+  return $q->header(-type=>$type,-expires=>$exptime)  if $expire ne "";
   return $q->header(-type=>$type);
 }
 
