@@ -7,7 +7,7 @@ $RCName      = "最近更新"; # Name of changes page (change space to _)
 $FooterNote  = "返回文泉驿Wiki";
 $SiteName    = "Wiki2";       # Name of site (used for titles)
 $HomePage    = "首页";          # Home page (change space to _)
-$DiscussID   = "..讨论";
+$DiscussSuffix= "..讨论";
 
 $Translate{'User Forum'}		      				      =       '用户论坛';
 $Translate{'Home'}							      =       'Wiki首页';
