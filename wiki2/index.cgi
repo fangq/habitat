@@ -84,34 +84,14 @@ use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
   $ConfigError $LangError $UploadPattern $LocalTree $PageStack 
   $ViewerPreRule $ViewerPostRule $EditorPreRule $EditorPostRule 
-  %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 );
-
-use vars qw($strHomePage $strPreferences $strRecentChanges $strEditThisPage 
-  $strViewRevision $strViewRevisions $strSearch $strCapEdit $strEdit 
-  $strDiff $strChanges $strCompare $strLogged $strRandomPage $strUpload 
-  $strHomeLink $strReadOnly $strSearchMeta $strLastEdit $strEdited 
-  $strWarning $strConfigErr $strGo $strThanksEdit $strLinkOther 
-  $strLocalErr $strMajorDiff $strMinorDiff $strAuthorDiff $strMajor 
-  $strMinor $strAuthor $strNoMoreDiff $strCurrVersion $strChanged 
-  $strRemoved $strAdded $strNewPageText $strBadVersion $strInvalidURL 
-  $strEditDeny $strNotAllow $strContact $strSaveWarning $strEditConflit 
-  $strSummary $strMinorEdit $strSave $strUserTag $strPreview $strConfirm 
-  $strPreviewOnly $strEditPref $strSavePref $strServerTime $strIndexAll 
-  $strLogin $strUserID $strPassword $strDeleted $strReplaced $strDone $strForumURL $strForum
-  $strNoDiffAvailable  $strNoDiffAv_s  $strDiffFrom_s  $strRevNotAv_s $strShowRev_s $strShowRev $strErrorWas
-  $strNormalError  $strListChangeFrom $strUnknownErr $strRevIdentical $strConflitChange  $strCurrentTime
-  $strRevOfOthers  $strReqCookieErr  $strLocalTime $strCSSRemoved $strHistoryOf $strEditing_s
-  $strUpdateInLast_s $strLoginInfo $strPasswdInfo $strCurrentUser $strBackTrackTitle
-  $strTopicDiscuss $strDiscussID $strDiscussReturn $strRssFeed $strFontInstruct $strSubmitStr 
-  $strUserInfo $strYourUserID $strUserNameInfo $strSetPasswd $strNextIncomplete 
-  $strLookDetail $strLookupKangXi $strTreeTitle);
+  %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix);
 
 # == Configuration =====================================================
 $DataDir     = "./wiki2db"; # Main wiki directory
 $UseConfig   = 1;       # 1 = use config file,    0 = do not look for config
 $ConfigFile  = "$DataDir/config";   # Configuration file
-$LangID	     = "en";
-$LangFile    = "$DataDir/i18n/lang.$LangID";   # Configuration file
+$LangID	     = "en";                # Default language
+$LangFile    = "$DataDir/i18n/lang.$LangID";   # i18n  file
 
 # Default configuration (used if UseConfig is 0)
 $CookieName  = "Wiki2";          # Name for this wiki (for multi-wiki sites)
@@ -230,7 +210,7 @@ $AMathMLPath  = "";
 $MathColor    = "yellow";
 $UseCaptcha   = 1;    # flag to enable captcha
 $CaptchaKey   = pack("H16","0928AD813FED0277"); # you must change this or redefine in config file
-
+$DiscussSuffix='..discuss';
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ('bn.com', 'amazon.com', 'search');
@@ -581,7 +561,7 @@ sub DoBrowseRequest {
     }
     if($action eq 'discuss')
     {
-        $id=$id.$strDiscussID;
+        $id=$id.$DiscussSuffix;
     }
     &BrowsePage($id)  if &ValidIdOrDie($id);
     return 1;
@@ -592,7 +572,7 @@ sub DoBrowseRequest {
   if ($action eq 'browse' or $action eq 'discuss') {
     if($action eq 'discuss') 
     {
-        $id=$id.$strDiscussID;
+        $id=$id.$DiscussSuffix;
     }
     if ($FreeLinks && (!-f &GetPageFile($id))) {
       $id = &FreeToNormal($id);
@@ -738,10 +718,10 @@ sub BrowsePage {
   $fullHtml = &GetHeader($id, &QuoteHtml($id), $oldId);
   if ($revision ne '') {
     if (($revision eq $$Page{'revision'}) || ($goodRevision ne '')) {
-      $fullHtml .= '<div class="wikiwrapper"><div class="wikiinfo">' . Ts($strShowRev_s, $revision) . "</div></div>";
+      $fullHtml .= '<div class="wikiwrapper"><div class="wikiinfo">' . Ts('Showing revision %s', $revision) . "</div></div>";
     } else {
-      $fullHtml .= '<div class="wikiwrapper"><div class="wikiinfo">' . Ts($strRevNotAv_s, $revision)
-                   . ' (' . T($strShowRev)	
+      $fullHtml .= '<div class="wikiwrapper"><div class="wikiinfo">' . Ts('Revision %s not available', $revision)
+                   . ' (' . T('showing current revision instead')	
                    . ')</div></div>';
     }
   }
@@ -850,7 +830,7 @@ sub DoRc {
     if ($daysago) {
       $starttime = $Now - ((24*60*60)*$daysago);
       if ($showHTML) {
-        print "<h2>" . Ts($strUpdateInLast_s
+        print "<h2>" . Ts('Updates in the last %s day'
                           . (($daysago != 1)?"s":""), $daysago) . "</h2>\n";
       }
       # Note: must have two translations (for "day" and "days")
@@ -878,8 +858,8 @@ sub DoRc {
     # Save error text if needed.
     $errorText = '<p><strong>' . Ts('Could not open %s log file', $RCName)
                  . ":</strong> $RcFile <p>"
-                 . T($strErrorWas) . ":\n<pre>$!</pre>\n" . '<p>'
-    . T($strNormalError) . "\n" ;
+                 . T('Error was') . ":\n<pre>$!</pre>\n" . '<p>'
+    . T('Note: This error is normal if no changes have been made.') . "\n" ;
   }
   @fullrc = split(/\n/, $fileData);
   $firstTs = 0;
@@ -896,7 +876,7 @@ sub DoRc {
         print "<p><strong>"
               . Ts('Could not open old %s log file', $RCName)
               . ":</strong> $RcOldFile<p>"
-              . T($strErrorWas) . ":\n<pre>$!</pre>\n";
+              . T('Error was') . ":\n<pre>$!</pre>\n";
         return;
       }
     }
@@ -923,7 +903,7 @@ sub DoRc {
         # Ts('%s days', '');
     }
     print "<br>" . &ScriptLink("action=rc&from=$lastTs",
-                               T($strListChangeFrom));
+                               T('List new changes starting from'));
     print " " . &TimeToText($lastTs) . "<br>\n";
   }
   $i = 0;
@@ -987,9 +967,9 @@ sub GetRc {
   # Optimize param fetches out of main loop
   $rcchangehist = &GetParam("rcchangehist", 1);
   # Optimize translations out of main loop
-  $tEdit    = $strEdit;
-  $tDiff    = $strDiff;
-  $tChanges = $strChanges;
+  $tEdit    = T('(edit)');
+  $tDiff    = T('(diff)');
+  $tChanges = T('changes');
   $diffPrefix = $QuotedFullUrl . &QuoteHtml("?action=browse\&diff=4\&id=");
   $historyPrefix = $QuotedFullUrl . &QuoteHtml("?action=history\&id=");
   foreach $rcline (@outrc) {
@@ -1219,7 +1199,7 @@ sub DoHistory {
   my ($id) = @_;
   my ($html, $canEdit, $row, $newText);
 
-  print &GetHeader('', Ts($strHistoryOf, $id), '') . '<br>';
+  print &GetHeader('', Ts('History of %s', $id), '') . '<br>';
   if(&BuildRuleStack($id) ne "" && (not &UserIsAdmin() )){
         print "<div class=wikiwrapper><div class=wikiinfo>no permission</div></div>\n";
 	print &GetCommonFooter();
@@ -1248,7 +1228,7 @@ EOF
   }
   print $html;
   if ($UseDiff) {
-    my $label = $strCompare;
+    my $label = T('Compare');
     print "<tr><td align='center'><input type='submit' "
           . "value='$label'/>&nbsp;&nbsp;</td></tr>" if $html ne "";
     print "</table></form>\n";
@@ -1266,7 +1246,7 @@ sub GetMaskedHost {
   if (!$MaskHosts) {
     return $text;
   }
-  $logText = $strLogged;
+  $logText = T('(logged)');
   if (!($text =~ s/\d+$/$logText/)) { # IP address (ending numbers masked)
     $text =~ s/^[^\.\(]+/$logText/;   # Host name: mask until first .
   }
@@ -1294,7 +1274,7 @@ sub GetHistoryLine {
   $uid = $sect{'id'};
   $ts = $sect{'ts'};
   $minor = '';
-  $minor = '<i>' . $strEdit . '</i> '  if ($revtext{'minor'});
+  $minor = '<i>' . T('(edit)') . '</i> '  if ($revtext{'minor'});
   $expirets = $Now - ($KeepDays * 24 * 60 * 60);
   if ($UseDiff) {
     my ($c1, $c2);
@@ -1307,13 +1287,13 @@ sub GetHistoryLine {
   if (0 == $row) { # current revision
     $html .= &GetPageLinkText($id, Ts('Revision %s', $rev)) . ' ';
     if ($canEdit) {
-      $html .= &GetEditLink($id, $strCapEdit) . ' ';
+      $html .= &GetEditLink($id, T('can edit')) . ' ';
     }
   } else {
     $html .= &GetOldPageLink('browse', $id, $rev,
                              Ts('Revision %s', $rev)) . ' ';
     if ($canEdit) {
-      $html .= &GetOldPageLink('edit',   $id, $rev, $strCapEdit) . ' ';
+      $html .= &GetOldPageLink('edit',   $id, $rev, T('can edit')) . ' ';
     }
   }
   $html .= ". . " . $minor . &TimeToText($ts) . " ";
@@ -1457,11 +1437,11 @@ sub GetBackLinksSearchLink {
 }
 
 sub GetPrefsLink {
-  return &ScriptLinkClass("action=editprefs", $strPreferences, 'wikipreflink');
+  return &ScriptLinkClass("action=editprefs", T('Preferences'), 'wikipreflink');
 }
 
 sub GetRandomLink {
-  return &ScriptLink("action=random", $strRandomPage);
+  return &ScriptLink("action=random", T('Random Page'));
 }
 
 sub ScriptLinkDiff {
@@ -1481,7 +1461,7 @@ sub ScriptLinkDiffRevision {
 }
 
 sub GetUploadLink {
-  return &ScriptLink('action=upload', $strUpload);
+  return &ScriptLink('action=upload', T('Upload'));
 }
 
 sub ScriptLinkTitle {
@@ -1565,7 +1545,7 @@ sub GetHeader {
   my $logoImage = "";
   my $result = "";
   my $embed = &GetParam('embed', $EmbedWiki);
-  my $altText = $strHomeLink;
+  my $altText = T('[Home]');
   my $action;
   my $userName;
 
@@ -1620,26 +1600,26 @@ if($id ne '' && $action ne 'edit' && $action ne 'history')
 {
   $result .= '<td class=inactivetab></td><td class=activetab>';
   if (&UserCanEdit($id, 0)) {
-      $result .= &GetEditLink($id, $strEditThisPage);
+      $result .= &GetEditLink($id, T('Edit this page'));
   } else {
-    $result .= $strReadOnly;
+    $result .= T('This page is read-only');
   }
   $result .= '</td>';
 
   $result .= '<td class=inactivetab></td><td class=activetab>';
-  $result .= &GetHistoryLink($id,$strViewRevisions);
+  $result .= &GetHistoryLink($id,T('View other revisions'));
   $result .= '</td>';
 
-  if(not ($id =~ m|$strDiscussID$|))
+  if(not ($id =~ m|$DiscussSuffix$|))
   {
 	  $result .= '<td class=inactivetab></td><td class=activetab>';
-	  $result .= &GetCommentLink($id,$strTopicDiscuss);
+	  $result .= &GetCommentLink($id,T('Discuss:'));
 	  $result .= '</td>';
   }
   else
   {
           $result .= '<td class=inactivetab></td><td class=activetab>';
-          $result .= &GetBrowseLink(substr($id,0,length($id)-length($strDiscussID)),$strDiscussReturn);
+          $result .= &GetBrowseLink(substr($id,0,length($id)-length($DiscussSuffix)),T('Return:'));
           $result .= '</td>';
   }
 }
@@ -1652,11 +1632,11 @@ if(&UserCanEdit())
   $result .= '<td class=inactivetab></td><td class=inactivetab></td><td class=usertab>';
   if($userName ne '')
   {
-	 $result .= T($strCurrentUser).$userName.'(ID:'.$UserID.')';
+	 $result .= T('User:').$userName.'(ID:'.$UserID.')';
   }
   else
   {
-	 $result .= $strLogin .":". &GetPrefsLink();
+	 $result .= T('Login') .":". &GetPrefsLink();
   }
   $result .= '</td>';
 }
@@ -1756,31 +1736,31 @@ sub GetFooterText {
       $result .= &GetOldPageLink('edit',   $id, $rev,
                                  Ts('Edit revision %s of this page', $rev));
     } else {
-      $result .= &GetEditLink($id, $strEditThisPage);
+      $result .= &GetEditLink($id, T('Edit this page'));
     }
     $result .= '<br/>';
   } else {
-    $result .= $strReadOnly;
+    $result .= T('This page is read-only');
     $result .= '<br/>';
   }
-  $result .= &GetHistoryLink($id, $strViewRevisions);
+  $result .= &GetHistoryLink($id, T('View other revisions'));
   $result .= '<br/>';
   if ($rev ne '') {
-    $result .=&GetPageLinkText($id, $strViewRevision);
+    $result .=&GetPageLinkText($id, T('View other revision'));
     $result .= '<br/>';
   }
   if ($UseMetaWiki) {
     $result .= ' | <a href="http://sunir.org/apps/meta.pl?' . $id . '">'
-               . $strSearchMeta . '</a>';
+               . T('Search MetaWiki') . '</a>';
     $result .= '<br/>';
   }
   $result .= '<br/>';
 
   if ($$Section{'revision'} > 0) {
     if ($rev eq '') {  # Only for most current rev
-      $result .= $strLastEdit;
+      $result .= T('Last edited');
     } else {
-      $result .= $strEdited;
+      $result .= T('Edited');
     }
     $result .= ' ' . &TimeToText($$Section{ts});
     if ($AuthorFooter) {
@@ -1791,19 +1771,19 @@ sub GetFooterText {
   }
 
   if ($UseDiff) {
-    $result .= ' ' . &ScriptLinkDiff(4, $id, $strDiff, $rev);
+    $result .= ' ' . &ScriptLinkDiff(4, $id, T('(diff)'), $rev);
   }
   $result .= '<br>' . &GetSearchForm();
   if ($AdminBar && &UserIsAdmin()) {
     $result .= '<br>' . &GetAdminBar($id);
   }
   if ($DataDir =~ m|/tmp/|) {
-    $result .= '<br><b>' .$strWarning . ':</b> '
+    $result .= '<br><b>' .T('Warning') . ':</b> '
                . Ts('Database is stored in temporary directory %s',
                     $DataDir) . '<br>';
   }
   if ($ConfigError ne '') {
-    $result .= '<br><b>' . $strConfigErr . '</b> '
+    $result .= '<br><b>' . T('Config file error:') . '</b> '
                . $ConfigError . '<br>';
   }
 
@@ -1845,7 +1825,7 @@ sub GetGotoBar {
   my ($main, $bartext);
 
   $bartext  = '<ul class=wikiheaderlist><li>';
-  $bartext  .= &GetPageLinkText($HomePage,$strHomePage);
+  $bartext  .= &GetPageLinkText($HomePage,T('Home'));
   $bartext  .= '</li>';
 
   if ($id =~ m|/|) {
@@ -1854,7 +1834,7 @@ sub GetGotoBar {
     $bartext .= '<li>'. &GetPageLink($main). '</li>';
   }
 # fangq
-  $bartext .= "<li>" . &GetPageLinkText($RCName,$strRecentChanges). '</li>';
+  $bartext .= "<li>" . &GetPageLinkText($RCName,T('RecentChanges')). '</li>';
   $bartext .= "<li>" . &GetPrefsLink() . '</li>';
   if ($UseUpload && &UserCanUpload()) {
     $bartext .= "<li>" . &GetUploadLink(). '</li>';
@@ -1865,10 +1845,8 @@ sub GetGotoBar {
   if ($UserGotoBar ne '') {
     $bartext .= "<li>" . $UserGotoBar. '</li>';
   }
-  $bartext .= " <li> <a href=\"$ScriptName" . &ScriptLinkChar()."action=rss\">". $strRssFeed .'</a>'. '</li>';
-#  $bartext .= " <li> <a href=\"$strForumURL\">" . $strForum .'</a>'. '</li>';
+  $bartext .= " <li> <a href=\"$ScriptName" . &ScriptLinkChar()."action=rss\">". T('RSS Feed') .'</a>'. '</li>';
   $bartext .= "</ul>\n";
-#  $bartext .= "<li>$ScriptName</li></ul>\n";
 
   return $bartext;
 }
@@ -1876,9 +1854,9 @@ sub GetGotoBar {
 sub GetSearchForm {
   my ($result);
 
-  $result = $strSearch  . ' ' . $q->textfield(-name=>'search', -size=>10);
+  $result = T('Search:')  . ' ' . $q->textfield(-name=>'search', -size=>10);
   if ($SearchButton) {
-    $result .= $q->submit('dosearch', $strGo);
+    $result .= $q->submit('dosearch', T('Go!'));
   } else {  
     $result .= &GetHiddenValue("dosearch", 1);
   }
@@ -1910,10 +1888,10 @@ sub GetRedirectPage {
     $html .= ' ' . Ts('If it does not, click %s to continue.', $nameLink);
   } else {
     if ($isEdit) {
-      $html  = &GetHeader('', $strThanksEdit, '');
+      $html  = &GetHeader('', T('Thanks for editing...'), '');
       $html .= Ts('Thank you for editing %s.', $nameLink);
     } else {
-      $html  = &GetHeader('', $strLinkOther, '');
+      $html  = &GetHeader('', T('Link to another page...'), '');
     }
     $html .= "\n<p>";
     $html .= Ts('Follow the %s link to continue.', $nameLink);
@@ -1989,7 +1967,7 @@ sub WikiToHTML {
 
   $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV0,$ViewerPreRule);
 
-  if($id=~/(.*)$strDiscussID$/){
+  if($id=~/(.*)$DiscussSuffix$/){
           $truepage=$1;
 	  $pageText =~ s/&lt;origpagename&gt;/$truepage/gi;
   }
@@ -2043,7 +2021,7 @@ sub WikiToHTML {
 	$topnode=(split(/\//,$id))[0];
 	$LocalTree = &BuildWikiTree($toptree."/".$topnode,$toptree);
 	$LocalTree = "<ul class=\"wikitreedir\"><li class=\"wikitreefile\"><a href=\"$ScriptName".&ScriptLinkChar()."$topnode\">$topnode</a></li>\n  $LocalTree </ul>";
-        $LocalTree="<div class=\"wikitree\"><h5>$strTreeTitle</h5>"
+        $LocalTree="<div class=\"wikitree\"><h5>".T('Page List')."</h5>"
 		."<div class=\"wikitreeblock\">$LocalTree</div></div>";
   }
   $pageText =~ s/&lt;localtree&gt;/$LocalTree/gi;
@@ -2552,12 +2530,12 @@ sub EvalLocalRules {
     $errorText = $@;
     if ($errorText eq '') {
       # Search for "Unknown Error" for the reason the next line is commented
-#     $errorText = T($strUnknownErr);
+       $errorText = T('Unknown Error (no error text)');
     }
     if ($errorText ne '') {
       $text = $origText;    # Consider: should partial results be kept?
       if ($reportError) {
-        $text .= '<hr><b>' . $strLocalErr . '</b><br>'
+        $text .= '<hr><b>' . T('Local rule error:') . '</b><br>'
                  . &QuoteHtml($errorText);
       }
     }
@@ -2936,23 +2914,23 @@ sub GetDiffHTML {
 
   $links = "(";
   $usecomma = 0;
-  $major  = &ScriptLinkDiff(1, $id, $strMajorDiff, "");
-  $minor  = &ScriptLinkDiff(2, $id, $strMinorDiff, "");
-  $author = &ScriptLinkDiff(3, $id, $strAuthorDiff, "");
+  $major  = &ScriptLinkDiff(1, $id, T('major diff'), "");
+  $minor  = &ScriptLinkDiff(2, $id, T('minor diff'), "");
+  $author = &ScriptLinkDiff(3, $id, T('author diff'), "");
   $useMajor  = 1;
   $useMinor  = 1;
   $useAuthor = 1;
   $diffType = &GetParam("defaultdiff", 1)  if ($diffType == 4);
   if ($diffType == 1) {
-    $priorName = $strMajor;
+    $priorName = T('major');
     $cacheName = 'major';
     $useMajor  = 0;
   } elsif ($diffType == 2) {
-    $priorName = $strMinor;
+    $priorName = T('minor');
     $cacheName = 'minor';
     $useMinor  = 0;
   } elsif ($diffType == 3) {
-    $priorName = $strAuthor;
+    $priorName = T('author');
     $cacheName = 'author';
     $useAuthor = 0;
   }
@@ -2961,7 +2939,7 @@ sub GetDiffHTML {
     # Eventually optimize if same as cached revision
     $diffText = &GetKeptDiff($newText, $revOld, 1);  # 1 = get lock
     if ($diffText eq "") {
-      $diffText = T($strRevIdentical);
+      $diffText = T('(The revisions are identical or unavailable.)');
     }
   } else {
     $diffText  = &GetCacheDiff($cacheName);
@@ -2987,14 +2965,14 @@ sub GetDiffHTML {
     $links .= $author;
   }
   if (!($useMajor || $useMinor || $useAuthor)) {
-    $links .= $strNoMoreDiff;
+    $links .= T('no other diffs');
   }
   $links .= ")";
   if ((!defined($diffText)) || ($diffText eq "")) {
-    $diffText = T($strNoDiffAvailable);
+    $diffText = T('No diff available.');
   }
   if ($revOld ne "") {
-    my $currentRevision = $strCurrVersion;
+    my $currentRevision = T('current revision');
     $currentRevision = Ts('revision %s', $revNew) if $revNew;
     $html = '<b>'
       . Tss("Difference (from revision %1 to %2)", $revOld, $currentRevision)
@@ -3004,11 +2982,11 @@ sub GetDiffHTML {
         ((!defined(&GetPageCache("old$cacheName"))) ||
          (&GetPageCache("old$cacheName") < 1))) {
       $html = '<b>'
-              . Ts($strNoDiffAv_s,
+              . Ts('No diff available--this is the first %s revision.',
                    $priorName) . "</b>\n$links";
     } else {
       $html = '<b>'
-              . Ts($strDiffFrom_s, $priorName)
+              . Ts('Difference (from prior %s revision)', $priorName)
               . "</b>\n$links<br>" . &DiffToHTML($diffText);
     }
   }
@@ -3070,9 +3048,9 @@ sub DiffToHTML {
   my ($html) = @_;
   my ($tChanged, $tRemoved, $tAdded);
 
-  $tChanged = $strChanged;
-  $tRemoved = $strRemoved;
-  $tAdded   = $strAdded;
+  $tChanged = T('Changed:');
+  $tRemoved = T('Removed:');
+  $tAdded   = T('Added:');
   $html =~ s/\n--+//g;
   # Note: Need spaces before <br> to be different from diff section.
   $html =~ s/(^|\n)(\d+.*c.*)/$1 <br><strong>$tChanged $2<\/strong><br>/g;
@@ -3156,7 +3134,7 @@ sub OpenNewText {
   if ($NewText ne '') {
     $$Text{'text'} = T($NewText);
   } else {
-    $$Text{'text'} = $strNewPageText . "\n";
+    $$Text{'text'} = T('Describe the new page here.') . "\n";
   }
   $$Text{'text'} .= "\n"  if (substr($$Text{'text'}, -1, 1) ne "\n");
   $$Text{'minor'} = 0;      # Default as major edit
@@ -3287,7 +3265,7 @@ sub SetPageCache {
 }
 
 sub UpdatePageVersion {
-  &ReportError($strBadVersion);
+  &ReportError(T('Bad page version (or corrupt page).'));
 }
 
 sub KeepFileName {
@@ -3483,7 +3461,7 @@ sub UserCanEdit {
   {
     return 0  if (! &UserIsAdmin());  # Requires more privledges
   }
-  if($id=~/$strDiscussID$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/||$id eq "SandBox")
+  if($id=~/$DiscussSuffix$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/||$id eq "SandBox")
   {
 	return 1;
   }
@@ -4030,7 +4008,7 @@ sub DoOtherRequest {
     &DoPost()  if &ValidIdOrDie($id);
     return;
   }
-  &ReportError($strInvalidURL);
+  &ReportError(T('Invalid URL.'));
 }
 
 sub DoEdit {
@@ -4044,12 +4022,12 @@ sub DoEdit {
     $id = &FreeToNormal($id);  # Take care of users like Markus Lude :-)
   }
   if (!&UserCanEdit($id, 1)) {
-    print &GetHeader("", $strEditDeny, "");
+    print &GetHeader("", T('Editing Denied'), "");
     print '<div class="wikiwrapper"><div class="wikiinfo">';
     if (&UserIsBanned()) {
-      print $strNotAllow;
+      print T('Editing not allowed: user, ip, or network is blocked.');
       print "<p>";
-      print $strContact;
+      print T('Contact the wiki administrator for more information.');
     } else {
       print Ts('Editing not allowed: %s is read-only.', $SiteName);
     }
@@ -4061,7 +4039,7 @@ sub DoEdit {
   &OpenPage($id);
   &OpenDefaultText();
   $pageTime = $$Section{'ts'};
-  $header = Ts($strEditing_s, $id);
+  $header = Ts('Editing %s', $id);
   # Old revision handling
   $revision = &GetParam('revision', '');
   $revision =~ s/\D//g;  # Remove non-numeric chars
@@ -4086,16 +4064,16 @@ sub DoEdit {
   if ($revision ne '') {
     print "\n<b>"
           . Ts('Editing old revision %s.', $revision) . "  "
-    . $strSaveWarning
+    . T('Saving this page will replace the latest revision with this text.')
           . '</b><br>'
   }
   if ($isConflict) {
     $editRows -= 10  if ($editRows > 19);
-    print "\n<H1>" . $strEditConflit . "</H1>\n";
+    print "\n<H1>" . T('Edit Conflict!') . "</H1>\n";
     if ($isConflict>1) {
       # The main purpose of a new warning is to display more text
       # and move the save button down from its old location.
-      print "\n<H2>" . T($strConflitChange) . "</H2>\n";
+      print "\n<H2>" . T('This change is a conflit.') . "</H2>\n";
     }
     print "<p><strong>",
           T('Someone saved this page after you started editing.'), " ",
@@ -4104,7 +4082,7 @@ sub DoEdit {
           "</strong><br>\n",
           T('Scroll down to see your edited text.'), "<br>\n";
     print T('Last save time:'), ' ', &TimeToText($oldTime),
-          " (", T($strCurrentTime), ' ', &TimeToText($Now), ")<br>\n";
+          " (", T('Current time is:'), ' ', &TimeToText($Now), ")<br>\n";
   }
   print "\n<div class=wikiwrapper><div class=wikieditform>\n";
 #  if($id =~ m/_9pt$/ || $id =~ m/_10pt$/ || $id =~ m/_11pt$/ || $id =~ m/_12pt$/){
@@ -4153,16 +4131,16 @@ sub DoEdit {
   }
         print &GetTextArea('text', $oldText, $editRows, $editCols);
         $summary = &GetParam("summary", "*");
-	  print "<p>", $strSummary,
+	  print "<p>", T('Summary:'),
         $q->textfield(-name=>'summary',
                       -default=>$summary, -override=>1,
                       -size=>60, -maxlength=>200);
 	  if (&GetParam("recent_edit") eq "on") {
 	    print "<br>", $q->checkbox(-name=>'recent_edit', -checked=>1,
-	                               -label=>$strMinorEdit);
+	                               -label=>T('This change is a minor edit.'));
 	  } else {
 	    print "<br>", $q->checkbox(-name=>'recent_edit',
-	                               -label=>$strMinorEdit);
+	                               -label=>T('This change is a minor edit.'));
 	  }
 	  if ($EmailNotify) {
 	    print "&nbsp;&nbsp;&nbsp;" .
@@ -4175,18 +4153,18 @@ sub DoEdit {
 	  }
           print PrintCaptcha() if $UseCaptcha;
 
-	  print $q->submit(-name=>'Save', -id=>'btn_save', -value=>$strSave), "\n";
+	  print $q->submit(-name=>'Save', -id=>'btn_save', -value=>T('Save')), "\n";
 	  $userName = &GetParam("username", "");
 	  if ($userName ne "") {
-	    print ' (', $strUserTag, ' ',
+	    print ' (', T('Your user name is'), ' ',
 	          &GetPageLink($userName) . ') ';
 	  } else {
 	    print ' (', Ts('Visit %s to set your user name.', &GetPrefsLink()), ') ';
 	  }
-	  print $q->submit(-name=>'Preview', -id=>'btn_preview',-value=>$strPreview), "\n";
+	  print $q->submit(-name=>'Preview', -id=>'btn_preview',-value=>T('Preview')), "\n";
 
   if ($isConflict) {
-    print "\n<br><hr><p><strong>", $strConfirm,
+    print "\n<br><hr><p><strong>", T('This is the text you submitted:'),
           "</strong><p>",
           &GetTextArea('newtext', $newText, $editRows, $editCols),
           "<p>\n";
@@ -4195,16 +4173,16 @@ sub DoEdit {
   print "<hr class=wikilinefooter>\n";
   if ($preview) {
 #    print '<div class=wikipreview>';
-    print "<h2>", $strPreview, "</h2>\n";
+    print "<h2>", T('Preview'), "</h2>\n";
     if ($isConflict) {
       print "<b>",
-             T($strRevOfOthers),
+             T('NOTE: This preview shows the revision of the other author.'),
             "</b><hr>\n";
     }
     $MainPage = $id;
     $MainPage =~ s|/.*||;  # Only the main page name (remove subpage)
     print &WikiToHTML($id,$oldText) . "<hr class=wikilinefooter>\n";
-    print "<h2>", $strPreviewOnly, "</h2>\n";
+    print "<h2>", T('Preview only, not yet saved'), "</h2>\n";
 #    print '</div>';
   }
   print $q->endform;
@@ -4212,7 +4190,7 @@ sub DoEdit {
 
   print '<div class=wikifooter>';
   print &GetFormStart();
-  print &GetHistoryLink($id, $strViewRevision) . "<br>\n";
+  print &GetHistoryLink($id, T('View other revision')) . "<br>\n";
   print &GetGotoBar($id);
   print $q->endform;
   print "\n</div>\n";
@@ -4238,21 +4216,21 @@ sub DoEditPrefs {
   $recentName = $RCName;
   $recentName =~ s/_/ /g;
   &DoNewLogin()  if ($UserID < 400);
-  print &GetHeader('', $strEditPref, "");
+  print &GetHeader('', T('Editing Preferences'), "");
   print '<div class=wikiwrapper><div class=wikipref>';
   print &GetFormStart();
   print GetHiddenValue("edit_prefs", 1), "\n";
-  print '<b>' . $strUserInfo . "</b>\n";
-  print '<br>' . Ts($strYourUserID, $UserID) . "\n";
-  print '<br>' . $strUserTag . ' ', &GetFormText('username', "", 20, 50);
-  print ' ' . $strUserNameInfo;
-  print '<br>' . $strSetPasswd . ' ',
+  print '<b>' . T('User info') . "</b>\n";
+  print '<br>' . Ts('User ID %s', $UserID) . "\n";
+  print '<br>' . T('Your user name is') . ' ', &GetFormText('username', "", 20, 50);
+  print ' ' . T('(IP address will be used if not supplied)');
+  print '<br>' . T('User password') . ' ',
         $q->password_field(-name=>'p_password', -value=>'*', 
                            -size=>15, -maxlength=>50),
         ' ', T('(blank to remove password)'), '<br>(',
         T('Passwords allow sharing preferences between multiple systems.'),
         ' ', T('Passwords are completely optional.'), ')<hr/><br/><p align=center>', 
-        $q->submit(-name=>'save', -value=>$strSave . $strUserInfo), '</p><br/><br/>';
+        $q->submit(-name=>'save', -value=>T('Save') . T('User info')), '</p><br/><br/>';
   if (($AdminPass ne '') || ($EditPass ne '')) {
     print '<br>', T('Administrator Password:'), ' ',
           $q->password_field(-name=>'p_adminpw', -value=>'*', 
@@ -4321,7 +4299,7 @@ sub DoEditPrefs {
                          -values=>["cn","en"], -labels=>\%labels,
                          -default=>&GetParam("defaultlang", 1));
 
-  print '<br>', $q->submit(-name=>'Save', -value=>$strSave), "\n";
+  print '<br>', $q->submit(-name=>'Save', -value=>T('Save')), "\n";
   print '</div></div>';
   print "<hr class=wikilinefooter>\n";
   print '<div class=wikifooter>';
@@ -4353,14 +4331,14 @@ sub DoUpdatePrefs {
   # All link bar settings should be updated before printing the header
   &UpdatePrefCheckbox("toplinkbar");
   &UpdatePrefCheckbox("linkrandom");
-  print &GetHeader('',$strSavePref, '');
+  print &GetHeader('',T('Saving Preferences'), '');
   print '<div class=wikiwrapper><div class=wikitext><br>';
   if ($UserID < 1001) {
     print '<b>',
           Ts('Invalid UserID %s, preferences not saved.', $UserID), '</b>';
     if ($UserID == 111) {
       print '<br>',
-            T($strReqCookieErr);
+            T('(Preferences require cookies, but no cookie was sent.)');
     }
     print &GetCommonFooter();
     return;
@@ -4430,13 +4408,13 @@ sub DoUpdatePrefs {
   &UpdatePrefNumber("tzoffset", 0, -999, 999);
   &UpdatePrefNumber("editrows", 1, 1, 999);
   &UpdatePrefNumber("editcols", 1, 1, 999);
-  print $strServerTime, ' ', &TimeToText($Now-$TimeZoneOffset), '<br>';
+  print T('Server time:'), ' ', &TimeToText($Now-$TimeZoneOffset), '<br>';
   $TimeZoneOffset = &GetParam("tzoffset", 0) * (60 * 60);
-  print T($strLocalTime), ' ', &TimeToText($Now), '<br>';
+  print T('Local time:'), ' ', &TimeToText($Now), '<br>';
   $stylesheet = &GetParam('p_stylesheet', '');
   if ($stylesheet eq '') {
     if (&GetParam('stylesheet', '') ne '') {
-      print T($strCSSRemoved), '<br>';
+      print T('StyleSheet URL removed.'), '<br>';
     }
     undef $UserData{'stylesheet'};
   } else {
@@ -4518,7 +4496,7 @@ sub UpdatePrefNumber {
 }
 
 sub DoIndex {
-  print &GetHeader('', $strIndexAll, '');
+  print &GetHeader('', T('Index of all pages'), '');
   print '<br>';
   &PrintPageList(&AllPagesList());
   print &GetCommonFooter();
@@ -4543,16 +4521,16 @@ sub DoNewLogin {
 }
 
 sub DoEnterLogin {
-  print &GetHeader('', $strLogin, "");
+  print &GetHeader('', T('Login'), "");
   print &GetFormStart();
   print &GetHiddenValue('enter_login', 1), "\n";
-  print '<br>', $strUserID, ' ',
+  print '<br>', T('User ID number:'), ' ',
         $q->textfield(-name=>'p_userid', -value=>'',
                       -size=>15, -maxlength=>50);
-  print '<br>', $strPassword, ' ',
+  print '<br>', T('Password:'), ' ',
         $q->password_field(-name=>'p_password', -value=>'', 
                            -size=>15, -maxlength=>50);
-  print '<br>', $q->submit(-name=>'Login', -value=>$strLogin), "\n";
+  print '<br>', $q->submit(-name=>'Login', -value=>T('Login')), "\n";
   print "<hr class=wikilinefooter>\n";
   print &GetGotoBar('');
   print $q->endform;
@@ -4666,7 +4644,7 @@ sub DoBackLinks {
 sub PrintPageList {
   my $pagename;
   print '<div class=wikiwrapper><div class=wikitext>';
-  print "<h2>", Ts($strBackTrackTitle, ($#_ + 1)), "</h2>\n";
+  print "<h2>", Ts('%s pages found:', ($#_ + 1)), "</h2>\n";
   foreach $pagename (@_) {
     print ".... "  if ($pagename =~ m|/|);
     print &GetPageLink($pagename), "<br>\n";
@@ -4941,7 +4919,7 @@ sub DoPost {
 	}
 	&CleanupCachedFiles($HtmlDir . "/" . &GetPageDirectory($id)."/$1");
   }
-  if(not $id =~ /$strDiscussID$/){
+  if(not $id =~ /$DiscussSuffix$/){
       &SaveKeepSection();
   }
   &ExpireKeepFile();
@@ -5219,7 +5197,7 @@ sub ProcessVetos {
   return (0, T('(done)'))  unless $$Page{'ts'} < $expirets;
   if ($DeletedPage && $$Text{'text'} =~ /^\s*$DeletedPage\W*?(\n|$)/o) {
     &DeletePage($OpenPageName, 1, 1);
-    return (1, $strDeleted);
+    return (1, T('(deleted)'));
   }
   if ($ReplaceFile && $$Text{'text'} =~ /^\s*$ReplaceFile\:\s*(\S+)/o) {
     my $fname = $1;
@@ -5232,11 +5210,11 @@ sub ProcessVetos {
          open (OUT, ">$fname") or return 0;
          print OUT $string;
          close OUT;
-         return (0, $strReplaced);
+         return (0, T('(replaced)'));
       }
     }
   }
-  return (0, $strDone);
+  return (0, T('(done)'));
 }
 
 sub DoMaintain {
