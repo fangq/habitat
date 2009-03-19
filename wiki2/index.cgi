@@ -3,6 +3,7 @@
 # Wiki2 - an object-oriented wiki engine
 #
 # by Qianqian Fang <fangq at nmr.mgh.harvard.edu>
+# Copyright (c) 2005-2009
 #
 # key features:
 #   1. object-oriented wiki text data structures
@@ -830,8 +831,11 @@ sub DoRc {
     if ($daysago) {
       $starttime = $Now - ((24*60*60)*$daysago);
       if ($showHTML) {
-        print "<h2>" . Ts('Updates in the last %s day'
-                          . (($daysago != 1)?"s":""), $daysago) . "</h2>\n";
+        if($daysago != 1) {
+              print "<h2>" . Ts('Updates in the last %s days', $daysago) . "</h2>\n";
+        }else{
+              print "<h2>" . Ts('Updates in the last %s day', $daysago) . "</h2>\n";
+        }
       }
       # Note: must have two translations (for "day" and "days")
       # Following comment line is for translation helper script
