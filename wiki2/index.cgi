@@ -618,74 +618,39 @@ sub DoBrowseRequest {
 sub BuildRuleStack
 {
    my ($id)=@_;
-   my (@dirs,$toptree,$fname,$dirname,$rules,$i,$j,$pagetype,$isadmin,$levelcount,$iseditor,$ishide,$iswriteonly);
+   my (@dirs,$toptree,$fname,$ff,$dirname,$rules,$i,$j,$pagetype,$isadmin,$levelcount,$iseditor,$ishide,$iswriteonly);
+   my %rulefiles=('v0'=>$ViewerPreRule,'v1'=>$ViewerPostRule,'e0'=>$EditorPreRule,'e1'=>$EditorPostRule);
 
    if($id=~/\/\.[^\/]+$/) { return; }
 
    $toptree=&GetPageDirectory($id);
    @dirs=(split(/\//,$toptree."/".$id));
+   if(@dirs<1) { return; }
+
    &RestorePageHash($id);
+   $levelcount = ($toptree =~ tr/\///)+1;
 
    @$ViewerPreRule=();
    @$ViewerPostRule=();
    @$EditorPreRule=();
    @$EditorPostRule=();
 
-   $levelcount = ($toptree =~ tr/\///)+1;
-
-   if(@dirs<1) { return; }
-   for($i=$levelcount;$i<@dirs;$i++)
-   {
+   for($i=$levelcount;$i<@dirs;$i++){
 	$dirname="";
 	for($j=$levelcount;$j<=$i;$j++) {
 		if($j==$levelcount) {$dirname .=$dirs[$j];} 
 		else {$dirname .="/".$dirs[$j];}
 	}
-	$fname=$dirname . "/.v0";
-#        if($i==2){ die($PageDir."/".$toptree."/".$dirname . "/.v0.db");}
-#        if($i==2){ die($fname);}
-        if(-f $PageDir."/".$toptree."/".$dirname . "/.v0.db")
-	{
-		$rules=&ReadRawWikiPage($fname);
-#		$rules=~ s/\\n/\n/g;
-		if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
-                if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
-                if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
-		if(length($rules)>1){ push(@$ViewerPreRule,$rules); }
-	}
-        $fname=$dirname . "/.v1";
-        if(-f $PageDir."/".$toptree."/".$dirname . "/.v1.db")
-        {
+        foreach $ff (keys %rulefiles){
+            $fname=$dirname . "/.$ff";
+            if(-f $PageDir."/".$toptree."/".$dirname . "/.$ff.db"){
                 $rules=&ReadRawWikiPage($fname);
-#                $rules=~ s/\\n/\n/g;
-                if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
-                if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
-                if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
-                if(length($rules)>1){ push(@$ViewerPostRule,$rules); }
-        }
-        $fname=$dirname . "/.e0";
-        if(-f $PageDir."/".$toptree."/".$dirname . "/.e0.db")
-        {
-                $rules=&ReadRawWikiPage($fname);
-#                $rules=~ s/\\n/\n/g;
-                if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
-                if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
-                if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
-                if(length($rules)>1){ push(@$EditorPreRule,$rules); }
-        }
-        $fname=$dirname . "/.e1";
-        if(-f $PageDir."/".$toptree."/".$dirname . "/.e1.db")
-        {
-                $rules=&ReadRawWikiPage($fname);
-#                $rules=~ s/\\n/\n/g;
-                if($rules =~ /\bADMIN=1\b/) {$isadmin=1;}
-                if($rules =~ /\bEDITOR=1\b/) {$iseditor=1;}
-                if($rules =~ /\bPRIVATE=1\b/) {$ishide=1;}
-                if($rules =~ /\bWRITEONLY=1\b/) {$iswriteonly=1;}
-                if(length($rules)>1){ push(@$EditorPostRule,$rules); }
+                $isadmin=1  if($rules =~ /\bADMIN=1\b/);
+                $iseditor=1 if($rules =~ /\bEDITOR=1\b/);
+                $ishide=1   if($rules =~ /\bPRIVATE=1\b/);
+                $iswriteonly=1 if($rules =~ /\bWRITEONLY=1\b/);
+                if(length($rules)>1){ push(@{ $rulefiles{$ff} },$rules); }
+            }
         }
    }
    if($isadmin) {$pagetype .="|ADMIN|";}
@@ -2506,14 +2471,18 @@ sub ApplyRegExpRules {
 
   foreach $line (@rulelist)
   {
-    $line =~ s/[\r\n]$//;
-       if($line =~ /GREP\s+(.*)/)
+       $line =~ s/[\r\n]$//;
+       $line =~ s/^#.*$//g;
+       $line =~ s/([^\\])#.*$/$1/g;  # remove comments
+       if($line eq "") {next;}
+
+       if($line =~ /^GREP\s+(.*)/)
        {
                 @newtext=grep(/$1/,split(/\r*\n/,$text));
                 $text=join("\n",@newtext);
                 next;
        }
-       if($line =~ /HEAD\s+(.*)/)
+       if($line =~ /^HEAD\s+(.*)/)
        {
                 @newtext=split(/\r*\n/,$text);
 		if($1<=$#newtext) {
@@ -2522,7 +2491,7 @@ sub ApplyRegExpRules {
                 $text=join("\n",@newtext);
                 next;
        }
-       if($line =~ /TAIL\s+(.*)/)
+       if($line =~ /^TAIL\s+(.*)/)
        {
                 @newtext=split(/\r*\n/,$text);
 		if($#newtext-$1>=0) {
@@ -2532,19 +2501,16 @@ sub ApplyRegExpRules {
                 next;
        }
 
-    if($line =~ /(.*[^\\])\/(.*[^\\])(\/([mgi])){0,1}$/)
-    {
+    if($line =~ /(.*[^\\])\/(.*[^\\])(\/([mgi])){0,1}$/) {
        $opt="";
        $from=$1;
        $to=$2;
-       if($from =~ /(.*[^\\])\/(.*)/)
-       {
+       if($from =~ /(.*[^\\])\/(.*)/){
 		$opt=$to;
 		$from=$1;
 		$to=$2;
-	}
-        elsif($to =~ /(.*[^\\])\/(.*)/)
-       {
+       }
+       elsif($to =~ /(.*[^\\])\/(.*)/){
                 $from=$1;
                 $to=$2;
        }
@@ -2553,14 +2519,12 @@ sub ApplyRegExpRules {
        $to =~ s/\\\$/\$/g;
        $to =~ s/\\N/\n/g;
 
-       if($from eq "^" || $from eq "\$")
-       {
+       if($from eq "^" || $from eq "\$"){
 	       $text =~ s/$from/$to/;
        }
-       elsif($to =~ /\\([0-9])/)
-	{
+       elsif($to =~ /\\([0-9])/){
                $text =~ s/$from/$to/geo;
-	}
+       }
        else {
 		if($opt eq "m"){
 			$text =~ s/$from/$to/mg; 
@@ -6227,7 +6191,6 @@ sub BuildNameSpaceRules
    &ReadNameSpaceRules(\%NameSpaceE0);
    &ReadNameSpaceRules(\%NameSpaceE1);
 
-#  die(join("",keys %NameSpaceV0));
 }
 
 sub CleanupCachedFiles 

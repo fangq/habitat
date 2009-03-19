@@ -3,7 +3,7 @@
 # Based on UseModWiki 1.0
 
 $CookieName  = "Wiki2Cookie";       # Name for this wiki (for multi-wiki sites)
-$SiteName    = "Wiki2: Small Code Does Big Things";       # Name of site (used for titles)
+$SiteName    = "Wiki2: Small Wiki Does Big Things";       # Name of site (used for titles)
 $HomePage    = "Home";          # Home page (change space to _)
 $RCName      = "RecentChanges"; # Name of changes page (change space to _)
 $LogoUrl     = "images/wiki2logo.png";     # URL for site logo ("" for nologo)
