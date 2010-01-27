@@ -1,0 +1,33 @@
+= Habitat - A Personal Content Management System =
+
+Habitat Change Log:
+
+== Habitat Change Log (current) ==
+*[2010/01/27] import from niwiki.sf.net to huc.sf.net
+*[2010/01/26] support in-place page embeddding: templates
+*[2010/01/23] rename project from wiki2 to Habitat, add artworks
+
+== Wiki2 DBI Branch Change Log (older) ==
+*[2010/01/22] do not allow registration when locked
+*[2010/01/18] javascript redirect for SimpleHTTPServer
+*[2010/01/16] registration activation for new users
+*[2010/01/15] inline diff in the keptlist
+*[2010/01/12] watch and dewatch actions and sqliterization
+*[2010/01/09] use email to login, reset randkey at login
+*[2009/12/17] embedded diff format for minor edits
+*[2009/10/10] test under non-db non-captcha mode
+*[2009/10/03] delete page, lock page for DBI and new layout
+*[2009/09/28] add local web server support
+*[2009/09/13] add rclog and system table to save lockstate and banlist
+*[2009/09/07] DBI mode for browsing, editing, user auth, history and search
+*[2009/08/28] draft 1 for dbi support
+
+== Wiki2 Change Log (oldest) ==
+*[2009/03/19] remove all string variables, use orig usemodwiki translation for i18n
+*[2009/03/19] some clean-up for buildrulestack, support comment in the rule sets
+*[2008/12/14] add iswriteonly type
+*[2008/12/02] add capcha and more careful ireplace mode
+*[2008/07/11] add support for ASCIIMathML to display LaTeX equations
+*[2008/07/11] import to niwiki CVS from a local version
+*[2006/06~12] initial support of page embedding and page rules
+
