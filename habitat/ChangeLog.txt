@@ -3,8 +3,8 @@
 Habitat Change Log:
 
 == Habitat Change Log (current) ==
-*[2010/01/27] import from niwiki.sf.net to huc.sf.net
-*[2010/01/26] support in-place page embeddding: templates
+*[2010/01/27] import svn from niwiki.sf.net to huc.sf.net
+*[2010/01/26] support in-place page embeddding for templates
 *[2010/01/23] rename project from wiki2 to Habitat, add artworks
 
 == Wiki2 DBI Branch Change Log (older) ==
@@ -30,4 +30,4 @@ Habitat Change Log:
 *[2008/07/11] add support for ASCIIMathML to display LaTeX equations
 *[2008/07/11] import to niwiki CVS from a local version
 *[2006/06~12] initial support of page embedding and page rules
-
+*[2004/04~10] initial modifications to TtH Wiki for WenQuanYi Project

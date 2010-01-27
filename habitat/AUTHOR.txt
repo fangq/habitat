@@ -1,0 +1,19 @@
+Habitat is written by Qianqian Fang, 2009, 2010
+Email: fangq (at) nmr.mgh.harvard.edu
+Author's Webpage: http://nmr.mgh.harvard.edu/~fangq/
+Copyright (C) 2009,2010 Qianqian Fang
+
+Habitat is derived from UseModWiki version 1.0 (September 12, 2003)
+Copyright (C) 2000-2003 Clifford A. Adams  <caadams@usemod.com>
+Copyright (C) 2002-2003 Sunir Shah  <sunir@sunir.org>
+Based on the GPLed AtisWiki 0.3  (C) 1998 Markus Denker
+   <marcus@ira.uka.de>
+...which was based on
+   the LGPLed CVWiki CVS-patches (C) 1997 Peter Merel
+   and The Original WikiWikiWeb  (C) Ward Cunningham
+       <ward@c2.com> (code reused with permission)
+Email and ThinLine options by Jim Mahoney <mahoney@marlboro.edu>
+
+Habitat's Website : http://wenq.org/habitat/
+
+Other contributors:
