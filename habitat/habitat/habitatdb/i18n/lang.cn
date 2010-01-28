@@ -8,7 +8,7 @@ $FooterNote  = "Habitat提供动力";
 $SiteName    = "Habitat";       # Name of site (used for titles)
 $HomePage    = "首页";          # Home page (change space to _)
 $DiscussSuffix= "..讨论";
-$HomePageDafault=<<HOMEPAGE_DEFAULT;
+$BuildinPages{$HomePage}=<<HOMEPAGE_DEFAULT;
 = 欢迎使用 Habitat 个人资讯管理平台 =
 
 <toc>
@@ -101,6 +101,150 @@ Habitat项目是“可理解计算(HUC)”的一个子项目。HUC项目的目�
 对未来的计算机发展以及建立一个透明、开放的用户、软件生态系统有
 着积极的作用。
 HOMEPAGE_DEFAULT
+
+
+$BuildinPages{HabitatTest}=<<HABITAT_TEST_PAGE;
+= Habitat Wiki Markup Test Page =
+<toc>
+== # Basic markup rules ==
+!! Input !! Display as !!
+|| <tt><nowiki>''italic''</nowiki></tt> || ''italic'' ||
+|| <tt><nowiki>'''bold'''</nowiki></tt> || '''bold''' ||
+|| <tt><nowiki>'''''bold-italic'''''</nowiki></tt> || '''''bold-italic''''' ||
+|| <tt><nowiki><u>underline</u></nowiki></tt> || <u>underline</u> ||
+|| <tt><nowiki><tt>monospaced text</tt></nowiki></tt> || <tt>monospace text</tt> ||
+|| <tt><nowiki><pre>preformatted text</pre></nowiki></tt> || <pre>preformatted text</pre> ||
+|| <tt><nowiki><nowiki>''disable all wiki formats''</nowiki></nowiki></tt> || <nowiki>''disable all wiki formats''</nowiki> ||
+
+== # Links ==
+!! Input !! Display as !!
+|| <tt><nowiki>[[Link to a Wikipage]]</nowiki></tt> || [[Link to a Wikipage]] ||
+|| <tt><nowiki>[[Underlines_Equal_Spaces]]</nowiki></tt> || [[Underlines_Equal_Spaces]] ||
+|| <tt><nowiki>[[Link | Link Caption]]</nowiki></tt> || [[Link | Link Caption]] ||
+|| <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
+|| <tt><nowiki>[http://example.com/ URL Text]</nowiki></tt> || [http://example.com/ URL Text] ||
+|| <tt><nowiki>[http:?Home Link to this wiki script]</nowiki></tt> || [http:?Home Link to this wiki script] ||
+|| <tt><nowiki>[http:?Home#Anchor Link with an anchor]</nowiki></tt> || [http:?Home#Anchor Link with an anchor] ||
+|| <tt><nowiki>[http:/cgi-bin/index.cgi?Home Link from server root]</nowiki></tt> || [http:/cgi-bin/index.cgi?Home Link from server root] ||
+|| <tt><nowiki>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</nowiki></tt> || <tt>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</tt> ||
+|| <tt><nowiki>Local:LocalPage</nowiki></tt> || Local:LocalPage ||
+|| <tt><nowiki>Local:LocalPage#Anchor</nowiki></tt> || Local:LocalPage#Anchor ||
+|| <tt><nowiki>[#Anchor]</nowiki></tt> || [#Anchor] [http:?HabitatTest#Anchor Click to jump here] ||
+
+
+== # Headings ==
+input: 
+<pre><nowiki>
+= Heading 1 =
+== Heading 2 ==
+=== Heading 3 ===
+==== Heading 4 ====
+===== Heading 5 =====
+====== Heading 6 ======
+</nowiki></pre>
+Display as: <html><div style="border:1px solid black;padding:5pt;margin:5px;"></html>
+= Heading 1 =
+== Heading 2 ==
+=== Heading 3 ===
+==== Heading 4 ====
+===== Heading 5 =====
+====== Heading 6 ======
+<html></div></html>
+
+
+== # Lists ==
+input: 
+<pre><nowiki>
+* Bullet Item 1
+* Bullet Item 2
+** Bullet Item 2.1
+** Bullet Item 2.2
+*** Bullet Item 2.2.1
+</nowiki></pre>
+Display as:
+* Bullet Item 1
+* Bullet Item 2
+** Bullet Item 2.1
+** Bullet Item 2.2
+*** Bullet Item 2.2.1
+---------------
+input: 
+<pre><nowiki>
+# Numbered Item 1
+# Numbered Item 2
+## Numbered Item 2.1
+## Numbered Item 2.2
+### Numbered Item 2.2.1
+</nowiki></pre>
+Display as:
+# Numbered Item 1
+# Numbered Item 2
+## Numbered Item 2.1
+## Numbered Item 2.2
+### Numbered Item 2.2.1
+
+---------------
+input: 
+<pre><nowiki>
+:indentaton 
+::more indentaton 
+</nowiki></pre>
+Display as:
+:indentaton 
+::more indentaton 
+
+---------------
+input: 
+<pre><nowiki>
+;'''define a word''': the detailed definition of a word
+;;'''define a sub item''': the detailed definition of the sub item
+</nowiki></pre>
+Display as:
+;'''define a word''': the detailed definition of a word
+;;'''define a sub item''': the detailed definition of the sub item
+
+---------------
+input (of course, they are the same): 
+<pre><nowiki>
+ struct Complex_{
+     float x;
+     float y;
+ }; // code segment
+</nowiki></pre>
+Display as:
+ struct Complex_{
+     float x;
+     float y;
+ }; // code segment
+
+== # Images ==
+input: 
+<pre><nowiki>http:/images/habitat_logo.png</nowiki></pre>
+
+display as:<br>
+http:/images/habitat_logo.png
+
+== # Tables ==
+input: 
+<pre><nowiki>
+!! Table Header !! Column 2 !! Column 3 !!
+|| link || [http:?Home Home] || '''link to home page''' ||
+||  || show empty cells || ||
+|||| more than one cells  || <- a wider cell ||
+||a wider cell ->|||| more than one cells  ||
+||__vertical span || <- cell spans two rows || ||
+|| one more cell || and another ||
+</nowiki></pre>
+Display as:
+!! Table Header !! Column 2 !! Column 3 !!
+|| link || [http:?Home Home] || '''link to home page''' ||
+||  || show empty cells || ||
+|||| more than one cells  || <- a wider cell ||
+||a wider cell ->|||| more than one cells  ||
+||__vertical span || <- cell spans two rows || ||
+|| one more cell || and another ||
+
+HABITAT_TEST_PAGE
 
 $Translate{'Simplified Chinese'}                                              =       '中文';
 $Translate{'User Forum'}		      				      =       '用户论坛';

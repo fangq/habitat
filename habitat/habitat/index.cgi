@@ -93,7 +93,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
-  $UserBuildinCSS $HomePageDafault);
+  $UserBuildinCSS %BuildinPages);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
@@ -819,8 +819,9 @@ sub BrowsePage {
 	$$Text{'text'}='';
      }
   }
-  if($id eq $HomePage && defined $$Text{'isnew'}){
-     $$Text{'text'}=$HomePageDafault;
+  # build-in pages are only used for browsing
+  if(defined $$Text{'isnew'} && $BuildinPages{$id} ne ''){
+     $$Text{'text'}=$BuildinPages{$id};
   }
   $showDiff = &GetParam('diff', $allDiff);
   if ($UseDiff && $showDiff) {
