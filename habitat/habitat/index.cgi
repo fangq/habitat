@@ -4693,9 +4693,7 @@ sub GetFormCheck {
 
 sub DoUpdatePrefs {
   my ($username, $password, $stylesheet, $lang, $email);
-  if(&GetLockState==1 || ((!$EditAllowed) && !&UserIsAdmin()) ){
-	PrintMsg(T("Wiki read-only"),T("Error"),1);
-  }
+
   # All link bar settings should be updated before printing the header
   &UpdatePrefCheckbox("toplinkbar");
   &UpdatePrefCheckbox("linkrandom");
@@ -4770,6 +4768,9 @@ sub DoUpdatePrefs {
               '<br>';
       }
     }
+  }
+  if(&GetLockState==1 || ((!$EditAllowed) && !&UserIsAdmin()) ){
+        ErrMsg(T("Wiki read-only"),T("Error"),1);
   }
   $UserData{'email'} = &GetParam("p_email", "");
 #  if ($EmailNotify) {
@@ -5069,6 +5070,7 @@ sub SaveUserDataDB {
       die(T('ERROR: database uninitialized!'));
   }
   $tmp=ReadDBItems($userdb,'id',"\n",'',"name='".$UserData{'username'}."'");
+  $isnewuser=0;
   if($tmp eq ''){
 	$isnewuser=1;
   }elsif($tmp ne $UserID){
@@ -5080,8 +5082,8 @@ sub SaveUserDataDB {
   }
   $passhash=ReadDBItems($userdb,'pass',"\n",'',"name='".$UserData{'username'}."'");
   $encpass=$UserData{'password'};
-  if(($encpass ne $passhash) && $isnewuser ne ''){
-	die(T('ERROR: wrong password or username!').$name."/".$UserData{'username'});
+  if(($encpass ne $passhash) && $isnewuser!=1){
+	die(T('ERROR: wrong password or username!'));
   }
   $adminhash="";
   if($UserData{'adminpw'} ne "") {
@@ -7082,7 +7084,13 @@ sub VerifyCaptcha{
 	if($opt eq "" || $cryres eq ""){ return 0;}
         else{ return ($userans==$trueans); }
 }
-
+sub ErrMsg{
+        my ($msg,$msgtype,$exitflag)=@_;
+        print '<div class="wikimsg">Error: ', T($msg).
+           "<hr/><input type='button' onclick='javascript:history.go(-1)' value='".
+           T("Go Back")."'></div>";
+        if($exitflag) {exit;}
+}
 sub PrintMsg{
         my ($msg,$msgtype,$exitflag)=@_;
         print &GetHeader('', T($msgtype), '');

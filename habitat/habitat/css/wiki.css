@@ -103,7 +103,7 @@ div.wikitext, div.wikirc, div.wikipref,div.wikieditform, div.wikiinfo {
 	z-index: 2;
 }
 
-div.wikiinfo{
+div.wikiinfo,div.wikimsg{
 	background-color:#99CCFF;
 }
 
