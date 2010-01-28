@@ -72,7 +72,7 @@ index.cgi文件中找到<tt>LangID="en"</tt>并将en替换为cn。
 添加、改写页面内容，请选择页面上面的"编辑本页"链接。Habitat遵循最为
 广泛使用的wiki排版格式语言，兼容[http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 以及大多数[http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]
-基本语法。请查看[http://wenq.org/index.cgi?WikiFormat WikiFormat]页面
+基本语法。请查看[Local:HabitatTest HabitatTest]页面
 获取更多排版格式信息。
 
 Habitat支持多层次Wiki页面命名。您可以建立诸如"[[页面/子页面]]"
@@ -102,147 +102,150 @@ Habitat项目是“可理解计算(HUC)”的一个子项目。HUC项目的目�
 着积极的作用。
 HOMEPAGE_DEFAULT
 
+$BuildinPages{"Home"}=$BuildinPages{$HomePage};
 
-$BuildinPages{HabitatTest}=<<HABITAT_TEST_PAGE;
-= Habitat Wiki Markup Test Page =
+$BuildinPages{"HabitatTest"}=<<HABITAT_TEST_PAGE;
+= Habitat 排版标记语言示范页面 =
 <toc>
-== # Basic markup rules ==
-!! Input !! Display as !!
-|| <tt><nowiki>''italic''</nowiki></tt> || ''italic'' ||
-|| <tt><nowiki>'''bold'''</nowiki></tt> || '''bold''' ||
-|| <tt><nowiki>'''''bold-italic'''''</nowiki></tt> || '''''bold-italic''''' ||
-|| <tt><nowiki><u>underline</u></nowiki></tt> || <u>underline</u> ||
-|| <tt><nowiki><tt>monospaced text</tt></nowiki></tt> || <tt>monospace text</tt> ||
-|| <tt><nowiki><pre>preformatted text</pre></nowiki></tt> || <pre>preformatted text</pre> ||
-|| <tt><nowiki><nowiki>''disable all wiki formats''</nowiki></nowiki></tt> || <nowiki>''disable all wiki formats''</nowiki> ||
+== # 基本标记 ==
+!! 输入 !! 显示 !!
+|| <tt><nowiki>''斜体''</nowiki></tt> || ''斜体'' ||
+|| <tt><nowiki>'''粗体'''</nowiki></tt> || '''粗体''' ||
+|| <tt><nowiki>'''''粗斜体'''''</nowiki></tt> || '''''粗斜体''''' ||
+|| <tt><nowiki><u>下划线</u></nowiki></tt> || <u>下划线</u> ||
+|| <tt><nowiki><tt>等宽文本(monospace)</tt></nowiki></tt> || <tt>等宽文本(monospace)</tt> ||
+|| <tt><nowiki><pre>代码文本(pre-text)</pre></nowiki></tt> || <pre>代码文本(pre-text)</pre> ||
+|| <tt><nowiki><nowiki>''取消<u>wiki</u>标记语法''</nowiki></nowiki></tt> || <nowiki>''取消<u>wiki</u>标记语法''</nowiki> ||
 
-== # Links ==
-!! Input !! Display as !!
-|| <tt><nowiki>[[Link to a Wikipage]]</nowiki></tt> || [[Link to a Wikipage]] ||
-|| <tt><nowiki>[[Underlines_Equal_Spaces]]</nowiki></tt> || [[Underlines_Equal_Spaces]] ||
-|| <tt><nowiki>[[Link | Link Caption]]</nowiki></tt> || [[Link | Link Caption]] ||
+== # 链接 ==
+!! 输入 !! 显示 !!
+|| <tt><nowiki>[[指页面的链接]]</nowiki></tt> || [[指页面的链接]] ||
+|| <tt><nowiki>[[空格_等于_下划线]]</nowiki></tt> || [[空格_等于_下划线]] ||
+|| <tt><nowiki>[[页面 | 显示文字]]</nowiki></tt> || [[页面 | 显示文字]] ||
+|| <tt><nowiki>[[主页面/子页面/第三层页面 | 多层次页面]]</nowiki></tt> || [[主页面/子页面/第三层页面 | 多层次页面]] ||
 || <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
-|| <tt><nowiki>[http://example.com/ URL Text]</nowiki></tt> || [http://example.com/ URL Text] ||
-|| <tt><nowiki>[http:?Home Link to this wiki script]</nowiki></tt> || [http:?Home Link to this wiki script] ||
-|| <tt><nowiki>[http:?Home#Anchor Link with an anchor]</nowiki></tt> || [http:?Home#Anchor Link with an anchor] ||
-|| <tt><nowiki>[http:/cgi-bin/index.cgi?Home Link from server root]</nowiki></tt> || [http:/cgi-bin/index.cgi?Home Link from server root] ||
+|| <tt><nowiki>[http://example.com/ URL地址]</nowiki></tt> || [http://example.com/  URL地址] ||
+|| <tt><nowiki>[http:?Home 直接指定脚本参数]</nowiki></tt> || [http:?Home 直接指定脚本参数] ||
+|| <tt><nowiki>[http:?Home#Anchor 带锚的链接]</nowiki></tt> || [http:?Home#Anchor 带锚的链接] ||
+|| <tt><nowiki>[Local:Home 使用Local替代wiki脚本名]</nowiki></tt> || [Local:Home 使用Local替代wiki脚本名] ||
+|| <tt><nowiki>[http:/cgi-bin/index.cgi?Home 从域名根目录指定路径的链接]</nowiki></tt> || [http:/cgi-bin/index.cgi?Home 从域名根目录指定路径的链接] ||
 || <tt><nowiki>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</nowiki></tt> || <tt>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</tt> ||
-|| <tt><nowiki>Local:LocalPage</nowiki></tt> || Local:LocalPage ||
-|| <tt><nowiki>Local:LocalPage#Anchor</nowiki></tt> || Local:LocalPage#Anchor ||
-|| <tt><nowiki>[#Anchor]</nowiki></tt> || [#Anchor] [http:?HabitatTest#Anchor Click to jump here] ||
+|| <tt><nowiki>Local:页面名""</nowiki></tt> || Local:页面名""||
+|| <tt><nowiki>Local:页面名#锚点""</nowiki></tt> || Local:页面名#锚点"" ||
+|| <tt><nowiki>[#锚点]</nowiki></tt> || [#Anchor] [http:?HabitatTest#锚点 点击跳到本行] ||
 
 
-== # Headings ==
-input: 
+== # 标题 ==
+输入: 
 <pre><nowiki>
-= Heading 1 =
-== Heading 2 ==
-=== Heading 3 ===
-==== Heading 4 ====
-===== Heading 5 =====
-====== Heading 6 ======
+= 一号标题 =
+== 二号标题 ==
+=== 三号标题 ===
+==== 四号标题 ====
+===== 五号标题 =====
+====== 六号标题 ======
 </nowiki></pre>
-Display as: <html><div style="border:1px solid black;padding:5pt;margin:5px;"></html>
-= Heading 1 =
-== Heading 2 ==
-=== Heading 3 ===
-==== Heading 4 ====
-===== Heading 5 =====
-====== Heading 6 ======
+显示: <html><div style="border:1px solid black;padding:5pt;margin:5px;"></html>
+= 一号标题 =
+== 二号标题 ==
+=== 三号标题 ===
+==== 四号标题 ====
+===== 五号标题 =====
+====== 六号标题 ======
 <html></div></html>
 
 
-== # Lists ==
-input: 
+== # 列表 ==
+输入: 
 <pre><nowiki>
-* Bullet Item 1
-* Bullet Item 2
-** Bullet Item 2.1
-** Bullet Item 2.2
-*** Bullet Item 2.2.1
+* 第一点
+* 第二点
+** 第2.1点
+** 第2.2点
+*** 第2.2.1点
 </nowiki></pre>
-Display as:
-* Bullet Item 1
-* Bullet Item 2
-** Bullet Item 2.1
-** Bullet Item 2.2
-*** Bullet Item 2.2.1
+显示:
+* 第一点
+* 第二点
+** 第2.1点
+** 第2.2点
+*** 第2.2.1点
 ---------------
-input: 
+输入: 
 <pre><nowiki>
-# Numbered Item 1
-# Numbered Item 2
-## Numbered Item 2.1
-## Numbered Item 2.2
-### Numbered Item 2.2.1
+# 带编号的第1条
+# 带编号的第2条
+## 带编号的第2.1条
+## 带编号的第2.2条
+### 带编号的第2.2.1条
 </nowiki></pre>
-Display as:
-# Numbered Item 1
-# Numbered Item 2
-## Numbered Item 2.1
-## Numbered Item 2.2
-### Numbered Item 2.2.1
+显示:
+# 带编号的第1条
+# 带编号的第2条
+## 带编号的第2.1条
+## 带编号的第2.2条
+### 带编号的第2.2.1条
 
 ---------------
-input: 
+输入: 
 <pre><nowiki>
-:indentaton 
-::more indentaton 
+:一次缩进 
+::两次缩进
 </nowiki></pre>
-Display as:
-:indentaton 
-::more indentaton 
+显示:
+:一次缩进 
+::两次缩进
 
 ---------------
-input: 
+输入: 
 <pre><nowiki>
-;'''define a word''': the detailed definition of a word
-;;'''define a sub item''': the detailed definition of the sub item
+;'''定义模式''': 对定义项的解释
+;;'''子定义模式''': 对子定义的解释
 </nowiki></pre>
-Display as:
-;'''define a word''': the detailed definition of a word
-;;'''define a sub item''': the detailed definition of the sub item
+显示:
+;'''定义模式''': 对定义项的解释
+;;'''子定义模式''': 对子定义的解释
 
 ---------------
-input (of course, they are the same): 
+输入 (输入和输出是相同的): 
 <pre><nowiki>
  struct Complex_{
      float x;
      float y;
  }; // code segment
 </nowiki></pre>
-Display as:
+显示:
  struct Complex_{
      float x;
      float y;
  }; // code segment
 
-== # Images ==
-input: 
+== # 图片 ==
+输入: 
 <pre><nowiki>http:/images/habitat_logo.png</nowiki></pre>
 
-display as:<br>
+显示:<br>
 http:/images/habitat_logo.png
 
-== # Tables ==
-input: 
+== # 表格 ==
+输入: 
 <pre><nowiki>
-!! Table Header !! Column 2 !! Column 3 !!
-|| link || [http:?Home Home] || '''link to home page''' ||
-||  || show empty cells || ||
-|||| more than one cells  || <- a wider cell ||
-||a wider cell ->|||| more than one cells  ||
-||__vertical span || <- cell spans two rows || ||
-|| one more cell || and another ||
+!! 表头 !! 第二列 !! 第三列 !!
+|| 链接 || [http:?Home 家页面] || '''链接到家页面''' ||
+||  || 左右都是空表格 || ||
+|||| 占两列的表格  || <- 这是一个宽单元 ||
+||这是一个宽单元 ->|||| 占两列的表格  ||
+||__这是一个长单元 || <- 左边的单元占两行|| ||
+|| 下面只用填写 || 两个单元 ||
 </nowiki></pre>
-Display as:
-!! Table Header !! Column 2 !! Column 3 !!
-|| link || [http:?Home Home] || '''link to home page''' ||
-||  || show empty cells || ||
-|||| more than one cells  || <- a wider cell ||
-||a wider cell ->|||| more than one cells  ||
-||__vertical span || <- cell spans two rows || ||
-|| one more cell || and another ||
+显示:
+!! 表头 !! 第二列 !! 第三列 !!
+|| 链接 || [http:?Home 家页面] || '''链接到家页面''' ||
+||  || 左右都是空表格 || ||
+|||| 占两列的表格  || <- 这是一个宽单元 ||
+||这是一个宽单元 ->|||| 占两列的表格  ||
+||__这是一个长单元 || <- 左边的单元占两行|| ||
+|| 下面只用填写 || 两个单元 ||
 
 HABITAT_TEST_PAGE
 

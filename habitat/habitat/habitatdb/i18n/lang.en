@@ -97,7 +97,7 @@ To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit 
 link on the top. Habitat supports many common Wiki markup
 rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[http://wenq.org/index.cgi?WikiFormat WikiFormat] page for more
+[Local:HabitatTest HabitatTest] page for more
 details about formatting.
 
 A new feature of Habitat is the support of hierarchical pages.
@@ -152,6 +152,7 @@ $BuildinPages{HabitatTest}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>[[Link to a Wikipage]]</nowiki></tt> || [[Link to a Wikipage]] ||
 || <tt><nowiki>[[Underlines_Equal_Spaces]]</nowiki></tt> || [[Underlines_Equal_Spaces]] ||
 || <tt><nowiki>[[Link | Link Caption]]</nowiki></tt> || [[Link | Link Caption]] ||
+|| <tt><nowiki>[[Master/Subpage/Subsubpage | Multi-level page]]</nowiki></tt> || [[Master/Subpage/Subsubpage | Multi-level page]] ||
 || <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
 || <tt><nowiki>[http://example.com/ URL Text]</nowiki></tt> || [http://example.com/ URL Text] ||
 || <tt><nowiki>[http:?Home Link to this wiki script]</nowiki></tt> || [http:?Home Link to this wiki script] ||

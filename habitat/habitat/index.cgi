@@ -5075,12 +5075,13 @@ sub SaveUserDataDB {
         die(Ts('ERROR: user name %s has already been taken!',$UserData{'username'}));
   }
   $tmp=ReadDBItems($userdb,'id',"\n",'',"email='".$UserData{'email'}."'");
-  if($tmp ne $UserID){
+  if($tmp ne '' && $tmp ne $UserID){
         die(Ts('ERROR: user email %s has already been taken!',$UserData{'email'}));
   }
+  $passhash=ReadDBItems($userdb,'pass',"\n",'',"name='".$UserData{'username'}."'");
   $encpass=$UserData{'password'};
-  if(($name ne $UserData{'username'} || $encpass ne $passhash) && !$isnewuser){
-	die(T('ERROR: wrong password or username!'));
+  if(($encpass ne $passhash) && $isnewuser ne ''){
+	die(T('ERROR: wrong password or username!').$name."/".$UserData{'username'});
   }
   $adminhash="";
   if($UserData{'adminpw'} ne "") {

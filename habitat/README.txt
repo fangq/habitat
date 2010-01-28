@@ -89,7 +89,7 @@ To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit 
 link on the top. Habitat supports many common Wiki markup
 rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[http://wenq.org/index.cgi?WikiFormat WikiFormat] page for more
+[Local:HabitatTest HabitatTest] page for more
 details about formatting.
 
 A new feature of Habitat is the support of hierarchical pages.

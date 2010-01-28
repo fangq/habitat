@@ -61,7 +61,7 @@ index.cgi文件中找到<tt>LangID="en"</tt>并将en替换为cn。
 添加、改写页面内容，请选择页面上面的"编辑本页"链接。Habitat遵循最为
 广泛使用的wiki排版格式语言，兼容[http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 以及大多数[http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]
-基本语法。请查看[http://wenq.org/index.cgi?WikiFormat WikiFormat]页面
+基本语法。请查看[Local:HabitatTest HabitatTest]页面
 获取更多排版格式信息。
 
 Habitat支持多层次Wiki页面命名。您可以建立诸如"[[页面/子页面]]"
