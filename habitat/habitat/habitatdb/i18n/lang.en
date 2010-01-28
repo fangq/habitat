@@ -33,6 +33,14 @@ database backend, hierarchical wiki page namespace, multi-language
 support, object-oriented structure and interfaces for plugins.
 
 == # How to install Habitat ==
+To download the latest stable release of Habitat, please browse
+the download section of [https://sourceforge.net/projects/huc/files/ this page].
+If you want to try out the most up-to-date code, you can 
+access it from our SVN. On Unix/Linux/Mac OS, you can use the 
+following svn command:
+  svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
+On Windows, you might want to install [http://tortoisesvn.net/downloads TortoiseSVN]
+to run the above command.
 
 You may run Habitat in 4 modes: Standard, Extended, 
 Basic and Tiny. Under "Tiny" mode, you can even get most

@@ -28,6 +28,12 @@ Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在开源中文
 多语言支持、面向对象的wiki数据结构以及可编程的扩展接口。
 
 == # 如何安装Habitat ==
+下载最新的稳定版，请浏览[https://sourceforge.net/projects/huc/files/ 这个页面]
+的文件下载列表。您还可以使用SVN来获取最新的代码(没有完全测试)。
+在 Unix/Linux/Mac OS上，您可以用下面的命令：
+  svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
+如果您使用的是Windows，您需要安装 [http://tortoisesvn.net/downloads TortoiseSVN]
+来执行上面的命令。
 
 Habitat有四种运行模式：标准模式，扩展模式，精简模式，最小模式。
 其中在最小模式下，您甚至可以仅仅使用一个200kB的脚本来实现
