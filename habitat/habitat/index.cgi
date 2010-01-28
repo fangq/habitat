@@ -3752,9 +3752,9 @@ sub UserCanEdit {
   if($id=~/\/\./){
     return 0 if (! &UserIsAdmin()); # Requires more privledges
   }
-  if($id=~/$DiscussSuffix$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/||$id eq "SandBox"){
-	return 1;
-  }
+#  if($id=~/$DiscussSuffix$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/||$id eq "SandBox"){
+#	return 1;
+#  }
 
   # Optimized for the "everyone can edit" case (don't check passwords)
   if (($id ne "") && (IsPageLocked($id))) {
