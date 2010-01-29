@@ -16,4 +16,8 @@ NAME=%NAME%
 PREFIX=/var/lib
 INSTALLPATH=$PREFIX/$NAME
 
-[ -d $INSTALLPATH/script/cgi-bin ] && rm -rf $INSTALLPATH/script/cgi-bin
+if [ -d $INSTALLPATH/script/cgi-bin ]; then
+   rm -rf $INSTALLPATH/script/cgi-bin
+fi
+
+$INSTALLPATH/script/stoplocal.sh

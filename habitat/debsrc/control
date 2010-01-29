@@ -3,7 +3,7 @@ Version: %VERSION%
 Section: web
 Priority: optional
 Architecture: all
-Depends: perl python sqlite3 libdbd-sqlite3-perl libtext-diff-perl libtext-patch-perl libcrypt-des-perl
+Depends: perl, python, sqlite3, libdbd-sqlite3-perl, libtext-diff-perl, libtext-patch-perl, libcrypt-des-perl
 Suggests: apache2
 Installed-Size: 200
 Maintainer: Qianqian Fang <fangq@nmr.mgh.harvard.edu>

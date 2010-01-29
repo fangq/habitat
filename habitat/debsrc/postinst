@@ -13,5 +13,10 @@
 ############################################################
 
 NAME=%NAME%
-PREFIX=/usr/local
+PREFIX=/var/lib
 INSTALLPATH=$PREFIX/$NAME
+
+cd $INSTALLPATH/data
+if [ ! -f db/habitatdb.db ]; then
+   sqlite3 db/habitatdb.db '.read db/gendb.sql'
+fi

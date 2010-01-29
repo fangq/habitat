@@ -1,14 +1,14 @@
 [Desktop Entry]
-Name=Habitat Personal Wiki
-Name[zh_CN]=Habitat个人维基
-Name[zh_TW]=Habitat个人维基
-Comment=Start Habitat Personal Wiki
-Comment[zh_CN]=启动Habitat个人维基
-Comment[zh_TW]=启动Habitat个人维基
+Name=Habitat Portable Wiki
+Name[zh_CN]=Habitat维基
+Name[zh_TW]=Habitat维基
+Comment=Start Habitat Portable Wiki
+Comment[zh_CN]=启动Habitat维基
+Comment[zh_TW]=启动Habitat维基
 Exec=/var/lib/habitat-wiki/script/runlocal.sh
 Icon=habitat-wiki
 Terminal=false
 Type=Application
 StartupNotify=true
-Categories=Settings;
+Categories=Accessories
 #X-Ubuntu-Gettext-Domain=habitat-wiki

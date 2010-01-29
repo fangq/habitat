@@ -49,6 +49,10 @@ cp -a habitat/* $CGIDIR
 mv $CGIDIR/db $DATADIR
 mv $CGIDIR/habitatdb $DATADIR
 
+sed -i 's/"\.\/habitatdb"/"..\/data\/habitatdb"/' $CGIDIR/index.cgi
+sed -i 's/"db\/habitatdb\.db"/"..\/data\/db\/habitatdb\.db"/' $DATADIR/habitatdb/config
+
+
 for fn in *.desktop; do
    cp -a *.desktop $MENUDIR; break;
 done
@@ -62,6 +66,7 @@ fi
 sed -i "s/%NAME%/$PKGNAME/g"  debian/DEBIAN/*
 sed -i "s/%VERSION%/$VERSION/g"  debian/DEBIAN/*
 
+echo " Habitat - a wiki and a portable content management system" >>debian/DEBIAN/control
 awk '/\# What is Habitat/{dop=1;} /^$/{if(dop>0) dop++;} /./{if(dop==2) print " " $0;}' README.txt >> debian/DEBIAN/control
 
 # install .mo files
@@ -74,3 +79,5 @@ if [ -d i18n ]; then
 	fi
     done
 fi
+
+find debian/ -name ".svn"  | xargs rm -rf 
