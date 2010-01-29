@@ -1,0 +1,17 @@
+#!/bin/sh
+############################################################
+#             WenQuanYi Font Packaging System
+#
+#  postinst: post-installation script for deb package
+#
+#  Author: Qianqian Fang <fangq at nmr.mgh.harvard.edu>
+#  History:
+#      2009/05/26    Initial version for MicroHei
+#  
+#  Macro %NAME% and %VERSION% must be replaced before running
+#
+############################################################
+
+NAME=%NAME%
+PREFIX=/usr/local
+INSTALLPATH=$PREFIX/$NAME

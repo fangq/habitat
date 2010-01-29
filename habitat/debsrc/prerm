@@ -1,0 +1,19 @@
+#!/bin/sh
+############################################################
+#             WenQuanYi Font Packaging System
+#
+#  prerm: pre-uninstallation script for deb package
+#
+#  Author: Qianqian Fang <fangq at nmr.mgh.harvard.edu>
+#  History:
+#      2009/05/26    Initial version for MicroHei
+#
+#  Macro %NAME% and %VERSION% must be replaced before running
+#
+###########################################################
+
+NAME=%NAME%
+PREFIX=/var/lib
+INSTALLPATH=$PREFIX/$NAME
+
+[ -d $INSTALLPATH/script/cgi-bin ] && rm -rf $INSTALLPATH/script/cgi-bin
