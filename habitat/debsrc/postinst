@@ -19,4 +19,5 @@ INSTALLPATH=$PREFIX/$NAME
 cd $INSTALLPATH/data
 if [ ! -f db/habitatdb.db ]; then
    sqlite3 db/habitatdb.db '.read db/gendb.sql'
+   chmod a+w db/habitatdb.db
 fi

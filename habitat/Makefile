@@ -7,7 +7,7 @@
 ############################################################
 
 PKGNAME=habitat-wiki
-VERSION=0.1
+VERSION=0.2.0
 
 deb: i18n
 	-habpkg/habdebmkdir.sh $(PKGNAME)

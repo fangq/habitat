@@ -3,6 +3,8 @@
 Habitat Change Log:
 
 == Habitat Change Log (current) ==
+*[2010/01/29] added Makefile and generate deb package with "make deb" (v0.2.0)
+*[2010/01/28] first public release (v0.1.0)
 *[2010/01/27] import svn from niwiki.sf.net to huc.sf.net
 *[2010/01/26] support in-place page embeddding for templates
 *[2010/01/23] rename project from wiki2 to Habitat, add artworks

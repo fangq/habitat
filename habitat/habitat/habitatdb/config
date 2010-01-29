@@ -1,5 +1,5 @@
 # == Configuration =======================================================
-# Adapted version for Habitat wiki v0.1
+# Adapted version for Habitat wiki
 # Based on UseModWiki 1.0
 
 $CookieName  = "HabitatCookie";       # Name for this wiki (for multi-wiki sites)

@@ -10,5 +10,5 @@ Icon=habitat-wiki
 Terminal=false
 Type=Application
 StartupNotify=true
-Categories=Accessories
+Categories=Utility;Web;Wiki
 #X-Ubuntu-Gettext-Domain=habitat-wiki
