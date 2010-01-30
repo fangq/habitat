@@ -178,5 +178,50 @@ $DBName="db/habitatdb.db";
 $UsePerlDiff  = 1;
 $UseActivation= 0;
 
+
+$BuildinPages{"HabitatNewTest"}=<<HABITAT_NEWFEATURES;
+= Habitat's new features =
+<toc>
+<html><style type="text/css">
+div.embedpage{background-color:#CCCCCC;}
+</style></html>
+== # Page Embedding ==
+Type: <pre><nowiki>{{test/demo1}}</nowiki></pre><br>
+you will embed the HTML of page [[test/demo1]] into the current page, shown as below:
+{{test/demo1}}
+
+the content of [[test/demo1]] is
+<pre>{(test/demo1)}</pre>
+
+== # Wikipage Rules - Pre-viewer ==
+
+In Habitat, users can define rules to alter the content or
+representation of the text information at different stages. There
+are 4 basic rules: pre-viewer rules, post-viewer rules, pre-editor
+rules and post-editor rules.
+
+Pre-viewer and post-viewer rules are called when a user 
+browses a page (or browse a page where this page is embedded 
+with). The difference is that "pre-viewer" rules are called
+before converting wiki raw text to HTML, and "post-viewer"
+are called after the conversion.
+
+Pre- and post-editor rules are called when a user is
+trying to edit the content of a page. The pre-editor 
+rules will modify the page text before sending the
+editing interface to the user. With this rule, one can
+define a HTML editor (using HTML and javascript) to modify the
+page content with a specific format. The post-editor
+rules are applied when user submits the modified content
+from the editor.
+
+
+
+HABITAT_NEWFEATURES
+
+$BuildinPages{"test/demo1"}="= Test Demo 1 =
+This is a demo for page embedding.";
+
+
 1
 # == End of Configuration =================================================

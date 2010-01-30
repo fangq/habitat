@@ -587,6 +587,7 @@ sub InitCookie {
 }
 sub PageExists{
   my ($id)=@_;
+  return 1 if (defined $BuildinPages{$id});
   if($UseDBI){
 	my $pagedb=(split(/\//,$PageDir))[-1];
 	if($dbh eq "" || $pagedb eq ""){
@@ -6996,11 +6997,13 @@ sub ReadRawWikiPage {
 		return $text;
 	   }
 	}
-	return "";
+	return "" if($BuildinPages{$id} eq '');
+	return $BuildinPages{$id};
     }
     ($status,$data) = &ReadFile(GetPageFile($id));
     if($status==0){
-	return "";
+        return "" if($BuildinPages{$id} eq '');
+        return $BuildinPages{$id};
     }
     %localPage = split(/$FS1/, $data, -1);
     %localSection = split(/$FS2/, $localPage{'text_default'}, -1);
