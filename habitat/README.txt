@@ -61,7 +61,7 @@ modules from our website. Extract the downloaded modules
 into a subfolder called "lib" under the Habitat main directory.
 
 The next step is to initialize database, please run the 
-following command from Habitat's main folder：
+following command from Habitat's main folder:
   sqlite3 db/habitatdb.db '.read db/gendb.sql'
 For safety reasons, we strongly suggest you setting your own
 administrator password and site hash. To do so, you need
@@ -101,8 +101,8 @@ To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit 
 link on the top. Habitat supports many common Wiki markup
 rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[Local:HabitatTest HabitatTest] page for more
-details about formatting.
+[Local:HabitatTest HabitatTest] and [Local:HabitatNewTest HabitatNewTest]
+pages for more details about formatting.
 
 A new feature of Habitat is the support of hierarchical pages.
 You can create something like "[[Page/Subpage]]"
