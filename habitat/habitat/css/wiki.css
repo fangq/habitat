@@ -391,7 +391,7 @@ ul.adminlist {
 }
 ul.adminlist li {
         display: inline;
-        padding: 2px 4px 2px;
+        padding: 2px 2px 0px;
 	border-bottom: 4px gray solid;
 }
 ul.adminlist li:before {
@@ -403,7 +403,7 @@ ul.userlist {
 }
 ul.userlist li {
         display: inline;
-        padding: 2px 4px 2px;
+        padding: 2px 2px 0px;
         border-bottom: 1px gray solid;
 }
 ul.userlist li:before {

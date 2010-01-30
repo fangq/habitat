@@ -2122,7 +2122,7 @@ sub RestorePageHash {
    my ($id)=@_;
    my $pagehash;
 
-   $pagehash=crypt($id,$CaptchaKey);
+   $pagehash=crypt($id,unpack("H16",$CaptchaKey));
    $pagehash=~ s/\./_/;
    $pagehash=substr($pagehash,0,10);
    $pagehash=~ s/\s//;
@@ -3173,7 +3173,7 @@ sub OpenNewPage {
   my ($id) = @_;
   my $pagehash;
 
-  $pagehash=crypt($id,$CaptchaKey);
+  $pagehash=crypt($id,unpack("H16",$CaptchaKey));
   $pagehash=~ s/\./_/;
   $pagehash=substr($pagehash,0,10);
   $pagehash=~ s/\s//;
@@ -3805,7 +3805,7 @@ sub UserIsAdmin {
   return 0 if ($userPassword eq "");
   foreach (split(/\s+/, $AdminPass)) {
     next if ($_ eq "");
-    return 1 if ($userPassword eq crypt($_,$CaptchaKey));
+    return 1 if (crypt($_,$userPassword) eq $userPassword);
   }
   return 0;
 }
@@ -4714,7 +4714,7 @@ sub DoUpdatePrefs {
      	PrintMsg(T("You have to give an email address"),T("Error"),1);
      }
   }else{ # for existing users, you have to match password before changing anything
-     if ($UserData{'password'} ne crypt($password,$CaptchaKey)){
+     if ($UserData{'password'} ne crypt($password,$UserData{'password'})){
      	PrintMsg(T("You have to type password in order to change your preferences"),T("Error"),1);
      }
   }
@@ -4748,7 +4748,7 @@ sub DoUpdatePrefs {
     die(T("Password can only contain basic latin, digits or one of '[]!@$%^&'."));
   }elsif ($password ne "*") {
     print T('Password changed.'), '<br>';
-    $UserData{'password'} = crypt($password,$CaptchaKey);
+    $UserData{'password'} = crypt($password,unpack("H16",$CaptchaKey));
   }
   if (($AdminPass ne "") || ($EditPass ne "")) {
     $password = &GetParam("p_adminpw", "");
@@ -4757,7 +4757,7 @@ sub DoUpdatePrefs {
       undef $UserData{'adminpw'};
     } elsif ($password ne "*") {
       print T('Administrator password changed.'), '<br>';
-      $UserData{'adminpw'} = crypt($password,$CaptchaKey);
+      $UserData{'adminpw'} = crypt($password,unpack("H16",$CaptchaKey));
       if (&UserIsAdmin()) {
         print T('User has administrative abilities.'), '<br>';
       } elsif (&UserIsEditor()) {
@@ -4973,7 +4973,7 @@ sub DoLogin {
       if($UserData{'param'}=~/^R/){
       	$err=T("account has not yet been activated");
       }elsif (defined($UserData{'password'}) &&
-          ($UserData{'password'} eq crypt($password,$CaptchaKey) )){
+          ($UserData{'password'} eq crypt($password,$UserData{'password'}) )){
         $success = 1;
         $SetCookie{'id'} = $UserData{'id'};
       }else{
