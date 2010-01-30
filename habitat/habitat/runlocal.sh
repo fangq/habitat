@@ -5,7 +5,7 @@ mkdir -p $CGIDIR/cgi-bin
 cp -a $CGIDIR/index.cgi $CGIDIR/cgi-bin/index.cgi
 chmod +x $CGIDIR/cgi-bin/index.cgi
 
-serverid=$(ps aux | grep "python $CGIDIR/webserv.py" | grep -v 'grep'|awk '{print $2}')
+serverid=$(ps aux | grep "python .*webserv.py" | grep -v 'grep'|awk '{print $2}')
 
 if [ ! -z $serverid ]
 then
