@@ -730,7 +730,7 @@ sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept);
   my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr,$expires);
-  my $tmpstr;
+  my ($tmpstr,tmplang);
   my $contentlen;
   my $pagehtml;
   my @vv;
@@ -871,6 +871,8 @@ sub BrowsePage {
 
   print $fullHtml;
   return if ($showDiff || ($revision ne '')); # Don't cache special version
+  $tmplang=GetParam('lang', '');
+  return if($tmplang eq ''); # do not cache if temporary lang is set
   if($UseDBI) {
 	  &UpdateHtmlCacheDB($id, $fullHtml) if ($UseCache && ($oldId eq ''));
   }else{
