@@ -29,8 +29,10 @@ Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在开源中文
 
 == # 如何安装Habitat ==
 下载最新的稳定版，请浏览[https://sourceforge.net/projects/huc/files/ 这个页面]
-的文件下载列表。您还可以使用SVN来获取最新的代码(没有完全测试)。
-在 Unix/Linux/Mac OS上，您可以用下面的命令：
+的文件下载列表。'''如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
+自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。'''
+
+您还可以使用SVN来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
   svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
 如果您使用的是Windows，您需要安装 [http://tortoisesvn.net/downloads TortoiseSVN]
 来执行上面的命令。
@@ -78,7 +80,7 @@ index.cgi文件中找到<tt>LangID="en"</tt>并将en替换为cn。
 添加、改写页面内容，请选择页面上面的"编辑本页"链接。Habitat遵循最为
 广泛使用的wiki排版格式语言，兼容[http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 以及大多数[http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]
-基本语法。请查看[Local:HabitatTest HabitatTest]页面
+基本语法。请查看[Local:HabitatTest HabitatTest]和[Local:HabitatNewTest HabitatNewTest]页面
 获取更多排版格式信息。
 
 Habitat支持多层次Wiki页面命名。您可以建立诸如"[[页面/子页面]]"
@@ -99,7 +101,7 @@ Habitat是一个开源项目。您可以帮助我们改进代码、添加新的�
 Habitat项目是“可理解计算(HUC)”的一个子项目。HUC项目的目的是推动
 开放、安全、合作以及直观的计算模型和软件。目前，HUC项目重点
 开发一系列以脚本语言为基础，处理可被人类理解的文字、图案以及
-多媒体数据(包括音频、视频和手势等)的软件。Habitat遵循HUC原则的
+多媒体数据(包括音频、视频和手势等)的软件。Habitat是遵循HUC原则的
 一个模板软件：它本身是由高级脚本语言写成，它处理的对象是可以
 直接理解的纯文本数据。
 
@@ -128,6 +130,7 @@ $BuildinPages{"HabitatTest"}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>[[指页面的链接]]</nowiki></tt> || [[指页面的链接]] ||
 || <tt><nowiki>[[空格_等于_下划线]]</nowiki></tt> || [[空格_等于_下划线]] ||
 || <tt><nowiki>[[页面 | 显示文字]]</nowiki></tt> || [[页面 | 显示文字]] ||
+|| <tt><nowiki>[[主页面/子页面/第三层页面]]</nowiki></tt> || [[主页面/子页面/第三层页面]] ||
 || <tt><nowiki>[[主页面/子页面/第三层页面 | 多层次页面]]</nowiki></tt> || [[主页面/子页面/第三层页面 | 多层次页面]] ||
 || <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
 || <tt><nowiki>[http://example.com/ URL地址]</nowiki></tt> || [http://example.com/  URL地址] ||

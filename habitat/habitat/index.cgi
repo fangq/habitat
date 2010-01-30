@@ -2036,7 +2036,6 @@ sub WikiToHTML {
   if($PageEmbed ==1 ){ # added by FangQ, 2006/4/16
       $pageText =~ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiPageRaw($1,$5,$7)/geo;
   }
-
   $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV0,$ViewerPreRule);
 
   if($id=~/(.*)$DiscussSuffix$/){
@@ -4035,7 +4034,7 @@ sub GenerateAllPagesListDB {
       die(T('ERROR: database uninitialized!'));
   }
   $sth=$dbh->selectall_arrayref("select id from $pagedb group by id");
-  @pages=@{$sth->[0]};
+  @pages=(@{$sth->[0]}, keys (%BuildinPages));
   return @pages;
   # need to print log
 }
@@ -4086,7 +4085,7 @@ sub GenerateAllPagesList {
       }
     }
   }
-  return sort(@pages);
+  return sort((@pages,keys (%BuildinPages)));
 }
 
 sub AllPagesList {

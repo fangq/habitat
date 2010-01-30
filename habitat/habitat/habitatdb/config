@@ -186,19 +186,21 @@ $BuildinPages{"HabitatNewTest"}=<<HABITAT_NEWFEATURES;
 div.embedpage{background-color:#CCCCCC;}
 </style></html>
 == # Page Embedding ==
-Type: <pre><nowiki>{{test/demo1}}</nowiki></pre><br>
-you will embed the HTML of page [[test/demo1]] into the current page, shown as below:
+By typing: <pre><nowiki>{{test/demo1}}</nowiki></pre><br>
+you can embed the HTML form of page [[test/demo1]] into the 
+current page, such as the following example:
 {{test/demo1}}
 
 the content of [[test/demo1]] is
 <pre>{(test/demo1)}</pre>
 
-== # Wikipage Rules - Pre-viewer ==
+== # Object-oriented wiki pages ==
 
-In Habitat, users can define rules to alter the content or
-representation of the text information at different stages. There
-are 4 basic rules: pre-viewer rules, post-viewer rules, pre-editor
-rules and post-editor rules.
+In Habitat, each wiki page is an "object". It has its own
+data (i.e. content) and methods (rules). The methods can 
+alter the form or representation of the data at different 
+stages. There are 4 basic rules: pre-viewer rules, 
+post-viewer rules, pre-editor rules and post-editor rules.
 
 Pre-viewer and post-viewer rules are called when a user 
 browses a page (or browse a page where this page is embedded 
@@ -215,13 +217,50 @@ page content with a specific format. The post-editor
 rules are applied when user submits the modified content
 from the editor.
 
+The methods associated with a wiki page are automatically 
+inherited by its subpages. For example, if you define
+the '''pre-viewer''' rules for page [[atomic/menu]], when browsing
+page [[atomic/menu/style1]], the rules for [[atomic/menu]]
+will be executed first, before executing any rules defined
+for [[atomic/menu/style1]] itself (this allows mutation).
+
+== # Wikipage Rules - Pre-viewer ==
+
+The pre-viewer rules are defined in a special wiki page
+named "pagename/.v0" where "pagename" is the associated 
+wiki page. Currently, Habitat only supports regular expression
+replacement commands as the rules. We will extend this to
+more complex languages in the future.
+
+Here we show a simple demo for how to use pre-viewer rules. 
+Let's first define a page called [[test/code]], and set the
+pre-viewer rules in [[test/code/.v0]] as
+<pre>{(test/code/.v0)}</pre>
+
+You can see, the rules adds some HTML tages before and 
+after the raw data. Let's define a subpage named 
+[[test/code/codedemo]] with content
+<pre>{(test/code/codedemo)}</pre>
+
+when you browse [[test/code/codedemo]], you will see
+{{test/code/codedemo}}
 
 
 HABITAT_NEWFEATURES
 
-$BuildinPages{"test/demo1"}="= Test Demo 1 =
-This is a demo for page embedding.";
+$BuildinPages{"test/code/.v0"}='^/<pre>
+$/<\/pre>';
 
+$BuildinPages{"test/code/codedemo"}='// sample C++ code
+class HabitatWikiPage{
+	char *name;
+	char *text;
+	HabitatWikiPage(char *pagename);
+	void previewer();
+};';
+
+$BuildinPages{"test/demo1"}='= Test Demo 1 =
+This is a demo for page embedding.';
 
 1
 # == End of Configuration =================================================

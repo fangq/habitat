@@ -18,8 +18,10 @@ Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在开源中文
 
 == # 如何安装Habitat ==
 下载最新的稳定版，请浏览[https://sourceforge.net/projects/huc/files/ 这个页面]
-的文件下载列表。您还可以使用SVN来获取最新的代码(没有完全测试)。
-在 Unix/Linux/Mac OS上，您可以用下面的命令：
+的文件下载列表。'''如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
+自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。'''
+
+您还可以使用SVN来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
   svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
 如果您使用的是Windows，您需要安装 [http://tortoisesvn.net/downloads TortoiseSVN]
 来执行上面的命令。
@@ -88,7 +90,7 @@ Habitat是一个开源项目。您可以帮助我们改进代码、添加新的�
 Habitat项目是“可理解计算(HUC)”的一个子项目。HUC项目的目的是推动
 开放、安全、合作以及直观的计算模型和软件。目前，HUC项目重点
 开发一系列以脚本语言为基础，处理可被人类理解的文字、图案以及
-多媒体数据(包括音频、视频和手势等)的软件。Habitat遵循HUC原则的
+多媒体数据(包括音频、视频和手势等)的软件。Habitat是遵循HUC原则的
 一个模板软件：它本身是由高级脚本语言写成，它处理的对象是可以
 直接理解的纯文本数据。
 

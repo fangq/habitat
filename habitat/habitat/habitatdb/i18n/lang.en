@@ -35,7 +35,11 @@ support, object-oriented structure and interfaces for plugins.
 == # How to install Habitat ==
 To download the latest stable release of Habitat, please browse
 the download section of [https://sourceforge.net/projects/huc/files/ this page].
-If you want to try out the most up-to-date code, you can 
+<b>If you are using Debian/Ubuntu, please download and install
+the deb package. It will set up everything for you 
+and you can find Habitat in the "Accessories" menu.</b>
+
+If you want to try out the latest code, you can 
 access it from our SVN. On Unix/Linux/Mac OS, you can use the 
 following svn command:
   svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
@@ -49,7 +53,7 @@ things done with a SINGLE cgi script (only 200kB in size)!
 It is recommended to run Habitat under the Standard mode.
 With this mode, sqlite database is used as
 the backend, which not only saves a lot of disk space,
-but also make it super fast for searching and data backup. 
+but also makes it super fast for searching and data backup. 
 
 To use the Standard mode, you must make sure the following
 perl modules are installed on your system:
@@ -65,7 +69,7 @@ modules from our website. Extract the downloaded modules
 into a subfolder called "lib" under the Habitat main directory.
 
 The next step is to initialize database, please run the 
-following command from Habitat's main folder：
+following command from Habitat's main folder:
   sqlite3 db/habitatdb.db '.read db/gendb.sql'
 For safety reasons, we strongly suggest you setting your own
 administrator password and site hash. To do so, you need
@@ -105,8 +109,8 @@ To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit 
 link on the top. Habitat supports many common Wiki markup
 rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[Local:HabitatTest HabitatTest] page for more
-details about formatting.
+[Local:HabitatTest HabitatTest] and [Local:HabitatNewTest HabitatNewTest]
+pages for more details about formatting.
 
 A new feature of Habitat is the support of hierarchical pages.
 You can create something like "[[Page/Subpage]]"
@@ -160,11 +164,13 @@ $BuildinPages{HabitatTest}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>[[Link to a Wikipage]]</nowiki></tt> || [[Link to a Wikipage]] ||
 || <tt><nowiki>[[Underlines_Equal_Spaces]]</nowiki></tt> || [[Underlines_Equal_Spaces]] ||
 || <tt><nowiki>[[Link | Link Caption]]</nowiki></tt> || [[Link | Link Caption]] ||
+|| <tt><nowiki>[[Master/Subpage/Subsubpage]]</nowiki></tt> || [[Master/Subpage/Subsubpage]] ||
 || <tt><nowiki>[[Master/Subpage/Subsubpage | Multi-level page]]</nowiki></tt> || [[Master/Subpage/Subsubpage | Multi-level page]] ||
 || <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
 || <tt><nowiki>[http://example.com/ URL Text]</nowiki></tt> || [http://example.com/ URL Text] ||
 || <tt><nowiki>[http:?Home Link to this wiki script]</nowiki></tt> || [http:?Home Link to this wiki script] ||
 || <tt><nowiki>[http:?Home#Anchor Link with an anchor]</nowiki></tt> || [http:?Home#Anchor Link with an anchor] ||
+|| <tt><nowiki>[Local:Home Link to a local page]</nowiki></tt> || [Local:Home Link to a local page] ||
 || <tt><nowiki>[http:/cgi-bin/index.cgi?Home Link from server root]</nowiki></tt> || [http:/cgi-bin/index.cgi?Home Link from server root] ||
 || <tt><nowiki>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</nowiki></tt> || <tt>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</tt> ||
 || <tt><nowiki>Local:LocalPage</nowiki></tt> || Local:LocalPage ||

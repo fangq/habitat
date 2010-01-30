@@ -27,7 +27,11 @@ support, object-oriented structure and interfaces for plugins.
 == # How to install Habitat ==
 To download the latest stable release of Habitat, please browse
 the download section of [https://sourceforge.net/projects/huc/files/ this page].
-If you want to try out the most up-to-date code, you can 
+<b>If you are using Debian/Ubuntu, please download and install
+the deb package. It will set up everything for you 
+and you can find Habitat in the "Accessories" menu.</b>
+
+If you want to try out the latest code, you can 
 access it from our SVN. On Unix/Linux/Mac OS, you can use the 
 following svn command:
   svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
@@ -41,7 +45,7 @@ things done with a SINGLE cgi script (only 200kB in size)!
 It is recommended to run Habitat under the Standard mode.
 With this mode, sqlite database is used as
 the backend, which not only saves a lot of disk space,
-but also make it super fast for searching and data backup. 
+but also makes it super fast for searching and data backup. 
 
 To use the Standard mode, you must make sure the following
 perl modules are installed on your system:
