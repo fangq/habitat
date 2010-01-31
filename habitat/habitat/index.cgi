@@ -730,7 +730,7 @@ sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept);
   my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr,$expires);
-  my ($tmpstr,tmplang);
+  my ($tmpstr,$tmplang);
   my $contentlen;
   my $pagehtml;
   my @vv;
