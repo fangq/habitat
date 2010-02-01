@@ -1,12 +1,12 @@
 #!/bin/sh
 ############################################################
-#             WenQuanYi Font Packaging System
+#      Habitat -  A portable content management system
 #
 #  postinst: post-installation script for deb package
 #
 #  Author: Qianqian Fang <fangq at nmr.mgh.harvard.edu>
 #  History:
-#      2009/05/26    Initial version for MicroHei
+#      2010/01/25    Initial version
 #  
 #  Macro %NAME% and %VERSION% must be replaced before running
 #
@@ -15,9 +15,18 @@
 NAME=%NAME%
 PREFIX=/var/lib
 INSTALLPATH=$PREFIX/$NAME
+DATADIR=$INSTALLPATH/data
 
-cd $INSTALLPATH/data
+cd $DATADIR
 if [ ! -f db/habitatdb.db ]; then
    sqlite3 db/habitatdb.db '.read db/gendb.sql'
    chmod a+w db/habitatdb.db
 fi
+
+sitekey=`perl -e 'print sprintf("%08X%08X",rand(0xFFFFFFFF),rand(0xFFFFFFFF))'`
+sed -i 's/^\(\s*\$CaptchaKey\s*=\s*.*\)/#\1\n\$CaptchaKey = 0;#HABSITEKEY#/' $DATADIR/habitatdb/config
+sed -i "s/0;#HABSITEKEY#/pack('H16','$sitekey');/" $DATADIR/habitatdb/config
+
+admpass=`perl -e "print crypt(sprintf('%08X',rand(0xFFFFFFFF)),'$sitekey')"`
+sed -i 's/^\(\s*\$AdminPass\s*=\s*.*\)/#\1\n\$AdminPass = 0;#HABADMPASS#/' $DATADIR/habitatdb/config
+sed -i "s/0;#HABADMPASS#/'$admpass';/" $DATADIR/habitatdb/config

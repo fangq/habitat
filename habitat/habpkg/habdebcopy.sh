@@ -66,13 +66,13 @@ fi
 sed -i "s/%NAME%/$PKGNAME/g"  debian/DEBIAN/*
 sed -i "s/%VERSION%/$VERSION/g"  debian/DEBIAN/*
 
-sitekey=`perl -e 'print sprintf("%08X%08X",rand(0xFFFFFFFF),rand(0xFFFFFFFF))'`
-sed -i 's/^\(\s*\$CaptchaKey\s*=\s*.*\)/#\1\n\$CaptchaKey = 0;#HABSITEKEY#/' $DATADIR/habitatdb/config
-sed -i "s/0;#HABSITEKEY#/pack('H16','$sitekey');/" $DATADIR/habitatdb/config
+#sitekey=`perl -e 'print sprintf("%08X%08X",rand(0xFFFFFFFF),rand(0xFFFFFFFF))'`
+#sed -i 's/^\(\s*\$CaptchaKey\s*=\s*.*\)/#\1\n\$CaptchaKey = 0;#HABSITEKEY#/' $DATADIR/habitatdb/config
+#sed -i "s/0;#HABSITEKEY#/pack('H16','$sitekey');/" $DATADIR/habitatdb/config
 
-admpass=`perl -e "print crypt(sprintf('%08X',rand(0xFFFFFFFF)),'$sitekey')"`
-sed -i 's/^\(\s*\$AdminPass\s*=\s*.*\)/#\1\n\$AdminPass = 0;#HABADMPASS#/' $DATADIR/habitatdb/config
-sed -i "s/0;#HABADMPASS#/'$admpass';/" $DATADIR/habitatdb/config
+#admpass=`perl -e "print crypt(sprintf('%08X',rand(0xFFFFFFFF)),'$sitekey')"`
+#sed -i 's/^\(\s*\$AdminPass\s*=\s*.*\)/#\1\n\$AdminPass = 0;#HABADMPASS#/' $DATADIR/habitatdb/config
+#sed -i "s/0;#HABADMPASS#/'$admpass';/" $DATADIR/habitatdb/config
 
 
 echo " Habitat - a wiki and a portable content management system" >>debian/DEBIAN/control
