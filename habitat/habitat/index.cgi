@@ -6597,7 +6597,7 @@ sub RenamePage {
 
 sub DoShowVersion {
   print &GetHeader("", "Displaying Wiki Version", "");
-  print "<p>HabitatWiki v0.2.0</p><br> based on UseModWiki version 1.0</p>\n";
+  print '<div class="wikiinfo">HabitatWiki v0.2.0<br> based on UseModWiki version 1.0</div>\n';
   print &GetCommonFooter();
 }
 

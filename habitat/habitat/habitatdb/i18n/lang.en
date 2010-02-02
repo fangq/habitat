@@ -6,7 +6,7 @@
 # English translation is build-in
 
 $BuildinPages{$HomePage}=<<HOMEPAGE_DEFAULT;
-= Welcome to Habitat - a personal content management system =
+= Welcome to Habitat - a portable content management system =
 {{atom/menu/HabitatMenu}}
 <toc>
 == # What is Habitat ==
@@ -28,7 +28,7 @@ Habitat was derived from [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]
 by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang], 
 who had also founded the collaborative font development project - 
 [http://wenq.org/en/ WenQuanYi]. Habitat is a result of 5 years 
-continuous improvement of the WenQuanYi Wiki starting the 
+continuous improvement of the WenQuanYi Wiki starting from the 
 original UseModWiki. A lot of 
 new features were added, such as the user management system,
 database backend, hierarchical wiki page namespace, multi-language
@@ -36,6 +36,63 @@ support, object-oriented structure and interfaces for plugins.
 See [http://wenq.org/habitat/index.cgi?WhatsNew What's New] for
 a full list of the new features.
 
+{(Habitat/Download)}
+
+== # How to use Habitat ==
+
+If you run Habitat for the first time, please click on the
+"[http:?action=newlogin Register]" link on the left to create a username/password
+for yourself. You can also apply the admin password you set
+previously. Otherwise, you will be considered as an 
+anonymous user and Habitat will only display your IP address.
+
+If you want to make you the only person who can make changes, 
+you have to login as an administrator (by setting the admin password
+in the register page), and set <tt>EditAllowed</tt> to 0 in the <tt>config</tt>
+file. If you want to run Habitat for personal use, this is 
+highly recommended.
+
+To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit this page]" 
+link on the top. Habitat supports many common Wiki markup
+rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
+or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
+[Local:Habitat/Markup Markup Format] and [Local:Habitat/NewSyntax NewSyntax]
+pages for more details about formatting.
+
+A new feature of Habitat is the support of hierarchical pages.
+You can create something like "[[Page/Subpage]]"
+or "[[Page/Subpage/Subsubpage]]" to represent more complex
+information or resources.
+
+== # Where to get help ==
+
+Please visit the [http://wenq.org/forum/viewforum.php?f=8 Habitat forum]
+to get more information and help for using Habitat. We also actively
+post new versions or patches at the [http://wenq.org/habitat/ Habitat 
+website].
+
+Habitat is an open-source project. You are welcome to contribute 
+and become a developer. Please visit 
+[http://wenq.org/habitat/ Habitat website] for more details.
+
+== # A bigger picture ==
+
+Habitat is a sub-project of the [http://huc.sf.net Human Understandable Computing]
+(HUC) project. The overall goal of HUC is to promote open, safe,
+collaborative and intuitive programming models. The focus of
+the project is to develop software tools that are written 
+in non-obscured scripting languages and driven by human understandable 
+text, graphics and multimedia data (such as voice, video or gesture).
+Habitat is a demonstration of the basic principles for HUC,
+as it is written by high-level scripting language and 
+manipulates human understandable text information.
+
+We welcome anyone who embraces the notion of HUC to join
+us. We believe that the more software following the principles of
+HUC, the more open and safer our software ecosystem will be.
+HOMEPAGE_DEFAULT
+
+$BuildinPages{"Habitat/Download"}=<<HABITAT_DOWNLOAD;
 == # How to install Habitat ==
 To download the latest stable release of Habitat, please browse
 the download section of [https://sourceforge.net/projects/huc/files/ this page].
@@ -94,63 +151,9 @@ A browser window will pop-up, and the home page will be displayed.
 If you prefer to use Chinese (or other languages) as the default 
 language, edit "<tt>index.cgi</tt>", search for <tt>LangID="en"</tt>, and
 replace en to cn (or other language codes).
+HABITAT_DOWNLOAD
 
-== # How to use Habitat ==
-
-If you run Habitat for the first time, please click on the
-"[http:?action=newlogin Register]" link on the left to create a username/password
-for yourself. You can also apply the admin password you set
-previously. Otherwise, you will be considered as an 
-anonymous user and Habitat will only display your IP address.
-
-If you want to make you the only person who can make changes, 
-you have to login as an administrator (by setting the admin password
-in the register page), and set <tt>EditAllowed</tt> to 0 in the <tt>config</tt>
-file. If you want to run Habitat for personal use, this is 
-highly recommended.
-
-To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit this page]" 
-link on the top. Habitat supports many common Wiki markup
-rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
-or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[Local:HabitatTest HabitatTest] and [Local:HabitatNewTest HabitatNewTest]
-pages for more details about formatting.
-
-A new feature of Habitat is the support of hierarchical pages.
-You can create something like "[[Page/Subpage]]"
-or "[[Page/Subpage/Subsubpage]]" to represent more complex
-information or resources.
-
-== # Where to get help ==
-
-Please visit the [http://wenq.org/forum/viewforum.php?f=8 Habitat forum]
-to get more information and help for using Habitat. We also actively
-post new versions or patches at the [http://wenq.org/habitat/ Habitat 
-website].
-
-Habitat is an open-source project. You are welcome to contribute 
-and become a developer. Please visit 
-[http://wenq.org/habitat/ Habitat website] for more details.
-
-== # A bigger picture ==
-
-Habitat is a sub-project of the [http://huc.sf.net Human Understandable Computing]
-(HUC) project. The overall goal of HUC is to promote open, safe,
-collaborative and intuitive programming models. The focus of
-the project is to develop software tools that are written 
-in non-obscured scripting languages and driven by human understandable 
-text, graphics and multimedia data (such as voice, video or gesture).
-Habitat is a demonstration of the basic principles for HUC,
-as it is written by high-level scripting language and 
-manipulates human understandable text information.
-
-We welcome anyone who embraces the notion of HUC to join
-us. We believe that the more software following the principles of
-HUC, the more open and safer our software ecosystem will be.
-HOMEPAGE_DEFAULT
-
-
-$BuildinPages{HabitatTest}=<<HABITAT_TEST_PAGE;
+$BuildinPages{"Habitat/Markup"}=<<HABITAT_TEST_PAGE;
 = Habitat Wiki Markup Test Page =
 <toc>
 == # Basic markup rules ==
@@ -295,5 +298,40 @@ Display as:
 || one more cell || and another ||
 
 HABITAT_TEST_PAGE
+
+$BuildinPages{"atom/menu/HabitatMenu"}="* About Habitat
+** [http://wenq.org/habitat Homepage]
+** [http://wenq.org/habitat/index.cgi?RecentChanges Recent Updates]
+** [https://sourceforge.net/apps/phpbb/huc/viewforum.php?f=1 Forum (English)]
+** ----------
+** [http://wenq.org/habitat/index.cgi?keywords=Home&lang=cn Homepage (Chinese)]
+** [http://wenq.org/forum/viewforum.php?f=8 Forum (Chinese)]
+* Features
+** [http://wenq.org/habitat/index.cgi?WhatsNew What's New in Habitat]
+** [http://wenq.org/habitat/index.cgi?Habitat/Markup Habitat Wiki Format]
+** [http://wenq.org/habitat/index.cgi?Habitat/NewSyntax Advanced Features]
+* Download
+** [http://wenq.org/habitat/index.cgi?Habitat/Download Download Habitat]
+** [http://wenq.org/habitat/index.cgi?Habitat/Install Installation]
+** [http://wenq.org/habitat/index.cgi?Habitat/Register Register Your Copy]
+* Use Habitat
+** [http://wenq.org/habitat/index.cgi?FAQ FAQ]
+** [http://wenq.org/habitat/index.cgi?Habitat/Setup Setup Habitat]
+** [http://wenq.org/habitat/index.cgi?Habitat/Security Security Advice]
+** ----------
+** [http://wenq.org/habitat/index.cgi?Habitat/PluginHowTo How to Write Plugins]
+* Contribute
+** [http://wenq.org/habitat/index.cgi?Dev/Team Join Habitat Team]
+** ----------
+** [http://wenq.org/habitat/index.cgi?Dev/Bugs Report Bugs]
+** [http://wenq.org/habitat/index.cgi?Dev/Translations Translations]
+** [http://wenq.org/habitat/index.cgi?Dev/Plugins Contribute Plugins]
+** ----------
+** [http://wenq.org/habitat/index.cgi?Dev/Maillist Mailing Lists]
+** [http://wenq.org/habitat/index.cgi?Dev/Donation Support Habitat]
+* This Site
+** [http:?action=index List All Pages]
+** [http:?action=version Show Version]
+** [http:?keywords=Home&lang=cn Chinese Version]";
 
 1
