@@ -126,7 +126,7 @@ $ScriptTZ    = "";              # Local time zone ("" means do not print)
 $RcDefault   = 30;              # Default number of RecentChanges days
 @RcDays      = qw(1 3 7 30 90); # Days for links on RecentChanges
 $KeepDays    = 14;              # Days to keep old revisions
-$SiteBase    = "";              # Full URL for <BASE> header
+$SiteBase    = "";              # Full URL for <base> header
 $FullUrl     = "";              
 # Set if the auto-detected URL is wrong
 $RedirType   = 1;               # 1 = CGI.pm, 2 = script, 3 = no redirect
@@ -152,7 +152,7 @@ $BGColor     = 'white';         # Background color ('' to disable)
 $FavIcon     = '';              # URL of bookmark/favorites icon, or ''
 $RssDays     = 7;               # Default number of days in RSS feed
 $UserHeader  = '';              # Optional HTML header additional content
-$UserBody    = '';              # Optional <BODY> tag additional content
+$UserBody    = '';              # Optional <body> tag additional content
 $UserBuildinCSS='';             # Optional build-in css
 $StartUID    = 1001;            # Starting number for user IDs
 $UploadDir   = '';              # Full path (like /foo/www/uploads) for files
@@ -163,7 +163,7 @@ $UploadUrl   = '';              # Full URL (like http://foo.com/uploads)
 $UseSubpage  = 1;           # 1 = use subpages,       0 = do not use subpages
 $UseCache    = 0;           # 1 = cache HTML pages,   0 = generate every page
 $EditAllowed = 1;           # 1 = editing allowed,    0 = read-only
-$RawHtml     = 1;           # 1 = allow <HTML> tag,   0 = no raw HTML in pages
+$RawHtml     = 1;           # 1 = allow <html> tag,   0 = no raw HTML in pages
 $HtmlTags    = 0;           # 1 = "unsafe" HTML tags, 0 = only minimal tags
 $UseDiff     = 1;           # 1 = use diff features,  0 = do not use diff
 $FreeLinks   = 1;           # 1 = use [[word]] links, 0 = LinkPattern only
@@ -1126,7 +1126,7 @@ sub GetRc {
         }
         $result .= "<p><strong>" . $date . "</strong></p>\n";
         if (!$inlist) {
-          $result .= "<UL>\n";
+          $result .= "<ul>\n";
           $inlist = 1;
         }
       }
@@ -2403,21 +2403,25 @@ sub WikiLinesToHtml {
     if (s/^(\;+)([^:]+\:?)\:/<dt>$2<dd>/) {
       $code = "dl";
       $depth = length $1;
+      $codeAttributes = "class='wikiddllevel$depth'";
     } elsif (s/^(\:+)/<dt><dd>/) {
       $code = "dl";
       $depth = length $1;
+      $codeAttributes = "class='wikidllevel$depth'";
     } elsif (s/^(\*+)/<li>/) {
       $code = "ul";
       $depth = length $1;
+      $codeAttributes = "class='wikiullevel$depth'";
     } elsif (s/^(\#+)/<li>/) {
       $code = "ol";
       $depth = length $1;
+      $codeAttributes = "class='wikiollevel$depth'";
     }elsif ($TableSyntax &&
              s/^((\|\|)+)(\_+)(.*)\|\|\s*$/"<tr "
                        . "align='center'><td colspan='"
           . (length($1)\/2) . "' rowspan='".length($1)."'>$4<\/td><\/tr>\n"/e) {
       $code = 'table';
-      $codeAttributes = "border='1'";
+      $codeAttributes = "class='wikitable'";
       $TableMode = 1;
       $depth = 1;
     } elsif ($TableSyntax &&
@@ -6757,7 +6761,7 @@ sub DoUpload {
   print '<form method="post" action="' . $ScriptName
         . '" enctype="multipart/form-data">';
   print '<input type="hidden" name="upload" value="1" />';
-  print 'File to Upload: <input type="file" name="file"><br><BR><input type="checkbox" name="dothumb" value="on" />Create thumbnail<br>';
+  print 'File to Upload: <input type="file" name="file"><br><br><input type="checkbox" name="dothumb" value="on" />Create thumbnail<br>';
   print '<input type="submit" name="Submit" value="Upload">';
   print '</form></div>';
   print &GetCommonFooter();
@@ -6781,15 +6785,15 @@ sub SaveUpload {
   while (<$uploadFilehandle>) { print UPLOADFILE; }
   close UPLOADFILE;
 
-  print T('The wiki link to your file is:') . "\n<br><BR>";
+  print T('The wiki link to your file is:') . "\n<br><br>";
   $printFilename = $filename;
   $printFilename =~ s/ /\%20/g; # Replace spaces with escaped spaces
-  print "upload:" . $printFilename . "<BR><BR>\n";
+  print "upload:" . $printFilename . "<br><br>\n";
   if ($filename =~ /${ImageExtensions}$/) {
-    print '<HR><img src="' . $UploadUrl . $filename . '">' . "\n";
+    print '<hr><img src="' . $UploadUrl . $filename . '">' . "\n";
     if($q->param('dothumb') eq 'on'){
       system("convert -sample 200x200 \"$UploadDir$filename\" \"$UploadDir/thumb/mini_$filename\"");
-      print '<HR>upload:thumb/mini_'.$printFilename.'<hr><img src="' . $UploadUrl . '/thumb/mini_'.$filename . '">' . 
+      print '<hr>upload:thumb/mini_'.$printFilename.'<hr><img src="' . $UploadUrl . '/thumb/mini_'.$filename . '">' . 
 "\n";
     }
   }

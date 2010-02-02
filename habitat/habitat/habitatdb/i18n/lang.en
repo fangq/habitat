@@ -7,7 +7,7 @@
 
 $BuildinPages{$HomePage}=<<HOMEPAGE_DEFAULT;
 = Welcome to Habitat - a personal content management system =
-
+{{atom/menu/HabitatMenu}}
 <toc>
 == # What is Habitat ==
 
@@ -24,13 +24,17 @@ creating, editing and managing wiki pages online. It provides
 an efficient collaborative platform for an online community 
 to develop software or resources.
 
-Habitat was written by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang] 
+Habitat was derived from [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki] 
+by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang], 
 who had also founded the collaborative font development project - 
 [http://wenq.org/en/ WenQuanYi]. Habitat is a result of 5 years 
-continuous improvement of the WenQuanYi Wiki engine. A lot of 
+continuous improvement of the WenQuanYi Wiki starting the 
+original UseModWiki. A lot of 
 new features were added, such as the user management system,
 database backend, hierarchical wiki page namespace, multi-language
 support, object-oriented structure and interfaces for plugins.
+See [http://wenq.org/habitat/index.cgi?WhatsNew What's New] for
+a full list of the new features.
 
 == # How to install Habitat ==
 To download the latest stable release of Habitat, please browse

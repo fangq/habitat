@@ -22,15 +22,16 @@ Habitat使用perl语言编写，以sqlite本地数据库作为后端，并包含
 Habitat是一个wiki引擎，也同时是一个内容管理系统(CMS)。用户可以
 使用Habitat来快速建立和维护个人网站，或者为社区提供协作式创作平台。
 
-Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在开源中文
-字体项目[http://wenq.org 文泉驿]长期使用的wiki引擎的基础上改写
-而成。新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
+Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在
+[http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]的基础上
+为开源中文字体项目[http://wenq.org 文泉驿]开发并优化的。
+新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
 多语言支持、面向对象的wiki数据结构以及可编程的扩展接口。
 
 == # 如何安装Habitat ==
 下载最新的稳定版，请浏览[https://sourceforge.net/projects/huc/files/ 这个页面]
-的文件下载列表。'''如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
-自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。'''
+的文件下载列表。<b>如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
+自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。</b>
 
 您还可以使用SVN来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
   svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat

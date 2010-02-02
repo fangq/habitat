@@ -1,0 +1,24 @@
+ul.wikiullevel1{
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+ul.wikiullevel1 li{
+  position: relative;
+  display: inline;
+  float: left;
+  margin:5px;
+}
+ul.wikiullevel2{
+  left: 0;
+  top: 0;
+  border-top: 1px solid gray;
+  position: absolute;
+  display: block;
+  visibility: hidden;
+  z-index: 100;
+}
+ul.wikiullevel2 li{
+  display: inline;
+  float: none;
+}
