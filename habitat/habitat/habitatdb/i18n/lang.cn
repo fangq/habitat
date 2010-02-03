@@ -4,7 +4,7 @@
 # Qianqian Fang <fangq at nmr.mgh.harvard.edu>
 
 $RCName      = "最近更新"; # Name of changes page (change space to _)
-$FooterNote  = "Habitat提供动力";
+#$FooterNote  = "Habitat提供动力";
 $SiteName    = "Habitat";       # Name of site (used for titles)
 $HomePage    = "首页";          # Home page (change space to _)
 $DiscussSuffix= "..讨论";

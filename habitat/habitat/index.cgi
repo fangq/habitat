@@ -6570,16 +6570,39 @@ sub RenamePage {
     print "Rename: new page $new is invalid, error is: $status<br>\n";
     return;
   }
-  $newfname = &GetPageFile($new);
-  if (-f $newfname) {
+  if (PageExists($new)) {
     print "Rename: new page $new already exists--not renamed.<br>\n";
     return;
   }
-  $oldfname = &GetPageFile($old);
-  if (!(-f $oldfname)) {
+  if (!PageExists($old)) {
     print "Rename: old page $old does not exist--nothing done.<br>\n";
     return;
   }
+  if($UseDBI){
+        my ($tbname,$sth);
+        if($dbh eq ""){
+            die(T('ERROR: database uninitialized!'));
+        }
+        $tbname=(split(/\//,$PageDir))[-1];
+        $sth=$dbh->prepare("update $tbname set id='$new' where id='$old'");
+        $sth->execute();
+
+        $tbname=(split(/\//,$RcFile))[-1];
+        $sth=$dbh->prepare("update $tbname set id='$new' where id='$old'");
+        $sth->execute();
+
+        $tbname=(split(/\//,$HtmlDir))[-1];
+        $sth=$dbh->prepare("update $tbname set id='$new' where id='$old'");
+        $sth->execute();
+
+        $tbname=(split(/\//,$EmailFile))[-1];
+        $sth=$dbh->prepare("update $tbname set page='$new' where page='$old'");
+        $sth->execute();
+        return;
+  }
+  $newfname = &GetPageFile($new);
+  $oldfname = &GetPageFile($old);
+
   &CreatePageDir($PageDir, $new); # It might not exist yet
   rename($oldfname, $newfname);
   &CreatePageDir($KeepDir, $new);

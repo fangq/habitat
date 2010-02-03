@@ -1,5 +1,5 @@
 # == Configuration =======================================================
-# Adapted version for Habitat wiki
+# Adapted version for Habitat wiki v0.1
 # Based on UseModWiki 1.0
 
 $CookieName  = "HabitatCookie";       # Name for this wiki (for multi-wiki sites)
@@ -15,13 +15,16 @@ $KeepDays    = 30;              # Days to keep old revisions
 $SiteBase    = "";              # Full URL for <BASE> header
 $FullUrl     = "";              # Set if the auto-detected URL is wrong
 $RedirType   = 2;               # 1 = CGI.pm, 2 = script, 3 = no redirect
-$AdminPass   = "`tWtI:T6"; # Set to non-blank to enable password(s)
+$AdminPass   = "aJS`t:2T"; # Set to non-blank to enable password(s)
 $EditPass    = "";              # Like AdminPass, but for editing only
 $StyleSheet  = "css/wiki.css";   # URL for CSS stylesheet (like "/wiki.css")
 $NotFoundPg  = "";              # Page for not-found links ("" for blank pg)
 $EmailFrom   = "Habitat";          # Text for "From: " field of email notes.
 $SendMail    = "/usr/sbin/sendmail";  # Full path to sendmail executable
-$FooterNote  = '<a href="http://wenq.org/habitat/"><b>Powered by Habitat</b></a>';              # HTML for bottom of every page
+$FooterNote  = '<a href="http://wenq.org/habitat/"><b>Powered by Habitat</b></a>
+|<a href="http://wenq.org/forum/viewforum.php?f=8">Forum</a> 
+|<img src="http://wenq.org/cgi-bin/Count.cgi?df=habitat&amp;dd=E&amp;ft=1&amp;md=6&amp;ft=3" alt="counter" />';
+              # HTML for bottom of every page
 $EditNote    = "";              # HTML notice above buttons on edit page
 $MaxPost     = 1024 * 210;      # Maximum 210K posts (about 200K for pages)
 $NewText     = "New Page";      # New page text ("" for default message)
@@ -51,7 +54,7 @@ $UploadUrl   = '';              # Full URL (like http://foo.com/uploads)
 # Major options:
 $UseSubpage  = 1;           # 1 = use subpages,       0 = do not use subpages
 $UseCache    = 0;           # 1 = cache HTML pages,   0 = generate every page
-$EditAllowed = 1;           # 1 = editing allowed,    0 = read-only
+$EditAllowed = 0;           # 1 = editing allowed,    0 = read-only
 $RawHtml     = 1;           # 1 = allow <HTML> tag,   0 = no raw HTML in pages
 $HtmlTags    = 1;           # 1 = "unsafe" HTML tags, 0 = only minimal tags
 $UseDiff     = 1;           # 1 = use diff features,  0 = do not use diff
@@ -171,13 +174,12 @@ $IsPrintTree  = 1;    # print tree for subpages
 $AMathMLPath  = "plugin/wiki2math/amathml.js";
 $MathColor    = "blue";
 $UseCaptcha   = 1;    # flag to enable captcha
-$CaptchaKey = pack("H16","09AB1F28916C42DA");
+$CaptchaKey = pack("H16","01CA5C21217A923B");
 
 $UseDBI	=1;
 $DBName="db/habitatdb.db";
 $UsePerlDiff  = 1;
 $UseActivation= 0;
-
 
 $BuildinPages{"Habitat/NewSyntax"}=<<HABITAT_NEWFEATURES;
 = Habitat's new features =
@@ -261,10 +263,10 @@ $/<\/pre>';
 
 $BuildinPages{"test/code/codedemo"}='// sample C++ code
 class HabitatWikiPage{
-	char *name;
-	char *text;
-	HabitatWikiPage(char *pagename);
-	void previewer();
+      char *name;
+      char *text;
+      HabitatWikiPage(char *pagename);
+      void previewer();
 };';
 
 $BuildinPages{"test/demo1"}='== # Embedding Content ==
@@ -312,7 +314,7 @@ ul.wikiullevel2 li{\
   margin:10px;\
 }\
 <\/style>\
-<script type="text\/javascript" src="\/plugin\/menu\/menuscript.js"><\/script>';
+<script type="text\/javascript" src="plugin\/menu\/menuscript.js"><\/script>';
 
 1
 # == End of Configuration =================================================
