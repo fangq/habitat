@@ -21,7 +21,7 @@ $StyleSheet  = "css/wiki.css";   # URL for CSS stylesheet (like "/wiki.css")
 $NotFoundPg  = "";              # Page for not-found links ("" for blank pg)
 $EmailFrom   = "Habitat";          # Text for "From: " field of email notes.
 $SendMail    = "/usr/sbin/sendmail";  # Full path to sendmail executable
-$FooterNote  = '<a href="http://wenq.org/habitat/"><b>Powered by Habitat</b></a>";  # HTML for bottom of every page
+$FooterNote  = '<a href="http://wenq.org/habitat/"><b>Powered by Habitat</b></a>';  # HTML for bottom of every page
 $EditNote    = "";              # HTML notice above buttons on edit page
 $MaxPost     = 1024 * 210;      # Maximum 210K posts (about 200K for pages)
 $NewText     = "New Page";      # New page text ("" for default message)
