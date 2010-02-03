@@ -689,7 +689,7 @@ sub BuildRuleStack {
                   $pgprop{'private'}=1 if($rules =~ /\bPRIVATE=1\b/);
                   $pgprop{'writeonly'}=1 if($rules =~ /\bWRITEONLY=1\b/);
                   if(rules =~ /\bCSS=\s*(.*)\b/) {
-		  	$pgprop{'css'}.=$1."\n";
+			$UserHeader.=qq(<link rel="stylesheet" href="$1">\n);
 		  }
                   if(rules =~ /\bEXPIRE=\s*(.*)\b/) {
 		  	$pgprop{'expire'}=$1;
