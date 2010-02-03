@@ -655,9 +655,10 @@ sub DoBrowseRequest {
 
 sub BuildRuleStack {
    my ($id)=@_;
-   my (@dirs,$toptree,$fname,$ff,$dirname,$rules,$i,$j,$pagetype,$isadmin,$levelcount,$iseditor,$ishide,$iswriteonly);
+   my (@dirs,$toptree,$fname,$ff,$dirname,$rules,$i,$j,$levelcount);
    my %rulefiles=('v0'=>$ViewerPreRule,'v1'=>$ViewerPostRule,'e0'=>$EditorPreRule,'e1'=>$EditorPostRule);
-
+   my %pgprop=();
+   
    if($id=~/\/\.[^\/]+$/) { return; }
 
    $toptree=&GetPageDirectory($id);
@@ -682,20 +683,23 @@ sub BuildRuleStack {
             $fname=$dirname . "/.$ff";
 	    $rules=&ReadRawWikiPage($fname);
             if($rules ne ""){
-                $isadmin=1 if($rules =~ /\bADMIN=1\b/);
-                $iseditor=1 if($rules =~ /\bEDITOR=1\b/);
-                $ishide=1 if($rules =~ /\bPRIVATE=1\b/);
-                $iswriteonly=1 if($rules =~ /\bWRITEONLY=1\b/);
+	        if($rules=~/=/){
+                  $pgprop{'admin'}=1 if($rules =~ /\bADMIN=1\b/);
+                  $pgprop{'editor'}=1 if($rules =~ /\bEDITOR=1\b/);
+                  $pgprop{'private'}=1 if($rules =~ /\bPRIVATE=1\b/);
+                  $pgprop{'writeonly'}=1 if($rules =~ /\bWRITEONLY=1\b/);
+                  if(rules =~ /\bCSS=\s*(.*)\b/) {
+		  	$pgprop{'css'}.=$1."\n";
+		  }
+                  if(rules =~ /\bEXPIRE=\s*(.*)\b/) {
+		  	$pgprop{'expire'}=$1;
+		  }
+		}
                 if(length($rules)>1){ push(@{ $rulefiles{$ff} },$rules); }
             }
         }
    }
-   $pagetype="";
-   if($isadmin) {$pagetype .="|ADMIN|";}
-   if($iseditor) {$pagetype .="|EDITOR|";}
-   if($ishide) {$pagetype .="|PRIVATE|";}
-   if($iswriteonly) {$pagetype .="|WRITEONLY|";}
-   return $pagetype;
+   return %pgprop;
 }
 
 sub OpenDefaultPage {
@@ -729,7 +733,7 @@ sub PatchPage{
 sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept);
-  my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr,$expires);
+  my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr);
   my ($tmpstr,$tmplang);
   my $contentlen;
   my $pagehtml;
@@ -737,7 +741,6 @@ sub BrowsePage {
 
   &OpenDefaultPage($id);
   $openKept = 0;
-  $expires=&GetParam('expires', '');
   $revision = &GetParam('revision', '');
   $revision =~ s/\D//g; # Remove non-numeric chars
   $goodRevision = $revision; # Non-blank only if exists
@@ -752,17 +755,13 @@ sub BrowsePage {
   }
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0)) {
-     my $pagetype=&BuildRuleStack($id);
-     if($pagetype =~ /\|ADMIN\|/ && (not &UserIsAdmin() )){
+     my %pagetype=&BuildRuleStack($id);
+     if(defined($pagetype{'admin'}) && (not &UserIsAdmin() ) ||
+        defined($pagetype{'editor'}) && (not &UserIsEditor() ) ||
+	defined($pagetype{'writeonly'}) && (not &UserIsAdmin() )){
                 return "";
      }
-     elsif($pagetype =~ /\|EDITOR\|/ && (not &UserIsEditor() )){
-                return "";
-     }
-     elsif($pagetype =~ /\|WRITEONLY\|/ && (not &UserIsAdmin() )){
-                $$Text{'text'}="";
-     }
-     print &GetHttpHeader('text/plain',$expires);
+     print &GetHttpHeader('text/plain',$pagetype{'expire'});
      print $$Text{'text'};
      return;
   }
@@ -1319,9 +1318,12 @@ sub DoRandom {
 sub DoHistory {
   my ($id) = @_;
   my ($html, $canEdit, $row, $newText);
+  my %pgprop;
 
+  %pgprop=&BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
-  if(&BuildRuleStack($id) ne "" && (not &UserIsAdmin() )){
+  if($pgprop{'admin'}==1 && (not &UserIsAdmin() ) || 
+     $pgprop{'editor'}==1 && (not &UserIsEditor() )){
         print "<div class=wikiinfo>no permission</div>\n";
 	print &GetCommonFooter();
 	return;
@@ -2013,20 +2015,16 @@ sub ApplyRegExp {
 
 sub WikiToHTML {
   my ($id,$pageText) = @_;
-  my ($toptree,$topnode,$datestr,$timestr,$pagename,$pagetype,$name,$truepage);
+  my ($toptree,$topnode,$datestr,$timestr,$pagename,%pagetype,$name,$truepage);
   $TableMode = 0;
 
   &RestorePageHash($id);
-  $pagetype=&BuildRuleStack($id); # added 05/13/06 by fangq
-  if($pagetype =~ /\|ADMIN\|/ && (not &UserIsAdmin() )){
+  %pagetype=&BuildRuleStack($id); # added 05/13/06 by fangq
+  if($pagetype{'admin'} && (not &UserIsAdmin() ) ||
+     $pagetype{'editor'} && (not &UserIsEditor() )){
 		$UseCache=0;
 		return "";
   }
-  elsif($pagetype =~ /\|EDITOR\|/ && (not &UserIsEditor() )){
-                $UseCache=0;
-                return "";
-  }
-
   %$SaveUrl = ();
   %$SaveNumUrl = ();
   $$SaveUrlIndex = 0;
@@ -4441,12 +4439,9 @@ name=\"myform\">";
   }
   $noeditrule=&GetParam("noeditrule","");
   if($noeditrule eq "") {
-    $pagetype=&BuildRuleStack($id); # added 05/13/06 by fangq
-    if($pagetype =~ /\|ADMIN\|/ && (not &UserIsAdmin() )){
-                $UseCache=0;
-                return "";
-    }
-    elsif($pagetype =~ /\|EDITOR\|/ && (not &UserIsEditor() )){
+    %pagetype=&BuildRuleStack($id); # added 05/13/06 by fangq
+    if($pagetype{'admin'} && (not &UserIsAdmin() )||
+       $pagetype{'editor'} && (not &UserIsEditor() )){
                 $UseCache=0;
                 return "";
     }
@@ -5365,7 +5360,7 @@ sub DoPost {
   my $isEdit = 0;
   my $editTime = $Now;
   my $authorAddr = $ENV{REMOTE_ADDR};
-  my $pagetype;
+  my %pagetype;
   my $editmode= &GetParam("editmode", "");
 
   if (!&UserCanEdit($id, 1)) {
@@ -5398,14 +5393,11 @@ sub DoPost {
   # Lock before getting old page to prevent races Consider extracting lock section into sub, and eval-wrap it? (A few 
   # called routines can die, leaving locks.)
 
-  $pagetype=&BuildRuleStack($id);
-  if($pagetype =~ /\|ADMIN\|/ && (not &UserIsAdmin() )){
-                $UseCache=0;
-                return;
-  }
-  elsif($pagetype =~ /\|EDITOR\|/ && (not &UserIsEditor() )){
-                $UseCache=0;
-                return;
+  %pagetype=&BuildRuleStack($id); # added 05/13/06 by fangq
+  if($pagetype{'admin'} && (not &UserIsAdmin() ) ||
+     $pagetype{'editor'} && (not &UserIsEditor() )){
+	    $UseCache=0;
+	    PrintMsg(T("no permission"),T("Error"),1);
   }
   $string= &ApplyRegExp($id,$string,\%NameSpaceE1,$EditorPostRule);# fangq 061206
   $string =~ s/<userip>/$ENV{'REMOTE_ADDR'}/gi;
@@ -5475,6 +5467,7 @@ sub DoPost {
   }
 
   if($id =~ /^(.+)\/\.v[01]$/) {
+        # need to add DBI mode
 	if( -f &GetHtmlCacheFile($1)){
 		unlink(&GetHtmlCacheFile($1));
 	}

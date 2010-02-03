@@ -15,7 +15,7 @@ $KeepDays    = 30;              # Days to keep old revisions
 $SiteBase    = "";              # Full URL for <BASE> header
 $FullUrl     = "";              # Set if the auto-detected URL is wrong
 $RedirType   = 2;               # 1 = CGI.pm, 2 = script, 3 = no redirect
-$AdminPass   = "KeU`t1H8"; # Set to non-blank to enable password(s)
+$AdminPass   = "`tWtI:T6"; # Set to non-blank to enable password(s)
 $EditPass    = "";              # Like AdminPass, but for editing only
 $StyleSheet  = "css/wiki.css";   # URL for CSS stylesheet (like "/wiki.css")
 $NotFoundPg  = "";              # Page for not-found links ("" for blank pg)
@@ -171,7 +171,7 @@ $IsPrintTree  = 1;    # print tree for subpages
 $AMathMLPath  = "plugin/wiki2math/amathml.js";
 $MathColor    = "blue";
 $UseCaptcha   = 1;    # flag to enable captcha
-$CaptchaKey = pack("H16","8B47B462BA6B93FB");
+$CaptchaKey = pack("H16","09AB1F28916C42DA");
 
 $UseDBI	=1;
 $DBName="db/habitatdb.db";
