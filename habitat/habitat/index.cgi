@@ -750,12 +750,12 @@ sub BrowsePage {
   $revision =~ s/\D//g; # Remove non-numeric chars
   $goodRevision = $revision; # Non-blank only if exists
   if ($revision ne '') {
-    &OpenKeptRevisions('text_default');
+    &OpenKeptRevisions($id,'text_default');
     $openKept = 1;
     if (!defined($KeptRevisions{$revision})) {
       $goodRevision = '';
     } else {
-      &OpenKeptRevision($revision);
+      &OpenKeptRevision($id,$revision);
     }
   }
   # Raw mode: just untranslated wiki text
@@ -833,7 +833,7 @@ sub BrowsePage {
     $diffRevision = $goodRevision;
     $diffRevision = &GetParam('diffrevision', $diffRevision);
     # Eventually try to avoid the following keep-loading if possible?
-    &OpenKeptRevisions('text_default') if (!$openKept);
+    &OpenKeptRevisions($id,'text_default') if (!$openKept);
     $fullHtml .= &GetDiffHTML($showDiff, $id, $diffRevision,
                               $revision, $newText);
   }
@@ -1353,7 +1353,7 @@ EOF
   if(!$UseDBI) {
 	$html = &GetHistoryLine($id, $$Page{'text_default'}, $canEdit, $row++);
   }
-  &OpenKeptRevisions('text_default');
+  &OpenKeptRevisions($id,'text_default');
   foreach (reverse sort {$a <=> $b} keys %KeptRevisions) {
     next if ($_ eq ""); # (needed?)
     $html .= &GetHistoryLine($id, $KeptRevisions{$_}, $canEdit, $row++);
@@ -2042,6 +2042,8 @@ sub WikiToHTML {
   $pageText = &RemoveFS($pageText);
 #  if($id=~ /\//) { $pageText .= "<localtree>";}
 
+  $pageText =~s/<nowiki>((.|\n)*?)<\/nowiki>/&StoreRaw($1)/ige;
+  $pageText =~s/\&lt;nowiki\&gt;((.|\n)*?)\&lt;\/nowiki\&gt;/&StoreRaw($1)/ige;
   if($PageEmbed ==1 ){ # added by FangQ, 2006/4/16
       $pageText =~ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiPageRaw($1,$5,$7)/geo;
   }
@@ -2077,8 +2079,6 @@ sub WikiToHTML {
   if ($ParseParas) {
     # Note: The following 3 rules may span paragraphs, so they are
     #       copied from CommonMarkup
-    $pageText =~
-        s/\&lt;nowiki\&gt;((.|\n)*?)\&lt;\/nowiki\&gt;/&StoreRaw($1)/ige;
     $pageText =~
         s/\&lt;pre\&gt;((.|\n)*?)\&lt;\/pre\&gt;/&StorePre($1, "pre")/ige;
     $pageText =~
@@ -2193,12 +2193,11 @@ sub EmbedWikiPageRaw {
       if($uri eq "") {
              $res=&ReadRawWikiPage($id);
       } else {
-              $res=&GetVariable(&ReadRawWikiPage($id));
+             $res=&GetVariable(&ReadRawWikiPage($id));
       }
       push(@$PageStack,$id);
-  }
-  else{
-      $res="{("+$id+")}";
+  }else{
+      $res=&GetPageOrEditLink($id,$name);
   }
   return $res;
 }
@@ -3188,11 +3187,11 @@ sub OpenNewPage {
 }
 
 sub OpenNewSection {
-  my ($name, $data) = @_;
+  my ($id,$name, $data) = @_;
   my ($Page,$Section);
 
-  $Page=\%{$PageCache{$OpenPageName}->{'page'}};
-  $Section=\%{$PageCache{$OpenPageName}->{'section'}};
+  $Page=\%{$PageCache{$id}->{'page'}};
+  $Section=\%{$PageCache{$id}->{'section'}};
 
   %$Section = ();
   $$Section{'name'} = $name;
@@ -3225,7 +3224,7 @@ sub OpenNewText {
   $$Text{'minor'} = 0; # Default as major edit
   $$Text{'newauthor'} = 1; # Default as new author
   $$Text{'summary'} = '';
-  &OpenNewSection("text_$name", join($FS3, %$Text));
+  &OpenNewSection($id,"text_$name", join($FS3, %$Text));
 }
 
 sub GetPageFile {
@@ -3354,14 +3353,14 @@ sub OpenPage {
 }
 
 sub OpenSection {
-  my ($name) = @_;
+  my ($id,$name) = @_;
   my ($Page,$Section);
   
-  $Page=\%{$PageCache{$OpenPageName}->{'page'}};
-  $Section=\%{$PageCache{$OpenPageName}->{'section'}};
+  $Page=\%{$PageCache{$id}->{'page'}};
+  $Section=\%{$PageCache{$id}->{'section'}};
 
   if (!defined($$Page{$name})) {
-    &OpenNewSection($name, "");
+    &OpenNewSection($id,$name, "");
   } else {
     %$Section = split(/$FS2/, $$Page{$name}, -1);
   }
@@ -3378,7 +3377,7 @@ sub OpenText {
   if (!defined($$Page{"text_$name"})) {
     &OpenNewText($id,$name);
   } else {
-    &OpenSection("text_$name");
+    &OpenSection($id,"text_$name");
     %$Text = split(/$FS3/, $$Section{'data'}, -1);
   }
 }
@@ -3390,11 +3389,11 @@ sub OpenDefaultText {
 
 # Called after OpenKeptRevisions
 sub OpenKeptRevision {
-  my ($revision) = @_;
+  my ($id,$revision) = @_;
   my ($Text,$Section);
 
-  $Section=\%{$PageCache{$OpenPageName}->{'section'}};
-  $Text=\%{$PageCache{$OpenPageName}->{'text'}};
+  $Section=\%{$PageCache{$id}->{'section'}};
+  $Text=\%{$PageCache{$id}->{'text'}};
 
   %$Section = split(/$FS2/, $KeptRevisions{$revision}, -1);
   %$Text = split(/$FS3/, $$Section{'data'}, -1);
@@ -4431,7 +4430,7 @@ sub DoEdit {
     }
   }
 
-  $oldText = $PageCache{$OpenPageName}->{'text'}->{'text'};
+  $oldText = $PageCache{$id}->{'text'}->{'text'};
   if ($preview && !$isConflict) {
     $oldText = $newText;
   }
@@ -6564,7 +6563,7 @@ sub RenameTextLinks {
     }
     foreach $section (keys %$Page) {
       if ($section =~ /^text_/) {
-        &OpenSection($section);
+        &OpenSection($page,$section);
         %$Text = split(/$FS3/, $$Section{'data'}, -1);
         $oldText = $$Text{'text'};
         $newText = &SubstituteTextLinks($old, $new, $oldText);

@@ -194,7 +194,7 @@ the content of [[test/demo1]] is
 <pre>{(test/demo1)}</pre>
 
 == # Page Raw Text Embedding ==
-By typing: <pre><nowiki>{()}</nowiki></pre><br>
+By typing: <pre><nowiki>{(test/demo1)}</nowiki></pre><br>
 you can embed the raw text form of page [[test/demo1]] into the 
 current page, such as in this example [[test/demo3]].
 The raw text for [[test/demo3]] can be found 
