@@ -102,8 +102,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $OpenPageName @KeptList @IndexList $IndexInit $TableMode
   $q $Now $UserID $TimeZoneOffset $ScriptName $BrowseCode $OtherCode
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
-  $ConfigError $LangError $UploadPattern $LocalTree $PageStack
-  $ViewerPreRule $ViewerPostRule $EditorPreRule $EditorPostRule
+  $ConfigError $LangError $UploadPattern $LocalTree
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $UseDBI $UsePerlDiff $UseActivation);
 
@@ -413,7 +412,7 @@ sub InitWikiEnv {
        $ConfigError .= "database $DBName does not exist";
      }
    }
-   %PageCache=('page'=>(),'text'=>(),'section'=>());
+   %PageCache=('page'=>(),'text'=>(),'section'=>(),'embed'=>());
    $WikiCipher = new Crypt::DES($CaptchaKey) if $UseCaptcha;
 }
 
@@ -2141,15 +2140,13 @@ sub RestorePageHash {
    $SaveNumUrl="SaveNumUrl$pagehash";
    $SaveUrlIndex="SaveUrlIndex$pagehash";
    $SaveNumUrlIndex="SaveNumUrlIndex$pagehash";
-
-   $PageStack="PageStack$pagehash";
 }
 
 # added by FangQ, 2006/4/16
 
 sub EmbedWikiPage{
   my ($id,$uri,$name,$text) = @_;
-  my $res;
+  my ($res,$PageStack);
   if ($name eq "") {
     $name = $id;
     if ($FreeLinks) {
@@ -2159,6 +2156,7 @@ sub EmbedWikiPage{
   if ($FreeLinks) {
     $id = &FreeToNormal($id);
   }
+  $PageStack=\@{$PageCache{$id}->{'embed'}};
   if(PageExists($id) && @$PageStack <= $MaxEmbedDepth){
       if($uri eq ""){
           if($text eq ''){
@@ -2179,7 +2177,7 @@ sub EmbedWikiPage{
 
 sub EmbedWikiPageRaw {
   my ($id,$uri,$name) = @_;
-  my $res;
+  my ($res,$PageStack);
   if ($name eq "") {
     $name = $id;
     if ($FreeLinks) {
@@ -2189,6 +2187,7 @@ sub EmbedWikiPageRaw {
   if ($FreeLinks) {
     $id = &FreeToNormal($id);
   }
+  $PageStack=\@{$PageCache{$id}->{'embed'}};
   if(PageExists($id) && @$PageStack <= $MaxEmbedDepth){
       if($uri eq "") {
              $res=&ReadRawWikiPage($id);
@@ -3402,10 +3401,8 @@ sub OpenKeptRevision {
 
 sub GetPageCache {
   my ($name) = @_;
-  my ($Page);
 
-  $Page=\%{$PageCache{$OpenPageName}->{'page'}};
-  return $$Page{"cache_$name"};
+  return $PageCache{$OpenPageName}->{'page'}->{"cache_$name"};
 }
 
 sub SavePageDB{
@@ -4481,7 +4478,6 @@ name=\"myform\">";
                 return "";
     }
   }
-#  die(join("",@$ViewerPostRule));
   {
      $kstr=&GetParam("keyfield", "");
      $kid=&GetParam("keyblock", "");
@@ -5437,7 +5433,7 @@ sub DoPost {
 	    $UseCache=0;
 	    PrintMsg(T("no permission"),T("Error"),1);
   }
-  $string= &ApplyRegExp($id,$string,\%NameSpaceE1,$EditorPostRule);# fangq 061206
+  $string= &ApplyRegExp($id,$string,\%NameSpaceE1,$PageCache{$id}->{'postedit'});# fangq 061206
   $string =~ s/<userip>/$ENV{'REMOTE_ADDR'}/gi;
 
   if ($LockCrash) {
@@ -5511,10 +5507,12 @@ sub DoPost {
 	}
 	&CleanupCachedFiles($HtmlDir . "/" . &GetPageDirectory($id)."/$1");
   }
-  if(not $id =~ /$DiscussSuffix$/ && not $isEdit){
-      &SaveKeepSection();
+  if( not $UseDBI){
+      if(not $id =~ /$DiscussSuffix$/ && not $isEdit){
+          &SaveKeepSection();
+      }
+      &ExpireKeepFile();
   }
-  &ExpireKeepFile();
 
   if($editmode eq "prepend"){
       if(not ($$Text{'text'} eq $NewText."\n" )){
