@@ -93,7 +93,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
-  $UserBuildinCSS %BuildinPages);
+  $UserBuildinCSS %BuildinPages %PageCache);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw($Page $Section $Text %InterSite $SaveUrl $SaveNumUrl
@@ -688,10 +688,10 @@ sub BuildRuleStack {
                   $pgprop{'editor'}=1 if($rules =~ /\bEDITOR=1\b/);
                   $pgprop{'private'}=1 if($rules =~ /\bPRIVATE=1\b/);
                   $pgprop{'writeonly'}=1 if($rules =~ /\bWRITEONLY=1\b/);
-                  if(rules =~ /\bCSS=\s*(.*)\b/) {
+                  if($rules =~ /\bCSS=\s*(.*)\b/) {
 			$UserHeader.=qq(<link rel="stylesheet" href="$1">\n);
 		  }
-                  if(rules =~ /\bEXPIRE=\s*(.*)\b/) {
+                  if($rules =~ /\bEXPIRE=\s*(.*)\b/) {
 		  	$pgprop{'expire'}=$1;
 		  }
 		}
@@ -4357,7 +4357,7 @@ sub DoEdit {
   my ($id, $isConflict, $oldTime, $newText, $preview) = @_;
   my ($header, $editRows, $editCols, $userName, $revision, $oldText);
   my ($summary, $isEdit, $pageTime);
-  my ($pagehash,$pagetype,$kstr,$kid,$noeditrule);
+  my ($pagehash,%pagetype,$kstr,$kid,$noeditrule);
   my @vv;
 
   if ($FreeLinks) {
@@ -5360,7 +5360,7 @@ sub DoPost {
   my $isEdit = 0;
   my $editTime = $Now;
   my $authorAddr = $ENV{REMOTE_ADDR};
-  my %pagetype;
+  my (%pagetype,$pgmode);
   my $editmode= &GetParam("editmode", "");
 
   if (!&UserCanEdit($id, 1)) {
@@ -5528,14 +5528,15 @@ sub DoPost {
   $$Text{'summary'} = $summary;
   $$Section{'host'} = &GetRemoteHost(1);
   &SaveDefaultText();
+  $pgmode=$pagetype{'admin'}==1 || $pagetype{'editor'}==1 || $pagetype{'writeonly'}==1;
   if($UseDBI) {
         &SavePageDB($id);
         &WriteRcLogDB($id, $summary, $isEdit, $editTime, $$Section{'revision'},
-              $user, $$Section{'host'},$pagetype);
+              $user, $$Section{'host'}, $pgmode);
   }else{
         &SavePage();
         &WriteRcLog($id, $summary, $isEdit, $editTime, $$Section{'revision'},
-              $user, $$Section{'host'},$pagetype);
+              $user, $$Section{'host'},$pgmode);
   }
   
   if ($UseCache) {
@@ -7004,6 +7005,9 @@ sub ReadRawWikiPage {
     my %localSection;
     my %localText;
 
+    if(defined($PageCache{$id})){
+    	return $PageCache{$id};
+    }
     if($UseDBI){
 	my  $pagedb=(split(/\//,$PageDir))[-1];
 	my ($sth,$maxversion,$text);
@@ -7029,6 +7033,7 @@ sub ReadRawWikiPage {
     %localPage = split(/$FS1/, $data, -1);
     %localSection = split(/$FS2/, $localPage{'text_default'}, -1);
     %localText = split(/$FS3/, $localSection{'data'}, -1);
+    $PageCache{$id}=$localText{'text'};
     return $localText{'text'}."\n";
 }
 
