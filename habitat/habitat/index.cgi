@@ -758,7 +758,7 @@ sub BrowsePage {
     }
   }
   # Raw mode: just untranslated wiki text
-  if (&GetParam('raw', 0)) {
+  if (&GetParam('raw', 0) || &GetParam('format', '') eq 'json') {
      &BuildRuleStack($id);
      if(defined($PageCache{$id}->{'admin'}) && (not &UserIsAdmin() ) ||
         defined($PageCache{$id}->{'editor'}) && (not &UserIsEditor() ) ||
@@ -766,7 +766,11 @@ sub BrowsePage {
                 return "";
      }
      print &GetHttpHeader('text/plain',$PageCache{$id}->{'expire'});
-     print $$Text{'text'};
+     if(&GetParam('raw', 0)) {
+     	print $$Text{'text'};
+     }else{
+     	print JSONFormat($id,$$Text{'text'},&GetParam('jsoncallback', ''));
+     }
      return;
   }
   $newText = $$Text{'text'}; # For differences
@@ -7170,7 +7174,18 @@ sub PrintMsg{
         print &GetCommonFooter();
         if($exitflag) {exit;}
 }
+sub JSONFormat{
+    my ($id,$text,$callback)=@_;
+    my $FSn=$FS."n";
+    my $FSr=$FS."r";
 
+    $text=&WikiToHTML($id,$text);
+    $text=~s/"/\\"/g;
+    $text=~s/\n/\\n/g;
+    $text=~s/\r/\\r/g;
+    return "$callback({\npage:\"$id\",\nhtml:\"$text\"\n});";
+    
+}
 #END_OF_OTHER_CODE
 
 &DoWikiRequest() if ($RunCGI && ($_ ne 'nocgi')); # Do everything. 1; # In case we are loaded from elsewhere
