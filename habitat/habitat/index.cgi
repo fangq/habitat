@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# Habitat - an object-oriented wiki engine
+# Habitat - a Portable Content Management System
 #
 # by Qianqian Fang <fangq at nmr.mgh.harvard.edu>
 #
@@ -6659,7 +6659,10 @@ sub RenamePage {
 
 sub DoShowVersion {
   print &GetHeader("", "Displaying Wiki Version", "");
-  print '<div class="wikiinfo">HabitatWiki v0.2.0<br> based on UseModWiki version 1.0</div>\n';
+  print '<div class="wikiinfo">
+<h2>Habitat CMS version 0.2</h2>
+$Rev::     $ Last Commit:$Date::                     $ by $Author:: fangq$
+<br> based on UseModWiki version 1.0</div>\n';
   print &GetCommonFooter();
 }
 
