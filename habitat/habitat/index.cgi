@@ -93,7 +93,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
-  $UserBuildinCSS %BuildinPages %TextCache %PageCache);
+  $UserBuildinCSS %BuildinPages %TextCache %Pages);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
@@ -412,7 +412,7 @@ sub InitWikiEnv {
        $ConfigError .= "database $DBName does not exist";
      }
    }
-   %PageCache=('page'=>(),'text'=>(),'section'=>(),'embed'=>());
+   %Pages=('page'=>(),'text'=>(),'section'=>(),'embed'=>());
    $WikiCipher = new Crypt::DES($CaptchaKey) if $UseCaptcha;
 }
 
@@ -661,7 +661,7 @@ sub BuildRuleStack {
    
    if($id=~/\/\.[^\/]+$/) { return; }
 
-   if(defined($PageCache{$id}->{'rules'})){
+   if(defined($Pages{$id}->{'rules'})){
    	return;
    }
    $toptree=&GetPageDirectory($id);
@@ -670,7 +670,7 @@ sub BuildRuleStack {
 
    $levelcount = ($toptree =~ tr/\///)+1;
 
-   $PageCache{$id}=('preview'=>(),'postview'=>(),'preedit'=>(),'postedit'=>(),'rules'=>1);
+   $Pages{$id}=('preview'=>(),'postview'=>(),'preedit'=>(),'postedit'=>(),'rules'=>1);
    for($i=$levelcount;$i<@dirs;$i++){
 	$dirname="";
 	for($j=$levelcount;$j<=$i;$j++) {
@@ -682,16 +682,16 @@ sub BuildRuleStack {
 	    $rules=&ReadRawWikiPage($fname);
             if($rules ne ""){
 	        if($rules=~/=/){
-                  $PageCache{$id}->{'admin'}=1 if($rules =~ /\bADMIN=1\b/);
-                  $PageCache{$id}->{'editor'}=1 if($rules =~ /\bEDITOR=1\b/);
-                  $PageCache{$id}->{'private'}=1 if($rules =~ /\bPRIVATE=1\b/);
-                  $PageCache{$id}->{'writeonly'}=1 if($rules =~ /\bWRITEONLY=1\b/);
+                  $Pages{$id}->{'admin'}=1 if($rules =~ /\bADMIN=1\b/);
+                  $Pages{$id}->{'editor'}=1 if($rules =~ /\bEDITOR=1\b/);
+                  $Pages{$id}->{'private'}=1 if($rules =~ /\bPRIVATE=1\b/);
+                  $Pages{$id}->{'writeonly'}=1 if($rules =~ /\bWRITEONLY=1\b/);
                   if($rules =~ /\bEXPIRE=\s*(.*)\b/) {
-		  	$PageCache{$id}->{'expire'}=$1;
+		  	$Pages{$id}->{'expire'}=$1;
 		  }
 		}
                 if(length($rules)>1){ 
-			push(@{$PageCache{$id}->{$rulefiles{$ff}}},$rules);
+			push(@{$Pages{$id}->{$rulefiles{$ff}}},$rules);
 		}
             }
         }
@@ -700,7 +700,7 @@ sub BuildRuleStack {
 
 sub OpenDefaultPage {
   my ($id) = @_;
-  if(defined($PageCache{$id}->{'text'}->{'text'})){
+  if(defined($Pages{$id}->{'text'}->{'text'})){
      return;
   }
   if($UseDBI){
@@ -709,8 +709,8 @@ sub OpenDefaultPage {
       &OpenPage($id);
       &OpenDefaultText($id);
   }
-  $PageCache{$id}->{'text'}->{'text'}=
-      &PatchPage($PageCache{$id}->{'text'}->{'text'});
+  $Pages{$id}->{'text'}->{'text'}=
+      &PatchPage($Pages{$id}->{'text'}->{'text'});
 }
 
 sub PatchPage{
@@ -718,11 +718,11 @@ sub PatchPage{
   if($text=~/$FS4/){
  	my @patches=split(/$FS4/,$text);
 	my $basetext=$patches[0];
-	my $basesec=$PageCache{$OpenPageName}->{'section'}->{'revision'};
+	my $basesec=$Pages{$OpenPageName}->{'section'}->{'revision'};
 	for(my $i=1;$i<@patches;$i++){
 		if($patches[$i] ne ""){
 			$basetext=PatchText($basetext,$patches[$i],0);
-			$PageCache{$OpenPageName}->{'section'}->{'revision'}=$basesec+$i;
+			$Pages{$OpenPageName}->{'section'}->{'revision'}=$basesec+$i;
 		}
 	}
 	$text=$basetext;
@@ -739,9 +739,6 @@ sub BrowsePage {
   my $pagehtml;
   my @vv;
   
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
-
   &OpenDefaultPage($id);
 
   $openKept = 0;
@@ -757,15 +754,17 @@ sub BrowsePage {
       &OpenKeptRevision($id,$revision);
     }
   }
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Text=\%{$Pages{$id}->{'text'}};
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0) || &GetParam('format', '') eq 'json') {
      &BuildRuleStack($id);
-     if(defined($PageCache{$id}->{'admin'}) && (not &UserIsAdmin() ) ||
-        defined($PageCache{$id}->{'editor'}) && (not &UserIsEditor() ) ||
-	defined($PageCache{$id}->{'writeonly'}) && (not &UserIsAdmin() )){
+     if(defined($Pages{$id}->{'admin'}) && (not &UserIsAdmin() ) ||
+        defined($Pages{$id}->{'editor'}) && (not &UserIsEditor() ) ||
+	defined($Pages{$id}->{'writeonly'}) && (not &UserIsAdmin() )){
                 return "";
      }
-     print &GetHttpHeader('text/plain',$PageCache{$id}->{'expire'});
+     print &GetHttpHeader('text/plain',$Pages{$id}->{'expire'});
      if(&GetParam('raw', 0)) {
      	print $$Text{'text'};
      }else{
@@ -840,6 +839,8 @@ sub BrowsePage {
     $fullHtml .= &GetDiffHTML($showDiff, $id, $diffRevision,
                               $revision, $newText);
   }
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Text=\%{$Pages{$id}->{'text'}};
 
   if(&GetParam('diff', '') eq '') {
      $fullHtml .= '<div class=wikitext>';
@@ -1327,18 +1328,20 @@ sub DoHistory {
   my ($id) = @_;
   my ($html, $canEdit, $row, $newText,$Page,$Text);
 
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
   
   &BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
-  if($PageCache{$id}->{'admin'}==1 && (not &UserIsAdmin() ) || 
-     $PageCache{$id}->{'editor'}==1 && (not &UserIsEditor() )){
+  if($Pages{$id}->{'admin'}==1 && (not &UserIsAdmin() ) || 
+     $Pages{$id}->{'editor'}==1 && (not &UserIsEditor() )){
         print "<div class=wikiinfo>no permission</div>\n";
 	print &GetCommonFooter();
 	return;
   }
   &OpenDefaultPage($id);
+
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Text=\%{$Pages{$id}->{'text'}};
+
   $newText = $$Text{'text'};
   $canEdit = 0;
   $canEdit = &UserCanEdit($id) if ($HistoryEdit);
@@ -1357,6 +1360,10 @@ EOF
 	$html = &GetHistoryLine($id, $$Page{'text_default'}, $canEdit, $row++);
   }
   &OpenKeptRevisions($id,'text_default');
+
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Text=\%{$Pages{$id}->{'text'}};
+
   foreach (reverse sort {$a <=> $b} keys %KeptRevisions) {
     next if ($_ eq ""); # (needed?)
     $html .= &GetHistoryLine($id, $KeptRevisions{$_}, $canEdit, $row++);
@@ -1825,7 +1832,7 @@ sub GetFooterText {
   my ($id, $rev) = @_;
   my ($result,$Section);
 
-  $Section=\%{$PageCache{$id}->{'section'}};
+  $Section=\%{$Pages{$id}->{'section'}};
 
   if (&GetParam('embed', $EmbedWiki)) {
     return $q->end_html;
@@ -2028,12 +2035,12 @@ sub WikiToHTML {
   my ($toptree,$topnode,$datestr,$timestr,$pagename,$name,$truepage,$Section);
   $TableMode = 0;
 
-  $Section=\%{$PageCache{$id}->{'section'}};
+  $Section=\%{$Pages{$id}->{'section'}};
 
   &RestorePageHash($id);
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if($PageCache{$id}->{'admin'} && (not &UserIsAdmin() ) ||
-     $PageCache{$id}->{'editor'} && (not &UserIsEditor() )){
+  if($Pages{$id}->{'admin'} && (not &UserIsAdmin() ) ||
+     $Pages{$id}->{'editor'} && (not &UserIsEditor() )){
 		$UseCache=0;
 		return "";
   }
@@ -2050,7 +2057,7 @@ sub WikiToHTML {
   if($PageEmbed ==1 ){ # added by FangQ, 2006/4/16
       $pageText =~ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiPageRaw($1,$5,$7)/geo;
   }
-  $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV0,$PageCache{$id}->{'preview'});
+  $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV0,$Pages{$id}->{'preview'});
 
   if($id=~/(.*)$DiscussSuffix$/){
           $truepage=$1;
@@ -2111,7 +2118,7 @@ sub WikiToHTML {
   }
   &RestorePageHash($id);
   $pageText=&RestoreSavedText($pageText);
-  $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV1,$PageCache{$id}->{'postview'});
+  $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV1,$Pages{$id}->{'postview'});
 
   return $pageText;
 }
@@ -2160,7 +2167,7 @@ sub EmbedWikiPage{
   if ($FreeLinks) {
     $id = &FreeToNormal($id);
   }
-  $PageStack=\@{$PageCache{$id}->{'embed'}};
+  $PageStack=\@{$Pages{$id}->{'embed'}};
   if(PageExists($id) && @$PageStack <= $MaxEmbedDepth){
       if($uri eq ""){
           if($text eq ''){
@@ -2191,7 +2198,7 @@ sub EmbedWikiPageRaw {
   if ($FreeLinks) {
     $id = &FreeToNormal($id);
   }
-  $PageStack=\@{$PageCache{$id}->{'embed'}};
+  $PageStack=\@{$Pages{$id}->{'embed'}};
   if(PageExists($id) && @$PageStack <= $MaxEmbedDepth){
       if($uri eq "") {
              $res=&ReadRawWikiPage($id);
@@ -3180,7 +3187,7 @@ sub OpenNewPage {
   my ($id) = @_;
   my ($pagehash,$Page);
 
-  $Page=\%{$PageCache{$id}->{'page'}};
+  $Page=\%{$Pages{$id}->{'page'}};
 
   %$Page = ();
   $$Page{'version'} = 3; # Data format version
@@ -3193,8 +3200,8 @@ sub OpenNewSection {
   my ($id,$name, $data) = @_;
   my ($Page,$Section);
 
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Section=\%{$PageCache{$id}->{'section'}};
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Section=\%{$Pages{$id}->{'section'}};
 
   %$Section = ();
   $$Section{'name'} = $name;
@@ -3214,7 +3221,7 @@ sub OpenNewText {
   my ($id,$name) = @_; # Name of text (usually "default")
   my ($Text);
 
-  $Text=\%{$PageCache{$id}->{'text'}};
+  $Text=\%{$Pages{$id}->{'text'}};
 
   %$Text = ();
   $$Text{'isnew'}=1;
@@ -3268,9 +3275,9 @@ sub OpenPageDB {
   my ($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
      $summary,$text,$minor,$newauthor,$Page,$Text,$Section);
 
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Section=\%{$PageCache{$id}->{'section'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Section=\%{$Pages{$id}->{'section'}};
+  $Text=\%{$Pages{$id}->{'text'}};
 
   if ($OpenPageName eq $id) {
     return;
@@ -3324,9 +3331,9 @@ sub OpenPage {
   my ($id) = @_;
   my ($fname, $data,$Page,$Text,$Section);
 
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Section=\%{$PageCache{$id}->{'section'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Section=\%{$Pages{$id}->{'section'}};
+  $Text=\%{$Pages{$id}->{'text'}};
 
   if ($OpenPageName eq $id) {
     return;
@@ -3359,8 +3366,8 @@ sub OpenSection {
   my ($id,$name) = @_;
   my ($Page,$Section);
   
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Section=\%{$PageCache{$id}->{'section'}};
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Section=\%{$Pages{$id}->{'section'}};
 
   if (!defined($$Page{$name})) {
     &OpenNewSection($id,$name, "");
@@ -3373,9 +3380,9 @@ sub OpenText {
   my ($id,$name) = @_;
   my ($Page,$Section,$Text);
 
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Section=\%{$PageCache{$id}->{'section'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Section=\%{$Pages{$id}->{'section'}};
+  $Text=\%{$Pages{$id}->{'text'}};
 
   if (!defined($$Page{"text_$name"})) {
     &OpenNewText($id,$name);
@@ -3395,8 +3402,8 @@ sub OpenKeptRevision {
   my ($id,$revision) = @_;
   my ($Text,$Section);
 
-  $Section=\%{$PageCache{$id}->{'section'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
+  $Section=\%{$Pages{$id}->{'section'}};
+  $Text=\%{$Pages{$id}->{'text'}};
 
   %$Section = split(/$FS2/, $KeptRevisions{$revision}, -1);
   %$Text = split(/$FS3/, $$Section{'data'}, -1);
@@ -3406,7 +3413,7 @@ sub OpenKeptRevision {
 sub GetPageCache {
   my ($name) = @_;
 
-  return $PageCache{$OpenPageName}->{'page'}->{"cache_$name"};
+  return $Pages{$OpenPageName}->{'page'}->{"cache_$name"};
 }
 
 sub SavePageDB{
@@ -3416,9 +3423,9 @@ sub SavePageDB{
      $summary,$text,$minor,$newauthor,$data);
   my ($Page,$Text,$Section);
 
-  $Page=\%{$PageCache{$name}->{'page'}};
-  $Section=\%{$PageCache{$name}->{'section'}};
-  $Text=\%{$PageCache{$name}->{'text'}};
+  $Page=\%{$Pages{$name}->{'page'}};
+  $Section=\%{$Pages{$name}->{'section'}};
+  $Text=\%{$Pages{$name}->{'text'}};
 
   $pagedb=(split(/\//,$PageDir))[-1];
 
@@ -3473,7 +3480,7 @@ sub SavePageDB{
 sub SavePage {
   my ($Page);
 
-  $Page=\%{$PageCache{$OpenPageName}->{'page'}};
+  $Page=\%{$Pages{$OpenPageName}->{'page'}};
   my $file = &GetPageFile($OpenPageName);
 
   $$Page{'revision'} += 1; # Number of edited times
@@ -3486,8 +3493,8 @@ sub SaveSection {
   my ($name, $data) = @_;
   my ($Section,$Page);
 
-  $Section=\%{$PageCache{$OpenPageName}->{'section'}};
-  $Page=\%{$PageCache{$OpenPageName}->{'page'}};
+  $Section=\%{$Pages{$OpenPageName}->{'section'}};
+  $Page=\%{$Pages{$OpenPageName}->{'page'}};
 
   $$Section{'revision'} += 1; # Number of edited times
   $$Section{'ts'} = $Now; # Updated every edit
@@ -3499,19 +3506,21 @@ sub SaveSection {
 }
 
 sub SaveText {
-  my ($name) = @_;
+  my ($id,$name) = @_;
 
-  &SaveSection("text_$name", join($FS3, %{$PageCache{$OpenPageName}->{'text'}}));
+  &SaveSection("text_$name", join($FS3, %{$Pages{$id}->{'text'}}));
 }
 
 sub SaveDefaultText {
-  &SaveText('default');
+  my ($id) = @_;
+
+  &SaveText($id,'default');
 }
 
 sub SetPageCache {
   my ($name, $data) = @_;
 
-  $PageCache{$OpenPageName}->{'page'}->{"cache_$name"} = $data;
+  $Pages{$OpenPageName}->{'page'}->{"cache_$name"} = $data;
 }
 
 sub UpdatePageVersion {
@@ -3527,9 +3536,9 @@ sub SaveKeepSection {
   my $file = &KeepFileName();
   my $data;
 
-  return if ($PageCache{$OpenPageName}->{'section'}->{'revision'} < 1); # Don't keep "empty" revision
-  $PageCache{$OpenPageName}->{'section'}->{'keepts'} = $Now;
-  $data = $FS1 . join($FS2, %{$PageCache{$OpenPageName}->{'section'}});
+  return if ($Pages{$OpenPageName}->{'section'}->{'revision'} < 1); # Don't keep "empty" revision
+  $Pages{$OpenPageName}->{'section'}->{'keepts'} = $Now;
+  $data = $FS1 . join($FS2, %{$Pages{$OpenPageName}->{'section'}});
   &CreatePageDir($KeepDir, $OpenPageName);
   &AppendStringToFileLimited($file, $data, $KeepSize);
 }
@@ -3669,7 +3678,7 @@ sub LoadUserDataDB {
       $createip,$tzoffset,$pagecreate,$pagemodify,$stylesheet);
 
   if($dbh eq "" || $userdb eq ""){
-      die(T('ERROR: database uninitialized!'));
+      return T('ERROR: database uninitialized!');
   }
   if($uname eq ""){
      $sth=$dbh->selectall_arrayref("select * from $userdb where id=$uid");
@@ -3682,7 +3691,7 @@ sub LoadUserDataDB {
   }
   if (!defined $sth->[0]) {
 	if($UserID<1000){
- 	     die(T("ERROR: can not find the specified user")." : ($UserID)");
+ 	     return T("ERROR: can not find the specified user");
 	}else{
 		return -1; # new user
 	}
@@ -3704,6 +3713,7 @@ sub LoadUserDataDB {
   $UserData{'pagecreate'}=$pagecreate;
   $UserData{'pagemodify'}=$pagemodify;
   $UserData{'stylesheet'}=$stylesheet;
+  return "";
   # need to print log
 }
 sub LoadUserData {
@@ -4418,7 +4428,7 @@ sub DoEdit {
   }
   # Consider sending a new user-ID cookie if user does not have one
   &OpenDefaultPage($id);
-  $pageTime = $PageCache{$id}->{'section'}->{'ts'};
+  $pageTime = $Pages{$id}->{'section'}->{'ts'};
   $header = Ts('Editing %s', $id);
   # Old revision handling
   $revision = &GetParam('revision', '');
@@ -4434,7 +4444,7 @@ sub DoEdit {
     }
   }
 
-  $oldText = $PageCache{$id}->{'text'}->{'text'};
+  $oldText = $Pages{$id}->{'text'}->{'text'};
   if ($preview && !$isConflict) {
     $oldText = $newText;
   }
@@ -4479,8 +4489,8 @@ name=\"myform\">";
   $noeditrule=&GetParam("noeditrule","");
   if($noeditrule eq "") {
     &BuildRuleStack($id); # added 05/13/06 by fangq
-    if($PageCache{$id}->{'admin'} && (not &UserIsAdmin() )||
-       $PageCache{$id}->{'editor'} && (not &UserIsEditor() )){
+    if($Pages{$id}->{'admin'} && (not &UserIsAdmin() )||
+       $Pages{$id}->{'editor'} && (not &UserIsEditor() )){
                 $UseCache=0;
                 return "";
     }
@@ -4502,7 +4512,7 @@ name=\"myform\">";
   }
 
   if($noeditrule eq "") {
-    print &ApplyRegExp($id,"",\%NameSpaceE0,$PageCache{$id}->{'preedit'});
+    print &ApplyRegExp($id,"",\%NameSpaceE0,$Pages{$id}->{'preedit'});
   }
         print &GetTextArea('text', $oldText, $editRows, $editCols);
         $summary = &GetParam("summary", "*");
@@ -4999,9 +5009,9 @@ sub DoLogin {
   if ( ($password ne "") && ($password ne "*")) {
     if($UseDBI) {
         if($uname ne ""){
-	  &LoadUserDataDB(-1,$uname);
+	  $err=&LoadUserDataDB(-1,$uname);
 	}else{
-          &LoadUserDataDB($uid);
+          $err=&LoadUserDataDB($uid);
 	}
     }else{
         &LoadUserData();
@@ -5015,7 +5025,7 @@ sub DoLogin {
         $success = 1;
         $SetCookie{'id'} = $UserData{'id'};
       }else{
-      	$err=T("wrong password");
+      	$err.=T("wrong password");
       }
     }
   }
@@ -5028,7 +5038,7 @@ sub DoLogin {
   if ($success) {
     print Ts('Login for user %s complete.', "$uname($UserID)");
   } else {
-    print Tss('Login for user %s failed.\nError: %s', "$uname($UserID)", $err);
+    print Tss('Login for user %1 failed. Error: %2', "$uname($UserID)", $err);
   }
   print '<hr class="wikilinefooter">';
   print $q->endform;
@@ -5357,7 +5367,7 @@ sub GetPageLinks {
 
   @links = ();
   &OpenDefaultPage($name);
-  $text = $PageCache{$OpenPageName}->{'text'}->{'text'};
+  $text = $Pages{$OpenPageName}->{'text'}->{'text'};
   $text =~ s/<html>((.|\n)*?)<\/html>/ /ig;
   $text =~ s/<nowiki>(.|\n)*?\<\/nowiki>/ /ig;
   $text =~ s/<pre>(.|\n)*?\<\/pre>/ /ig;
@@ -5400,10 +5410,6 @@ sub DoPost {
   my (%pagetype,$pgmode,$Page,$Text,$Section);
   my $editmode= &GetParam("editmode", "");
 
-  $Page=\%{$PageCache{$id}->{'page'}};
-  $Section=\%{$PageCache{$id}->{'section'}};
-  $Text=\%{$PageCache{$id}->{'text'}};
-  
   if (!&UserCanEdit($id, 1)) {
     # This is an internal interface--we don't need to explain
     &ReportError(Ts('Editing not allowed for %s.', $id));
@@ -5435,12 +5441,12 @@ sub DoPost {
   # called routines can die, leaving locks.)
 
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if($PageCache{$id}->{'admin'} && (not &UserIsAdmin() ) ||
-     $PageCache{$id}->{'editor'} && (not &UserIsEditor() )){
+  if($Pages{$id}->{'admin'} && (not &UserIsAdmin() ) ||
+     $Pages{$id}->{'editor'} && (not &UserIsEditor() )){
 	    $UseCache=0;
 	    PrintMsg(T("no permission"),T("Error"),1);
   }
-  $string= &ApplyRegExp($id,$string,\%NameSpaceE1,$PageCache{$id}->{'postedit'});# fangq 061206
+  $string= &ApplyRegExp($id,$string,\%NameSpaceE1,$Pages{$id}->{'postedit'});# fangq 061206
   $string =~ s/<userip>/$ENV{'REMOTE_ADDR'}/gi;
 
   if ($LockCrash) {
@@ -5456,6 +5462,11 @@ sub DoPost {
     &ForceReleaseLock('index');
   }
   &OpenDefaultPage($id);
+
+  $Page=\%{$Pages{$id}->{'page'}};
+  $Section=\%{$Pages{$id}->{'section'}};
+  $Text=\%{$Pages{$id}->{'text'}};
+
   $old = $$Text{'text'};
   $oldrev = $$Section{'revision'};
   $pgtime = $$Section{'ts'};
@@ -5570,8 +5581,8 @@ sub DoPost {
   $$Text{'newauthor'} = $newAuthor;
   $$Text{'summary'} = $summary;
   $$Section{'host'} = &GetRemoteHost(1);
-  &SaveDefaultText();
-  $pgmode=$PageCache{$id}->{'admin'}==1 || $PageCache{$id}->{'editor'}==1 || $PageCache{$id}->{'writeonly'}==1;
+  &SaveDefaultText($id);
+  $pgmode=$Pages{$id}->{'admin'}==1 || $Pages{$id}->{'editor'}==1 || $Pages{$id}->{'writeonly'}==1;
   if($UseDBI) {
         &SavePageDB($id);
         &WriteRcLogDB($id, $summary, $isEdit, $editTime, $$Section{'revision'},
@@ -5702,7 +5713,7 @@ sub EmailNotify {
 
  The $SiteName page $id at
    $page_url
- has been changed$user to revision $PageCache{$id}->{'page'}->{revision}. $editors_summary
+ has been changed$user to revision $Pages{$id}->{'page'}->{revision}. $editors_summary
 
  (Replying to this notification will
   send email to the entire mailing list,
@@ -5754,7 +5765,7 @@ sub SearchTitleAndBody {
   }
   foreach $name (&AllPagesList()) {
     &OpenDefaultPage($name);
-    if (($PageCache{$name}->{'text'}->{'text'} =~ /$string/i) || ($name =~ /$string/i)) {
+    if (($Pages{$name}->{'text'}->{'text'} =~ /$string/i) || ($name =~ /$string/i)) {
       push(@found, $name);
     } elsif ($FreeLinks && ($name =~ m/_/)) {
       $freeName = $name;
@@ -5775,7 +5786,7 @@ sub SearchBody {
   }
   foreach $name (&AllPagesList()) {
     &OpenDefaultPage($name);
-    if ($PageCache{$name}->{'text'}->{'text'} =~ /$string/i){
+    if ($Pages{$name}->{'text'}->{'text'} =~ /$string/i){
       push(@found, $name);
     }
   }
@@ -5865,9 +5876,9 @@ sub WriteDiff {
 # accepted. See http://www.usemod.com/cgi-bin/mb.pl?PageDeletion
 sub ProcessVetos {
   my ($expirets,$Text);
-  $Text=\%{$PageCache{$OpenPageName}->{'text'}};
+  $Text=\%{$Pages{$OpenPageName}->{'text'}};
   $expirets = $Now - ($KeepDays * 24 * 60 * 60);
-  return (0, T('(done)')) unless $PageCache{$OpenPageName}->{'page'}->{'ts'} < $expirets;
+  return (0, T('(done)')) unless $Pages{$OpenPageName}->{'page'}->{'ts'} < $expirets;
   if ($DeletedPage && $$Text{'text'} =~ /^\s*$DeletedPage\W*?(\n|$)/o) {
     &DeletePage($OpenPageName, 1, 1);
     return (1, T('(deleted)'));
@@ -6508,9 +6519,9 @@ sub RenameKeepText {
     %tempSection = split(/$FS2/, $_, -1);
     $sectName = $tempSection{'name'};
     if ($sectName =~ /^(text_)/) {
-      %{$PageCache{$page}->{'text'}} = split(/$FS3/, $tempSection{'data'}, -1);
-      $newText = &SubstituteTextLinks($old, $new, $PageCache{$page}->{'text'}->{'text'});
-      $changed = 1 if ($PageCache{$page}->{'text'}->{'text'} ne $newText);
+      %{$Pages{$page}->{'text'}} = split(/$FS3/, $tempSection{'data'}, -1);
+      $newText = &SubstituteTextLinks($old, $new, $Pages{$page}->{'text'}->{'text'});
+      $changed = 1 if ($Pages{$page}->{'text'}->{'text'} ne $newText);
     }
   }
   return if (!$changed); # No sections changed
@@ -6519,10 +6530,10 @@ sub RenameKeepText {
     %tempSection = split(/$FS2/, $_, -1);
     $sectName = $tempSection{'name'};
     if ($sectName =~ /^(text_)/) {
-      %{$PageCache{$page}->{'text'}} = split(/$FS3/, $tempSection{'data'}, -1);
-      $newText = &SubstituteTextLinks($old, $new, $PageCache{$page}->{'text'}->{'text'});
-      $PageCache{$page}->{'text'}->{'text'} = $newText;
-      $tempSection{'data'} = join($FS3, %{$PageCache{$page}->{'text'}});
+      %{$Pages{$page}->{'text'}} = split(/$FS3/, $tempSection{'data'}, -1);
+      $newText = &SubstituteTextLinks($old, $new, $Pages{$page}->{'text'}->{'text'});
+      $Pages{$page}->{'text'}->{'text'} = $newText;
+      $tempSection{'data'} = join($FS3, %{$Pages{$page}->{'text'}});
       print OUT $FS1, join($FS2, %tempSection);
     } else {
       print OUT $FS1, $_;
@@ -6556,16 +6567,16 @@ sub RenameTextLinks {
   @pageList = split(' ', $LinkIndex{$oldCanonical});
   foreach $page (@pageList) {
     $changed = 0;
-
-    $Page=\%{$PageCache{$page}->{'page'}};
-    $Section=\%{$PageCache{$page}->{'section'}};
-    $Text=\%{$PageCache{$page}->{'text'}};
   
     if($UseDBI){
         &OpenPageDB($page);
     }else{
         &OpenPage($page);
     }
+    $Page=\%{$Pages{$page}->{'page'}};
+    $Section=\%{$Pages{$page}->{'section'}};
+    $Text=\%{$Pages{$page}->{'text'}};
+
     foreach $section (keys %$Page) {
       if ($section =~ /^text_/) {
         &OpenSection($page,$section);
@@ -7058,8 +7069,8 @@ sub ReadRawWikiPage {
 
     if(defined($TextCache{$id})){
     	return $TextCache{$id};
-    }elsif(defined($PageCache{$id}->{'text'}->{'text'})){
-    	return $PageCache{$id}->{'text'}->{'text'};
+    }elsif(defined($Pages{$id}->{'text'}->{'text'})){
+    	return $Pages{$id}->{'text'}->{'text'};
     }
     if($UseDBI){
 	my  $pagedb=(split(/\//,$PageDir))[-1];
