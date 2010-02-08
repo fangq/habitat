@@ -4069,12 +4069,15 @@ sub UpdateHtmlCache {
 sub GenerateAllPagesListDB {
    my @pages;
    my $pagedb =(split(/\//,$PageDir))[-1];
-   my $sth;
+   my ($sth,$pg);
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
   $sth=$dbh->selectall_arrayref("select id from $pagedb group by id");
-  @pages=(@{$sth->[0]}, keys (%BuildinPages));
+  foreach $pg (@{$sth}){
+     push(@pages,$pg->[0]);
+  }
+  @pages=(@pages,keys (%BuildinPages));
   return @pages;
   # need to print log
 }
