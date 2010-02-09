@@ -99,7 +99,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %KeptRevisions %UserCookie %SetCookie %UserData %IndexHash %Translate
   %LinkIndex $InterSiteInit $SaveUrlIndex $SaveNumUrlIndex $MainPage
-  $OpenPageName @KeptList @IndexList $IndexInit $TableMode
+  $OpenPageName @IndexList $IndexInit $TableMode
   $q $Now $UserID $TimeZoneOffset $ScriptName $BrowseCode $OtherCode
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
   $ConfigError $LangError $UploadPattern $LocalTree
@@ -1326,7 +1326,7 @@ sub DoRandom {
 
 sub DoHistory {
   my ($id) = @_;
-  my ($html, $canEdit, $row, $newText,$Page,$Text);
+  my ($html, $canEdit, $row, $newText);
 
   
   &BuildRuleStack($id);
@@ -1339,10 +1339,7 @@ sub DoHistory {
   }
   &OpenDefaultPage($id);
 
-  $Page=\%{$Pages{$id}->{'page'}};
-  $Text=\%{$Pages{$id}->{'text'}};
-
-  $newText = $$Text{'text'};
+  $newText = $Pages{$id}->{'text'}->{'text'};
   $canEdit = 0;
   $canEdit = &UserCanEdit($id) if ($HistoryEdit);
   if ($UseDiff) {
@@ -1357,12 +1354,9 @@ EOF
   }
   $html="";
   if(!$UseDBI) {
-	$html = &GetHistoryLine($id, $$Page{'text_default'}, $canEdit, $row++);
+	$html = &GetHistoryLine($id, $Pages{$id}->{'page'}->{'text_default'}, $canEdit, $row++);
   }
   &OpenKeptRevisions($id,'text_default');
-
-  $Page=\%{$Pages{$id}->{'page'}};
-  $Text=\%{$Pages{$id}->{'text'}};
 
   foreach (reverse sort {$a <=> $b} keys %KeptRevisions) {
     next if ($_ eq ""); # (needed?)
@@ -3610,18 +3604,19 @@ sub ExpireKeepFile {
 sub OpenKeptList {
   my ($fname, $data);
 
-  @KeptList = ();
+  my @KeptList = ();
   $fname = &KeepFileName();
   return if (!(-f $fname));
   $data = &ReadFileOrDie($fname);
   @KeptList = split(/$FS1/, $data, -1); # -1 keeps trailing null fields
+  return @KeptList;
 }
 sub OpenKeptListDB {
   my ($name) = @_; # Name of section
   my ($fname, $data, %sections,%texts,$sth);
   my $pagedb =(split(/\//,$PageDir))[-1];
   my ($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
-        $summary,$text,$minor,$newauthor);
+        $summary,$text,$minor,$newauthor,@KeptList);
 
   @KeptList = ();
 
@@ -3652,21 +3647,23 @@ sub OpenKeptListDB {
         $KeptList[$revision] =join($FS2, %sections);
      }
   }
+  return @KeptList;
 }
 
 sub OpenKeptRevisions {
-  my ($name) = @_; # Name of section
-  my ($fname, $data, %tempSection);
+  my ($id,$name) = @_; # Name of section
+  my ($fname, $data, %tempSection,@KeptList,$rev);
   if($UseDBI){
-	&OpenKeptListDB();
+	@KeptList=&OpenKeptListDB();
   }else{
-        &OpenKeptList();
+        @KeptList=&OpenKeptList();
   }
   %KeptRevisions = ();
-  foreach (@KeptList) {
-    %tempSection = split(/$FS2/, $_, -1);
+  foreach $rev (@KeptList) {
+    next if($rev eq '');
+    %tempSection = split(/$FS2/, $rev, -1);
     next if ($tempSection{'name'} ne $name);
-    $KeptRevisions{$tempSection{'revision'}} = $_;
+    $KeptRevisions{$tempSection{'revision'}} = $rev;
   }
 }
 sub LoadUserDataDB {
@@ -4087,7 +4084,7 @@ sub GenerateAllPagesListDB {
   foreach $pg (@{$sth}){
      push(@pages,$pg->[0]);
   }
-  @pages=(@pages,keys (%BuildinPages));
+  @pages=sort (@pages,keys (%BuildinPages));
   return @pages;
   # need to print log
 }
@@ -4434,12 +4431,12 @@ sub DoEdit {
   $revision = &GetParam('revision', '');
   $revision =~ s/\D//g; # Remove non-numeric chars
   if ($revision ne '') {
-    &OpenKeptRevisions('text_default');
+    &OpenKeptRevisions($id,'text_default');
     if (!defined($KeptRevisions{$revision})) {
       $revision = '';
       # Consider better solution like error message?
     } else {
-      &OpenKeptRevision($revision);
+      &OpenKeptRevision($id,$revision);
       $header = Ts('Editing revision %s of ', $revision ) . $id;
     }
   }
@@ -5622,7 +5619,7 @@ sub UpdateDiffs {
   }
   &SetPageCache('diff_default_minor', $editDiff);
   if ($isEdit || !$newAuthor) {
-    &OpenKeptRevisions('text_default');
+    &OpenKeptRevisions($id,'text_default');
   }
   if (!$isEdit) {
     &SetPageCache('diff_default_major', "1");

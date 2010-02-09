@@ -275,6 +275,7 @@ $BuildinPages{"atom/menu/HabitatMenu"}="* 关于Habitat
 ** [http://wenq.org/habitat/index.cgi?Habitat/Markup Habitat排版语言]
 ** [http://wenq.org/habitat/index.cgi?Habitat/NewSyntax 扩展语法]
 * 下载安装
+** [http://sourceforge.net/projects/huc/files/ 浏览所有下载文件]
 ** [http://wenq.org/habitat/index.cgi?Habitat/Download 下载Habitat]
 ** [http://wenq.org/habitat/index.cgi?Habitat/Install 如何安装]
 ** [http://wenq.org/habitat/index.cgi?Habitat/Register 注册您的网站]
@@ -290,6 +291,7 @@ $BuildinPages{"atom/menu/HabitatMenu"}="* 关于Habitat
 ** [http://wenq.org/habitat/index.cgi?Dev/Bugs 报告Bug]
 ** [http://wenq.org/habitat/index.cgi?Dev/Translations 翻译和本地化]
 ** [http://wenq.org/habitat/index.cgi?Dev/Plugins 贡献插件]
+** [http://huc.svn.sourceforge.net/viewvc/huc/trunk/habitat/ 浏览代码SVN]
 ** ----------
 ** [http://wenq.org/habitat/index.cgi?Dev/Maillist 邮件列表]
 ** [http://wenq.org/habitat/index.cgi?Dev/Donation 捐款支持]

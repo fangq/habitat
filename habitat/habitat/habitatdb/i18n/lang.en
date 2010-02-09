@@ -311,6 +311,7 @@ $BuildinPages{"atom/menu/HabitatMenu"}="* About Habitat
 ** [http://wenq.org/habitat/index.cgi?Habitat/Markup Habitat Wiki Format]
 ** [http://wenq.org/habitat/index.cgi?Habitat/NewSyntax Advanced Features]
 * Download
+** [http://sourceforge.net/projects/huc/files/ Browse All Packages]
 ** [http://wenq.org/habitat/index.cgi?Habitat/Download Download Habitat]
 ** [http://wenq.org/habitat/index.cgi?Habitat/Install Installation]
 ** [http://wenq.org/habitat/index.cgi?Habitat/Register Register Your Copy]
@@ -326,6 +327,7 @@ $BuildinPages{"atom/menu/HabitatMenu"}="* About Habitat
 ** [http://wenq.org/habitat/index.cgi?Dev/Bugs Report Bugs]
 ** [http://wenq.org/habitat/index.cgi?Dev/Translations Translations]
 ** [http://wenq.org/habitat/index.cgi?Dev/Plugins Contribute Plugins]
+** [http://huc.svn.sourceforge.net/viewvc/huc/trunk/habitat/ Browse Source SVN]
 ** ----------
 ** [http://wenq.org/habitat/index.cgi?Dev/Maillist Mailing Lists]
 ** [http://wenq.org/habitat/index.cgi?Dev/Donation Support Habitat]
