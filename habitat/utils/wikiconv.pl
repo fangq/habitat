@@ -12,7 +12,11 @@ $OpenPageName $FS $FS1 $FS2 $FS3 $FS4 $q  $UsePerlDiff
 %KeptRevisions $NewFS %Translate $Now $UserID $NewText
 $UCS2Str $UCS2Num $cvUTF8ToUCS2);
 
-$DataDir     = "./wiki2db"; # Main wiki directory
+if(@ARGV>=1){
+   $DataDir     = $ARGV[1]; # Main wiki directory
+}else{
+   $DataDir     = "./wiki2db"; # Main wiki directory
+}
 $PageDir     = "$DataDir/page";     # Stores page data
 $KeepDir     = "$DataDir/keep";     # Stores kept (old) page data
 $RcFile      = "$DataDir/rclog";    # New RecentChanges logfile
