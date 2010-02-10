@@ -181,7 +181,7 @@ $UseDBI	=1;
 $DBName="dbi:SQLite:dbname=db/habitatdb.db";
 $DBUser="";
 $DBPass="";
-%DBErr={RaiseError=>0,PrintError=>1};
+%DBErr=(RaiseError=>0,PrintError=>1);
 
 $UsePerlDiff  = 1;
 $UseActivation= 0;
