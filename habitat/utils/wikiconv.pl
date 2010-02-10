@@ -365,7 +365,7 @@ sub GetDiff {
 }
 
 sub PrintPageSQL{
-   my ($id,$p,$s,$t,$tx,$rev)=@_;$tx='';
+   my ($id,$p,$s,$t,$tx,$rev)=@_;
    print <<EESQL;
 INSERT INTO "page" VALUES('$id',3,'$$s{'username'}',$rev,$$p{'tscreate'},$$s{'ts'},
 '$$s{'ip'}','$$s{'host'}','$$t{'summary'}','$tx',$$t{'minor'},$$t{'newauthor'},'$$s{'id'}',NULL);
@@ -420,7 +420,7 @@ sub DumpSQL{
 	}
 	$content=$$Text{'text'};
 	$content=~ s/'/''/g;
-#        PrintPageSQL($page,$Page,$Section,$Text,$content,$rev);
+        PrintPageSQL($page,$Page,$Section,$Text,$content,$rev);
   }
 }
 
