@@ -163,7 +163,11 @@ $EmailFile   = "$DataDir/watch";   # Email notification lists
   ,"_BUG\$","plugin/wiki2bugzilla/bug.postedit"
   ,"_TODO\$","plugin/wiki2bugzilla/todo.postedit"
   ,"_TASK\$","plugin/wiki2bugzilla/task.postedit");
-
+%Permissions=("$DiscussPage\$","ANONY"
+  ,"_BUG\$","ANONY"
+  ,"_TODO\$","ANONY"
+  ,"_TASK\$","ANONY"
+);
 
 $PageEmbed    = 1;      # 1 = {{page|name}} format
 $MaxEmbedDepth= 10;    # maximum depth for page embedding
@@ -174,7 +178,11 @@ $UseCaptcha   = 1;    # flag to enable captcha
 $CaptchaKey = pack("H16","09AB1F28916C42DA");
 
 $UseDBI	=1;
-$DBName="db/habitatdb.db";
+$DBName="dbi:SQLite:dbname=db/habitatdb.db";
+$DBUser="";
+$DBPass="";
+%DBErr={RaiseError=>0,PrintError=>1};
+
 $UsePerlDiff  = 1;
 $UseActivation= 0;
 
