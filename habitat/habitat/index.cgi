@@ -2014,10 +2014,12 @@ sub ApplyRegExp {
   my ($name);
 
   foreach $name (keys %$namespace){
-        if($id =~ m/$name/ && $$namespace{$name} ne ""){
+     if($$namespace{$name} ne ""){
+        if($id =~ m/$name/){
                 $pageText=&ApplyRegExpRules($$namespace{$name}, $pageText, 0);
                 last; # find the first rule match the name pattern, apply the rules, then skip the rest
         }
+     }
   }
   if(@$pagepath){
         $pageText=&ApplyRegExpRules(join('',@$pagepath), $pageText, 0);
@@ -2496,8 +2498,7 @@ sub ApplyRegExpRules {
   @rulelist=split(/\n/,$rules);
   $text = $origText;
 
-  foreach $line (@rulelist)
-  {
+  foreach $line (@rulelist){
        $line =~ s/[\r\n]$//;
        $line =~ s/^#.*$//g;
        $line =~ s/([^\\])#.*$/$1/g; # remove comments
@@ -2524,36 +2525,32 @@ sub ApplyRegExpRules {
                 $text=join("\n",@newtext);
                 next;
        }
-
     if($line =~ /(.*[^\\])\/(.*[^\\])(\/([mgi])){0,1}$/) {
        $opt="";
        $from=$1;
        $to=$2;
+if(0){
        if($from =~ /(.*[^\\])\/(.*)/){
 		$opt=$to;
 		$from=$1;
 		$to=$2;
-       }
-       elsif($to =~ /(.*[^\\])\/(.*)/){
+       }elsif($to =~ /(.*[^\\])\/(.*)/){
                 $from=$1;
                 $to=$2;
        }
-
+}
        $to =~ s/\\\//\//g;
        $to =~ s/\\\$/\$/g;
        $to =~ s/\\N/\n/g;
 
        if($from eq "^" || $from eq "\$"){
 	       $text =~ s/$from/$to/;
-       }
-       elsif($to =~ /\\([0-9])/){
+       }elsif($to =~ /\\([0-9])/){
                $text =~ s/$from/$to/geo;
-       }
-       else {
+       }else {
 		if($opt eq "m"){
 			$text =~ s/$from/$to/mg;
-		}
-		elsif($opt eq "g" || $opt eq ""){
+		}elsif($opt eq "g" || $opt eq ""){
 			$text =~ s/$from/$to/g;
 		}
 	}
@@ -7033,15 +7030,8 @@ sub DoTrimUsers {
 sub UrlEncode {
   my $str = shift;
   return '' unless $str;
-  my @letters = split(//, $str);
-  my @safe = ('a' .. 'z', 'A' .. 'Z', '0' .. '9', '-', '_', '.', '!', '~', '*', "'", '(', ')', '#','=','&','\/');
-  foreach my $letter (@letters) {
-    my $pattern = quotemeta($letter);
-    if (not grep(/$pattern/, @safe)) {
-      $letter = sprintf("%%%02x", ord($letter));
-    }
-  }
-  return join('', @letters);
+  $str=~s/([^-_.*~!#=&\/A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
+  return $str;
 }
 
 sub ReadKeyFromPage {
