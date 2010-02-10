@@ -1,5 +1,5 @@
 = 欢迎使用 Habitat 个人资讯管理平台 =
-
+{{atom/menu/HabitatMenu}}
 <toc>
 == # 什么是Habitat ==
 
@@ -11,50 +11,13 @@ Habitat使用perl语言编写，以sqlite本地数据库作为后端，并包含
 Habitat是一个wiki引擎，也同时是一个内容管理系统(CMS)。用户可以
 使用Habitat来快速建立和维护个人网站，或者为社区提供协作式创作平台。
 
-Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在开源中文
-字体项目[http://wenq.org 文泉驿]长期使用的wiki引擎的基础上改写
-而成。新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
+Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在
+[http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]的基础上
+为开源中文字体项目[http://wenq.org 文泉驿]开发并优化的。
+新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
 多语言支持、面向对象的wiki数据结构以及可编程的扩展接口。
 
-== # 如何安装Habitat ==
-下载最新的稳定版，请浏览[https://sourceforge.net/projects/huc/files/ 这个页面]
-的文件下载列表。'''如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
-自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。'''
-
-您还可以使用SVN来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
-  svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
-如果您使用的是Windows，您需要安装 [http://tortoisesvn.net/downloads TortoiseSVN]
-来执行上面的命令。
-
-Habitat有四种运行模式：标准模式，扩展模式，精简模式，最小模式。
-其中在最小模式下，您甚至可以仅仅使用一个200kB的脚本来实现
-大多数功能。
-
-使用标准模式来运行Habitat是推荐的做法。在这种模式下，您可以使用
-sqlite来作为数据库后台引擎，这样不但可以节省大量的磁盘空间，而且
-方便检索和备份。标准模式要求perl支持以下的模块：
- DBI, DBD::Sqlite3, Text::Diff, Text::Patch, Crypt::DES
-如果您使用Ubuntu Linux，您可以通过下面的命令安装所有依赖软件：
-  sudo apt-get install perl python sqlite3 libdbd-sqlite3-perl \
-     libtext-diff-perl libtext-patch-perl libcrypt-des-perl
-其中perl和python在大多数情况下已经安装，所以上面的命令只需要
-增加大约1MB的系统空间。如果您没有系统管理员权限，您可以从Habitat
-的网站上直接下载编译好的perl模块，并放在lib子目录下。
-
-安装完成后您需要初始化数据库：
-  sqlite3 db/habitatdb.db '.read db/gendb.sql'
-为安全性考虑，我们强烈建议您重新设定管理员密码和网站Hash，您需要编辑config文件
-  nano habitatdb/config
-查找<tt>AdminPass</tt>和<tt>CaptchaKey</tt>，并把其中的字符串换成您希望使用
-的密码。其中<tt>CaptchaKey</tt>的值只能包含0123456789以及ABCDEF。
-为了保护您的密码不被其他用户看到，请将<tt>habitatdb</tt>目录移到一个www用户
-无法访问的目录下，比如<tt>/var/lib/habitatdb</tt>下面(您需要创建这个目录)。
-您需要同时将index.cgi脚本中<tt>DataDir</tt>变量对应的值设置为新目录的名字。
-
-完成设置后，您就可以测试运行Habitat了。您只需要在控制台
-运行<tt>runlocal.sh</tt>脚本即可。一个浏览器窗口将自动弹出，Habitat
-将自动载入首页页面。如果您希望使用中文作为默认语言，请在
-index.cgi文件中找到<tt>LangID="en"</tt>并将en替换为cn。
+{(Habitat/Download)}
 
 == # 如何使用Habitat ==
 

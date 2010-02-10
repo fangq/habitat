@@ -1,5 +1,5 @@
-= Welcome to Habitat - a personal content management system =
-
+= Welcome to Habitat - a portable content management system =
+{{atom/menu/HabitatMenu}}
 <toc>
 == # What is Habitat ==
 
@@ -16,72 +16,19 @@ creating, editing and managing wiki pages online. It provides
 an efficient collaborative platform for an online community 
 to develop software or resources.
 
-Habitat was written by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang] 
+Habitat was derived from [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki] 
+by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang], 
 who had also founded the collaborative font development project - 
 [http://wenq.org/en/ WenQuanYi]. Habitat is a result of 5 years 
-continuous improvement of the WenQuanYi Wiki engine. A lot of 
+continuous improvement of the WenQuanYi Wiki starting from the 
+original UseModWiki. A lot of 
 new features were added, such as the user management system,
 database backend, hierarchical wiki page namespace, multi-language
 support, object-oriented structure and interfaces for plugins.
+See [http://wenq.org/habitat/index.cgi?WhatsNew What's New] for
+a full list of the new features.
 
-== # How to install Habitat ==
-To download the latest stable release of Habitat, please browse
-the download section of [https://sourceforge.net/projects/huc/files/ this page].
-<b>If you are using Debian/Ubuntu, please download and install
-the deb package. It will set up everything for you 
-and you can find Habitat in the "Accessories" menu.</b>
-
-If you want to try out the latest code, you can 
-access it from our SVN. On Unix/Linux/Mac OS, you can use the 
-following svn command:
-  svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
-On Windows, you might want to install [http://tortoisesvn.net/downloads TortoiseSVN]
-to run the above command.
-
-You may run Habitat in 4 modes: Standard, Extended, 
-Basic and Tiny. Under "Tiny" mode, you can even get most
-things done with a SINGLE cgi script (only 200kB in size)!
-
-It is recommended to run Habitat under the Standard mode.
-With this mode, sqlite database is used as
-the backend, which not only saves a lot of disk space,
-but also makes it super fast for searching and data backup. 
-
-To use the Standard mode, you must make sure the following
-perl modules are installed on your system:
-  DBI, DBD::Sqlite3, Text::Diff, Text::Patch, Crypt::DES
-If you are running a Debian/Ubuntu desktop, you can install all the 
-dependencies using the following command:
-  sudo apt-get install perl python sqlite3 libdbd-sqlite3-perl \
-     libtext-diff-perl libtext-patch-perl libcrypt-des-perl
-In most cases, perl and python have already been installed. So, the 
-above command only adds about 1M space. If you do not have 
-permission to install these modules, you can download the pre-compiled 
-modules from our website. Extract the downloaded modules
-into a subfolder called "lib" under the Habitat main directory.
-
-The next step is to initialize database, please run the 
-following command from Habitat's main folder:
-  sqlite3 db/habitatdb.db '.read db/gendb.sql'
-For safety reasons, we strongly suggest you setting your own
-administrator password and site hash. To do so, you need
-to edit a global config file with command:
-  nano habitatdb/config
-search for <tt>AdminPass</tt> and <tt>CaptchaKey</tt>, replace the values 
-in the quotations to whatever password you prefer. Note,
-<tt>CaptchaKey</tt> must be a 16digit hex number. You should
-also consider moving the <tt>habitatdb</tt> directory to a safe place to 
-avoid direct exposing of the <tt>config</tt> file. A suggested place is 
-<tt>/var/lib/habitatdb/</tt>. Remember to update the value for <tt>DataDir</tt>
-variable at the beginning of index.cgi if you have moved the <tt>habitatdb</tt> folder.
-
-Now it is time to test Habitat. Open a terminal, and
-navigate to the Habitat main folder, and run
- ./runlocal.sh
-A browser window will pop-up, and the home page will be displayed.
-If you prefer to use Chinese (or other languages) as the default 
-language, edit "<tt>index.cgi</tt>", search for <tt>LangID="en"</tt>, and
-replace en to cn (or other language codes).
+{(Habitat/Download)}
 
 == # How to use Habitat ==
 
@@ -101,7 +48,7 @@ To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit 
 link on the top. Habitat supports many common Wiki markup
 rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
 or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[Local:HabitatTest HabitatTest] and [Local:HabitatNewTest HabitatNewTest]
+[Local:Habitat/Markup Markup Format] and [Local:Habitat/NewSyntax NewSyntax]
 pages for more details about formatting.
 
 A new feature of Habitat is the support of hierarchical pages.
