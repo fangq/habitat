@@ -62,6 +62,7 @@ use DBI;
 use Crypt::DES;
 use Text::Diff;
 use Text::Patch;
+#use diagnostics;
 
 no strict 'refs';
 
@@ -102,9 +103,9 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $OpenPageName @IndexList $IndexInit $TableMode
   $q $Now $UserID $TimeZoneOffset $ScriptName $BrowseCode $OtherCode
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
-  $ConfigError $LangError $UploadPattern $LocalTree
+  $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
-  $dbh $DBName $UseDBI $UsePerlDiff $UseActivation);
+  $dbh $DBName $DBUser $DBPass %DBErr $UseDBI $UsePerlDiff $UseActivation);
 
 
 # == Configuration =====================================================
@@ -404,10 +405,9 @@ sub InitLinkPatterns {
 }
 
 sub InitWikiEnv {
-   &BuildNameSpaceRules();
    if($UseDBI){
-     if(-f $DBName){
-       $dbh=DBI->connect("dbi:SQLite:dbname=$DBName","","");
+     if($DBName ne ''){
+       $dbh=DBI->connect($DBName,$DBUser,$DBPass,\%DBErr);
      }else{
        $ConfigError .= "database $DBName does not exist";
      }
@@ -538,6 +538,7 @@ sub InitRequest {
     return 0;
   }
   &InitCookie(); # Reads in user data
+  &BuildNameSpaceRules();
   return 1;
 }
 
@@ -3796,12 +3797,15 @@ sub ValidIdOrDie {
 
 sub UserCanEdit {
   my ($id, $deepCheck) = @_;
+  my ($permit);
+
   if($id=~/\/\./){
     return 0 if (! &UserIsAdmin()); # Requires more privledges
   }
-#  if($id=~/$DiscussSuffix$/||$id=~/_TODO$/||$id=~/_BUG$/||$id=~/_TASK$/||$id eq "SandBox"){
-#	return 1;
-#  }
+  $permit=ReadPagePermissions($id,\%Permissions);
+  if($permit eq "ANONY"){
+	return 1;
+  }
 
   # Optimized for the "everyone can edit" case (don't check passwords)
   if (($id ne "") && (IsPageLocked($id))) {
@@ -5142,7 +5146,7 @@ sub SaveUserDataDB {
   $sth->execute($UserID,$UserData{'username'},$encpass,$UserData{'randkey'},$adminhash,
       $UserData{'lang'},$UserData{'email'},$UserData{'param'},
       $UserData{'createtime'},$UserData{'createip'},$UserData{'tzoffset'},$UserData{'pagecreate'},
-      $UserData{'pagemodify'},$UserData{'stylesheet'});
+      $UserData{'pagemodify'},$UserData{'stylesheet'}) or die($DBI::errstr);
   if($isnewuser && $UseActivation){
 	&SendRegMail();
   }
@@ -7096,6 +7100,18 @@ sub ReadRawWikiPage {
     %localText = split(/$FS3/, $localSection{'data'}, -1);
     $TextCache{$id}=$localText{'text'};
     return $localText{'text'}."\n";
+}
+
+sub ReadPagePermissions {
+   my ($id,$perm)=@_;
+   my ($pat);
+
+   foreach $pat (keys %$perm){
+        if($id =~ m/$pat/ && $$perm{$pat} ne ""){
+             return $$perm{$pat};
+       	}
+   }
+   return "";
 }
 
 sub ReadNameSpaceRules {
