@@ -170,6 +170,10 @@ $EmailFile   = "$DataDir/watch";   # Email notification lists
 );
 %DBPrefix=("$DiscussPage\$","talk");
 
+%ExtViewer=("^test/Uni[0-9A-F]{4,5}\$","test/UnicodeViewer");
+%ExtEditor=();
+
+
 $PageEmbed    = 1;      # 1 = {{page|name}} format
 $MaxEmbedDepth= 10;    # maximum depth for page embedding
 $IsPrintTree  = 1;    # print tree for subpages
@@ -274,6 +278,37 @@ class HabitatWikiPage{
       HabitatWikiPage(char *pagename);
       void previewer();
 };';
+
+$BuildinPages{"test/Uni8888"}='';
+
+$BuildinPages{"test/UnicodeViewer"}='<html>
+<script type="text/javascript">
+ function getunicode(){
+     var parts = location.href.split("#");
+     var glyphpath = parts[parts.length-1];
+     try {
+	 glyphpath = decodeURIComponent(glyphpath);
+     } catch(e) {;}
+     if(parts.length>1) {
+	var hex=glyphpath.replace(/.*Uni([0-9A-Fa-f]+)$/,"$1");
+	var val=parseInt(hex,16);
+        glyphpath=String.fromCharCode(val);
+	document.getElementById("unititle").innerHTML="UNICODE:"+hex+"&raquo;"+glyphpath;
+	var str="";
+	for(i=-16;i<=16;i++){
+	     if(i==0)
+		str+="<&#"+(val+i)+";>";
+	     else
+		str+="<a href=\"?test/Uni"+(val+i).toString(16).toUpperCase()+"\">&#"+(val+i)+";</a>";
+	}
+	document.getElementById("uniblock").innerHTML=str;
+     }
+ };
+ window.onload = getunicode;
+</script>
+<h2 id="unititle"></h2>
+<p id="uniblock" style="font-size:20px"></h2>
+</html>';
 
 $BuildinPages{"test/demo1"}='== # Embedding Content ==
 This text comes from the embedded page.';

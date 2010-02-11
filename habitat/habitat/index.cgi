@@ -105,7 +105,8 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
-  $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix $UseDBI $UsePerlDiff $UseActivation);
+  $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix $UseDBI $UsePerlDiff 
+  %ExtViewer %ExtEditor $UseActivation);
 
 
 # == Configuration =====================================================
@@ -738,13 +739,19 @@ sub PatchPage{
 
 sub BrowsePage {
   my ($id) = @_;
-  my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept);
+  my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept, $extviewer);
   my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr);
   my ($tmpstr,$tmplang,$Page,$Text);
   my $contentlen;
   my $pagehtml;
   my @vv;
   
+  $extviewer=ReadPagePermissions($id,\%ExtViewer);
+  if($extviewer ne ''){
+      &ReBrowsePage("$extviewer#$id", "", 0);
+      return;
+  }
+
   &OpenDefaultPage($id);
 
   $openKept = 0;
@@ -4409,7 +4416,7 @@ sub DoEdit {
   my ($id, $isConflict, $oldTime, $newText, $preview) = @_;
   my ($header, $editRows, $editCols, $userName, $revision, $oldText);
   my ($summary, $isEdit, $pageTime);
-  my ($pagehash,%pagetype,$kstr,$kid,$noeditrule);
+  my ($pagehash,%pagetype,$kstr,$kid,$noeditrule,$exteditor);
   my @vv;
 
   if ($FreeLinks) {
@@ -4428,6 +4435,11 @@ sub DoEdit {
     print "</div>";
     print &GetCommonFooter();
     return;
+  }
+  $exteditor=ReadPagePermissions($id,\%ExtEditor);
+  if($exteditor ne ''){
+      &ReBrowsePage("$exteditor#$id", "", 0);
+      return;
   }
   # Consider sending a new user-ID cookie if user does not have one
   &OpenDefaultPage($id);
