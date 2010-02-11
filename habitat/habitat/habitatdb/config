@@ -168,6 +168,7 @@ $EmailFile   = "$DataDir/watch";   # Email notification lists
   ,"_TODO\$","ANONY"
   ,"_TASK\$","ANONY"
 );
+%DBPrefix=("$DiscussPage\$","talk");
 
 $PageEmbed    = 1;      # 1 = {{page|name}} format
 $MaxEmbedDepth= 10;    # maximum depth for page embedding

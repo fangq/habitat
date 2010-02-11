@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# Habitat - a Portable Content Management System
+# Habitat - A Portable Content Management System
 #
 # by Qianqian Fang <fangq at nmr.mgh.harvard.edu>
 #
@@ -105,7 +105,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
-  $dbh $DBName $DBUser $DBPass %DBErr $UseDBI $UsePerlDiff $UseActivation);
+  $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix $UseDBI $UsePerlDiff $UseActivation);
 
 
 # == Configuration =====================================================
@@ -586,11 +586,16 @@ sub InitCookie {
     }
   }
 }
+sub GetPageDB{
+  my ($id)=@_;
+  return ReadPagePermissions($id,\%DBPrefix).(split(/\//,$PageDir))[-1];
+}
+
 sub PageExists{
   my ($id)=@_;
   return 1 if (defined $BuildinPages{$id});
   if($UseDBI){
-	my $pagedb=(split(/\//,$PageDir))[-1];
+	my $pagedb=&GetPageDB($id);
 	if($dbh eq "" || $pagedb eq ""){
 	    die(T('ERROR: database uninitialized!'));
 	}
@@ -3239,7 +3244,7 @@ sub ReadLatestPageDB{
   my @res;
   my ($pagedb, $sth,$maxversion,$pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
      $summary,$text,$minor,$newauthor,$data);
-  $pagedb=(split(/\//,$PageDir))[-1];
+  $pagedb=&GetPageDB($id);
 
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -3274,7 +3279,7 @@ sub OpenPageDB {
   if ($OpenPageName eq $id) {
     return;
   }
-  $pagedb=(split(/\//,$PageDir))[-1];
+  $pagedb=&GetPageDB($id);
 
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -3419,7 +3424,7 @@ sub SavePageDB{
   $Section=\%{$Pages{$name}->{'section'}};
   $Text=\%{$Pages{$name}->{'text'}};
 
-  $pagedb=(split(/\//,$PageDir))[-1];
+  $pagedb=&GetPageDB($name);
 
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -3612,7 +3617,7 @@ sub OpenKeptList {
 sub OpenKeptListDB {
   my ($name) = @_; # Name of section
   my ($fname, $data, %sections,%texts,$sth);
-  my $pagedb =(split(/\//,$PageDir))[-1];
+  my $pagedb =&GetPageDB($OpenPageName);
   my ($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
         $summary,$text,$minor,$newauthor,@KeptList);
 
@@ -3734,7 +3739,7 @@ sub UserDataFilename {
 sub ReportError {
   my ($errmsg) = @_;
 
-  print $q->header, "<H2>", $errmsg, "</H2>", $q->end_html;
+  print $q->header, "<h2>", $errmsg, "</h2>", $q->end_html;
 }
 
 sub ValidId {
@@ -4076,7 +4081,7 @@ sub UpdateHtmlCache {
 }
 sub GenerateAllPagesListDB {
    my @pages;
-   my $pagedb =(split(/\//,$PageDir))[-1];
+   my $pagedb =GetParam("dbprefix","").(split(/\//,$PageDir))[-1];
    my ($sth,$pg);
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -6396,7 +6401,7 @@ sub DeletePage {
     return;
   }
   if($UseDBI){
-        my $pagedb=(split(/\//,$PageDir))[-1];
+        my $pagedb=&GetPageDB($page);
 	my $rclogdb=(split(/\//,$RcFile))[-1];
         if($dbh eq "" || $pagedb eq "" || $rclogdb eq ""){
             die(T('ERROR: database uninitialized!'));
@@ -6634,7 +6639,7 @@ sub RenamePage {
         if($dbh eq ""){
             die(T('ERROR: database uninitialized!'));
         }
-        $tbname=(split(/\//,$PageDir))[-1];
+        $tbname=&GetPageDB($old);
         $sth=$dbh->prepare("update $tbname set id='$new' where id='$old'");
         $sth->execute();
 
@@ -7064,7 +7069,7 @@ sub ReadRawWikiPage {
     	return $Pages{$id}->{'text'}->{'text'};
     }
     if($UseDBI){
-	my  $pagedb=(split(/\//,$PageDir))[-1];
+	my  $pagedb=&GetPageDB($id);
 	my ($sth,$maxversion,$text);
 
 	if($dbh eq "" || $pagedb eq ""){
