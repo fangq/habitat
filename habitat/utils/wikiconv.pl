@@ -13,7 +13,7 @@ $OpenPageName $FS $FS1 $FS2 $FS3 $FS4 $q  $UsePerlDiff
 $UCS2Str $UCS2Num $cvUTF8ToUCS2);
 
 if(@ARGV>=1){
-   $DataDir     = $ARGV[1]; # Main wiki directory
+   $DataDir     = $ARGV[0]; # Main wiki directory
 }else{
    $DataDir     = "./wiki2db"; # Main wiki directory
 }
@@ -376,11 +376,12 @@ INSERT INTO "page" VALUES('$id',3,'$$s{'username'}',$rev,$$p{'tscreate'},$$s{'ts
 EESQL
 }
 sub DumpSQL{
-  my ($page,$Page,$Section,$Text,@pagelist,%sect,$bb,
-      %data,$count,$oldtext,$rev,$dif,$diffpatch, $content);
+  my ($page,$Page,$Section,$Text,@pagelist,%sect,$bb,@revnum,$revision,
+      %data,$count,$oldtext,$rev,$dif,$diffpatch, $content, $items);
   @pagelist=GenerateAllPagesList();
 #print(join("\n",@pagelist));
 #exit;
+  $items=0;
   foreach $page (@pagelist){
         BuildUCScodeNew($page);
         OpenPage($page);
@@ -396,9 +397,12 @@ sub DumpSQL{
 	if($$Page{'version'}!=3){
 	   next;
 	}
-	foreach (sort {$a <=> $b} keys %KeptRevisions) {
-	  next if ($_ eq ""); # (needed?)
-          %sect = split(/$FS2/, $KeptRevisions{$_}, -1);
+        @revnum=sort {$a <=> $b} keys %KeptRevisions;
+        $items+=@revnum+1;
+
+	foreach my $revision (@revnum) {
+	  next if ($revision eq ""); # (needed?)
+          %sect = split(/$FS2/, $KeptRevisions{$revision}, -1);
           %data = split(/$FS3/, $sect{'data'}, -1);
 	  $count++;
 	  if($count>1){
@@ -410,7 +414,7 @@ sub DumpSQL{
 	          	$diffpatch.="$FS4".$dif;
 		}
                 $oldtext=$data{'text'};
-		next;
+		next if $revision<$revnum[-1];
 	     }
 	     if($diffpatch ne ''){
 	     	$data{'text'}=$diffpatch;
@@ -426,7 +430,7 @@ sub DumpSQL{
 	$content=~ s/'/''/g;
         PrintPageSQL($page,$Page,$Section,$Text,$content,$rev);
   }
+#  print "dumped $items records\n";
 }
 
 &DumpSQL();
-

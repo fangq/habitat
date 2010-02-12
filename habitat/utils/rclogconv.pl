@@ -51,7 +51,7 @@ EEOFRC
   }
 }
 if(@ARGV >= 1){
-   ParseRCLog($ARGV[1]);
+   ParseRCLog($ARGV[0]);
 }else{
    ParseRCLog('wiki2db/rclog');
 }
