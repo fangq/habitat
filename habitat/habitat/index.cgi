@@ -408,7 +408,7 @@ sub InitLinkPatterns {
 sub InitWikiEnv {
    if($UseDBI){
      if($DBName ne ''){
-       $dbh=DBI->connect($DBName,$DBUser,$DBPass,\%DBErr);
+       $dbh=DBI->connect($DBName,$DBUser,$DBPass,\%DBErr) or die($DBI::errstr);
      }else{
        $ConfigError .= "database $DBName does not exist";
      }
@@ -893,7 +893,7 @@ sub BrowsePage {
   print $fullHtml;
   return if ($showDiff || ($revision ne '')); # Don't cache special version
   $tmplang=GetParam('lang', '');
-  return if($tmplang eq ''); # do not cache if temporary lang is set
+  return if($tmplang ne ''); # do not cache if temporary lang is set
   if($UseDBI) {
 	  &UpdateHtmlCacheDB($id, $fullHtml) if ($UseCache && ($oldId eq ''));
   }else{
@@ -2512,8 +2512,8 @@ sub ApplyRegExpRules {
 
   foreach $line (@rulelist){
        $line =~ s/[\r\n]$//;
-       $line =~ s/^#.*$//g;
-       $line =~ s/([^\\])#.*$/$1/g; # remove comments
+#       $line =~ s/^#.*$//g;
+#       $line =~ s/([^\\])#.*$/$1/g; # remove comments
        if($line eq "") {next;}
 
        if($line =~ /^GREP\s+(.*)/) {
