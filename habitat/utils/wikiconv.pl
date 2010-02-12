@@ -370,9 +370,14 @@ sub GetDiff {
 
 sub PrintPageSQL{
    my ($id,$p,$s,$t,$tx,$rev)=@_;
+   my ($summ);
+   $tx=~ s/'/''/g;
+   $summ=$$t{'summary'};
+   $summ=~ s/'/''/g;
+
    print <<EESQL;
 INSERT INTO "page" VALUES('$id',3,'$$s{'username'}',$rev,$$p{'tscreate'},$$s{'ts'},
-'$$s{'ip'}','$$s{'host'}','$$t{'summary'}','$tx',$$t{'minor'},$$t{'newauthor'},'$$s{'id'}',NULL);
+'$$s{'ip'}','$$s{'host'}','$summ','$tx',$$t{'minor'},$$t{'newauthor'},'$$s{'id'}',NULL);
 EESQL
 }
 sub DumpSQL{
