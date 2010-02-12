@@ -321,6 +321,7 @@ $BuildinPages{"test/demo3"}='== # Parent Page ==
 This text is from parient page.
 {(test/demo1)}';
 
+$BuildinPages{"atom/menu/.v0"}='-+/<hr class="menusep">';
 $BuildinPages{"atom/menu/.v1"}='^/<style type="text\/css">\
 ul.wikiullevel1{\
   margin: 0;\
@@ -348,11 +349,16 @@ ul.wikiullevel2{\
   white-space:nowrap;\
   filter:alpha(opacity=90);\
   opacity: 0.9;\
+  list-style-type: none;\
 }\
 ul.wikiullevel2 li{\
   float: none;\
   display: block;\
   margin:10px;\
+}\
+hr.menusep{\
+  width:200px;\
+  color: #aaaaaa;\
 }\
 <\/style>\
 <script type="text\/javascript" src="\/plugin\/menu\/menuscript.js"><\/script>';
