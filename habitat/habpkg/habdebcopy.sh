@@ -50,7 +50,7 @@ mv $CGIDIR/db $DATADIR
 mv $CGIDIR/habitatdb $DATADIR
 
 sed -i 's/"\.\/habitatdb"/"..\/data\/habitatdb"/' $CGIDIR/index.cgi
-sed -i 's/"db\/habitatdb\.db"/"..\/data\/db\/habitatdb\.db"/' $DATADIR/habitatdb/config
+sed -i 's/dbname=db\/habitatdb\.db"/dbname=..\/data\/db\/habitatdb\.db"/' $DATADIR/habitatdb/config
 
 
 for fn in *.desktop; do
