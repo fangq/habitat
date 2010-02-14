@@ -3,6 +3,16 @@
 Habitat Change Log:
 
 == Habitat Change Log (current) ==
+*[2010/02/12] UseModWiki database convertor debugged
+*[2010/02/11] support external editor and viewer
+*[2010/02/11] saving pages to multiple tables
+*[2010/02/10] optimization with profiling info, add UseModWiki convertor
+*[2010/02/07] support json
+*[2010/02/04] turn Page Text Section into local variables
+*[2010/02/03] usedbi for renaming pages
+*[2010/02/02] add buildin atom/menu support
+*[2010/01/31] add text::patch for fedora
+*[2010/01/30] allow buildinpages in embedding pages and add advanced test pages
 *[2010/01/29] added Makefile and generate deb package with "make deb" (v0.2.0)
 *[2010/01/28] first public release (v0.1.0)
 *[2010/01/27] import svn from niwiki.sf.net to huc.sf.net

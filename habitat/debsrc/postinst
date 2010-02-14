@@ -23,9 +23,9 @@ if [ ! -f db/habitatdb.db ]; then
    chmod a+w db/habitatdb.db
 fi
 
-sitekey=`perl -e 'print sprintf("%08X%08X",rand(0xFFFFFFFF),rand(0xFFFFFFFF))'`
-sed -i 's/^\(\s*\$CaptchaKey\s*=\s*.*\)/#\1\n\$CaptchaKey = 0;#HABSITEKEY#/' $DATADIR/habitatdb/config
-sed -i "s/0;#HABSITEKEY#/pack('H16','$sitekey');/" $DATADIR/habitatdb/config
+#sitekey=`perl -e 'print sprintf("%08X%08X",rand(0xFFFFFFFF),rand(0xFFFFFFFF))'`
+#sed -i 's/^\(\s*\$CaptchaKey\s*=\s*.*\)/#\1\n\$CaptchaKey = 0;#HABSITEKEY#/' $DATADIR/habitatdb/config
+#sed -i "s/0;#HABSITEKEY#/pack('H16','$sitekey');/" $DATADIR/habitatdb/config
 
 admpass=`perl -e "print crypt(sprintf('%08X',rand(0xFFFFFFFF)),'$sitekey')"`
 sed -i 's/^\(\s*\$AdminPass\s*=\s*.*\)/#\1\n\$AdminPass = 0;#HABADMPASS#/' $DATADIR/habitatdb/config
