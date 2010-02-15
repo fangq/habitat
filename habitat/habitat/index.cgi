@@ -5257,7 +5257,8 @@ sub DoWatchPage{
          &WriteDBItems($watchdb,'page,user',0,($id,$user));
       }
   }else{
-      die(T("action not supported"));
+      &DoLogin();
+      exit;
   }
   print &GetHeader('', T('Watch Page'), '');
   print '<div class="wikiinfo">'.Ts('Watch activated for page "%s".',$id);
@@ -6047,7 +6048,7 @@ sub DoMaintainRc {
 
 sub UserIsEditorOrError {
   if (!&UserIsEditor()) {
-    print '<p>', T('This operation is restricted to site editors only...');
+    print '<div class="wikiinfo">', T('This operation is restricted to site editors only...')."</div>";
     print &GetCommonFooter();
     return 0;
   }
@@ -6056,7 +6057,7 @@ sub UserIsEditorOrError {
 
 sub UserIsAdminOrError {
   if (!&UserIsAdmin()) {
-    print '<p>', T('This operation is restricted to administrators only...');
+    print '<div class="wikiinfo">', T('This operation is restricted to administrators only...')."</div>";
     print &GetCommonFooter();
     return 0;
   }
