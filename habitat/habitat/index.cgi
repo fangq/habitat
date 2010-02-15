@@ -417,26 +417,56 @@ sub InitWikiEnv {
    $WikiCipher = new Crypt::DES($CaptchaKey) if $UseCaptcha;
 }
 
+# get parameters before reading cookies
+sub InitParam {
+  my ($buffer,@pairs,%param,$value,$name,$pair);
+  if (length ($ENV{'QUERY_STRING'}) > 0){
+      $buffer = $ENV{'QUERY_STRING'};
+      @pairs = split(/&/, $buffer);
+      foreach $pair (@pairs){
+           ($name, $value) = split(/=/, $pair);
+           $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+           $param{$name} = $value; 
+      }
+  }
+  return %param;
+}
+
 # Simple HTML cache
 sub DoCacheBrowse {
-  my ($query, $idFile, $text);
+  my ($query, $idFile, $text, $language, %param);
 
   return 0 if (!$UseCache);
   $query = $ENV{'QUERY_STRING'};
+  %param=&InitParam();
+
   if (($query eq "") && ($ENV{'REQUEST_METHOD'} eq "GET")) {
     $query = $HomePage; # Allow caching of home page.
   }
-  if (!($query =~ /^$LinkPattern$/)) {
+  if (!($query =~ /^$LinkPattern$/) && $param{'action' ne 'browse'}) {
     if (!($FreeLinks && ($query =~ /^$FreeLinkPattern$/))) {
       return 0; # Only use cache for simple links
     }
+  }
+  if($param{'action'} eq 'browse' && ($param{'format'} eq 'json' || $param{'raw'})){
+     return 0;
+  }
+  if($param{'keywords'} ne ''){
+    $query=$param{'keywords'};
+  }
+  if($param{'action'} eq 'browse'){
+    $query=$param{'id'};
+  }
+  $language=$param{'lang'};
+  if($language eq ''){
+  	$language=$LangID;
   }
   if($UseDBI){
     my $htmldb=(split(/\//,$HtmlDir))[-1];
     if($dbh eq "" || $htmldb eq ""){
       die(T('ERROR: database uninitialized!'));
     }
-    $text=ReadDBItems($htmldb,'text','','',"id='$query'");
+    $text=ReadDBItems($htmldb,'text','','',"id='$query\[$language\]'");
     if($text ne ''){
     	print $text;
 	return 1;
@@ -741,7 +771,7 @@ sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept, $extviewer);
   my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr);
-  my ($tmpstr,$tmplang,$Page,$Text);
+  my ($tmpstr,$Page,$Text);
   my $contentlen;
   my $pagehtml;
   my @vv;
@@ -892,8 +922,7 @@ sub BrowsePage {
 
   print $fullHtml;
   return if ($showDiff || ($revision ne '')); # Don't cache special version
-  $tmplang=GetParam('lang', '');
-  return if($tmplang ne ''); # do not cache if temporary lang is set
+
   if($UseDBI) {
 	  &UpdateHtmlCacheDB($id, $fullHtml) if ($UseCache && ($oldId eq ''));
   }else{
@@ -4065,13 +4094,14 @@ sub CreatePageDirA {
 sub UpdateHtmlCacheDB {
   my ($id, $html) = @_;
   my $htmldb =(split(/\//,$HtmlDir))[-1];
-  my $sth;
+  my ($sth,$language);
+  $language=&GetParam('lang','');
 
   if($dbh eq "" || $htmldb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
   $sth=$dbh->prepare("replace into $htmldb (id,time,text) values (?,?,?)");
-  $sth->execute($id, $Now, $html);
+  $sth->execute("$id\[$language\]", $Now, $html);
   # need to print log
 }
 
