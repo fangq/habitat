@@ -3908,7 +3908,7 @@ sub UserIsEditor {
   return 0 if ($userPassword eq "");
   foreach (split(/\s+/, $EditPass)) {
     next if ($_ eq "");
-    return 1 if ($userPassword eq $_);
+    return 1 if (crypt($_,$userPassword) eq $userPassword);
   }
   return 0;
 }
@@ -4862,7 +4862,7 @@ sub DoUpdatePrefs {
       }
     }
   }
-  if(&GetLockState==1 || ((!$EditAllowed) && !&UserIsAdmin()) ){
+  if(&GetLockState==1 || ((!$EditAllowed) && !&UserIsAdmin() && !&UserIsEditor()) ){
         ErrMsg(T("Wiki read-only"),T("Error"),1);
   }
   $UserData{'email'} = &GetParam("p_email", "");
