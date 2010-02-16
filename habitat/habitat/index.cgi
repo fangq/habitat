@@ -5640,9 +5640,18 @@ sub DoPost {
   }
   
   if ($UseCache) {
-    &UnlinkHtmlCache($id); # Old cached copy is invalid
-    if ($$Page{'revision'} < 2) { # If this is a new page...
-      &NewPageCacheClear($id); # ...uncache pages linked to this one.
+    if($UseDBI){
+       my $htmldb=(split(/\//,$HtmlDir))[-1];
+       my $language=&GetParam("lang",$LangID);
+       if($dbh eq "" || $htmldb eq ""){
+	 die(T('ERROR: database uninitialized!'));
+       }
+       DeleteDBItems($htmldb,"id='$id\[$language\]'");
+    }else{
+       &UnlinkHtmlCache($id); # Old cached copy is invalid
+       if ($$Page{'revision'} < 2) { # If this is a new page...
+	 &NewPageCacheClear($id); # ...uncache pages linked to this one.
+       }
     }
   }
   if ($UseIndex && ($$Page{'revision'} == 1)) {
@@ -6446,6 +6455,8 @@ sub DeletePage {
   if($UseDBI){
         my $pagedb=&GetPageDB($page);
 	my $rclogdb=(split(/\//,$RcFile))[-1];
+	my $htmldb=(split(/\//,$HtmlDir))[-1];
+
         if($dbh eq "" || $pagedb eq "" || $rclogdb eq ""){
             die(T('ERROR: database uninitialized!'));
         }
@@ -6458,6 +6469,7 @@ sub DeletePage {
 		$res=&DeleteDBItems($pagedb,"id='$page'");
 		$res=&DeleteDBItems($rclogdb,"id='$page'") if ($doRC);
 	}
+        $res=&DeleteDBItems($htmldb,"id LIKE '$page\[%\]'");
         &WriteRcLogDB($page, GetParam("summary",""), 2, $Now, 0,
               $UserData{'username'}, $UserData{'email'},0);
 	return $res;
