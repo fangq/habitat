@@ -17,18 +17,19 @@ fi
 
 PKGNAME=$1
 
-CGIDIR=debian/var/lib/$PKGNAME/script
-DATADIR=debian/var/lib/$PKGNAME/data
-DOCDIR=debian/usr/share/doc/$PKGNAME
-I18NDIR=debian/usr/share/locale
-BINDIR=debian/usr/bin
-MENUDIR=debian/usr/share/applications
-ICONDIR=debian/usr/share/pixmaps
+ROOTDIR=debian
+CGIDIR=$ROOTDIR/var/lib/$PKGNAME/script
+DATADIR=$ROOTDIR/var/lib/$PKGNAME/data
+DOCDIR=$ROOTDIR/usr/share/doc/$PKGNAME
+I18NDIR=$ROOTDIR/usr/share/locale
+BINDIR=$ROOTDIR/usr/bin
+MENUDIR=$ROOTDIR/usr/share/applications
+ICONDIR=$ROOTDIR/usr/share/pixmaps
    
 mkdir -p $CGIDIR
 mkdir -p $DATADIR
 mkdir -p $DOCDIR
-mkdir -p debian/DEBIAN/
+mkdir -p $ROOTDIR/DEBIAN/
 mkdir -p $BINDIR
 
 for fn in *.desktop; do
@@ -38,3 +39,5 @@ done
 if [ -d pixmap ]; then
    mkdir -p $ICONDIR
 fi
+
+chmod -s -R $ROOTDIR

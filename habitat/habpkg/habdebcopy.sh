@@ -18,13 +18,14 @@ fi
 PKGNAME=$1
 VERSION=$2
 
-CGIDIR=debian/var/lib/$PKGNAME/script
-DATADIR=debian/var/lib/$PKGNAME/data
-DOCDIR=debian/usr/share/doc/$PKGNAME
-I18NDIR=debian/usr/share/locale
-BINDIR=debian/usr/bin
-MENUDIR=debian/usr/share/applications
-ICONDIR=debian/usr/share/pixmaps
+ROOTDIR=debian
+CGIDIR=$ROOTDIR/var/lib/$PKGNAME/script
+DATADIR=$ROOTDIR/var/lib/$PKGNAME/data
+DOCDIR=$ROOTDIR/usr/share/doc/$PKGNAME
+I18NDIR=$ROOTDIR/usr/share/locale
+BINDIR=$ROOTDIR/usr/bin
+MENUDIR=$ROOTDIR/usr/share/applications
+ICONDIR=$ROOTDIR/usr/share/pixmaps
 
 if [ ! -d $CGIDIR ]; then
      echo 1>&2 $CGIDIR does not exist, please run habdebmkdir.sh first
@@ -62,9 +63,9 @@ if [ -d pixmap ]; then
     cp -a pixmap/* $ICONDIR
 fi
 
-[ -d debsrc ] && cp -a debsrc/* debian/DEBIAN/
-sed -i "s/%NAME%/$PKGNAME/g"  debian/DEBIAN/*
-sed -i "s/%VERSION%/$VERSION/g"  debian/DEBIAN/*
+[ -d debsrc ] && cp -a debsrc/* $ROOTDIR/DEBIAN/
+sed -i "s/%NAME%/$PKGNAME/g"  $ROOTDIR/DEBIAN/*
+sed -i "s/%VERSION%/$VERSION/g"  $ROOTDIR/DEBIAN/*
 
 #sitekey=`perl -e 'print sprintf("%08X%08X",rand(0xFFFFFFFF),rand(0xFFFFFFFF))'`
 #sed -i 's/^\(\s*\$CaptchaKey\s*=\s*.*\)/#\1\n\$CaptchaKey = 0;#HABSITEKEY#/' $DATADIR/habitatdb/config
@@ -75,8 +76,8 @@ sed -i "s/%VERSION%/$VERSION/g"  debian/DEBIAN/*
 #sed -i "s/0;#HABADMPASS#/'$admpass';/" $DATADIR/habitatdb/config
 
 
-echo " Habitat - a wiki and a portable content management system" >>debian/DEBIAN/control
-awk '/\# What is Habitat/{dop=1;} /^$/{if(dop>0) dop++;} /./{if(dop==2) print " " $0;}' README.txt >> debian/DEBIAN/control
+echo " Habitat - a wiki and a portable content management system" >>$ROOTDIR/DEBIAN/control
+awk '/\# What is Habitat/{dop=1;} /^$/{if(dop>0) dop++;} /./{if(dop==2) print " " $0;}' README.txt >> $ROOTDIR/DEBIAN/control
 
 # install .mo files
 if [ -d i18n ]; then
@@ -89,4 +90,4 @@ if [ -d i18n ]; then
     done
 fi
 
-find debian/ -name ".svn"  | xargs rm -rf 
+find $ROOTDIR/ -name ".svn"  | xargs rm -rf 
