@@ -751,18 +751,22 @@ sub OpenDefaultPage {
 }
 
 sub PatchPage{
-  my ($text)=@_;
+  my ($text,$inlinerev)=@_;
   if($text=~/$FS4/){
  	my @patches=split(/$FS4/,$text);
 	my $basetext=$patches[0];
-	my $basesec=$Pages{$OpenPageName}->{'section'}->{'revision'};
+	#my $basesec=$Pages{$OpenPageName}->{'section'}->{'revision'};
+	if($inlinerev ne '' && $inlinerev<$#patches){
+		delete @patches[$inlinerev..$#patches];
+	}
 	for(my $i=1;$i<@patches;$i++){
 		if($patches[$i] ne ""){
 			$basetext=PatchText($basetext,$patches[$i],0);
-			$Pages{$OpenPageName}->{'section'}->{'revision'}=$basesec+$i;
+			#$Pages{$OpenPageName}->{'section'}->{'revision'}=$basesec+$i;
 		}
 	}
 	$text=$basetext;
+	return ($text,$#patches);
   }
   return $text;
 }
@@ -770,7 +774,7 @@ sub PatchPage{
 sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept, $extviewer);
-  my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr);
+  my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr,$inlinerev);
   my ($tmpstr,$Page,$Text);
   my $contentlen;
   my $pagehtml;
@@ -786,15 +790,19 @@ sub BrowsePage {
 
   $openKept = 0;
   $revision = &GetParam('revision', '');
+  if($revision=~/(\d+)\.(\d+)/){
+	$revision=$1;
+  	$inlinerev=$2;
+  }
   $revision =~ s/\D//g; # Remove non-numeric chars
   $goodRevision = $revision; # Non-blank only if exists
   if ($revision ne '') {
-    &OpenKeptRevisions($id,'text_default');
+    &OpenKeptRevisions($id,'text_default',$inlinerev>0);
     $openKept = 1;
     if (!defined($KeptRevisions{$revision})) {
       $goodRevision = '';
     } else {
-      &OpenKeptRevision($id,$revision);
+      &OpenKeptRevision($id,$revision,$inlinerev);
     }
   }
   $Page=\%{$Pages{$id}->{'page'}};
@@ -1432,7 +1440,7 @@ sub GetMaskedHost {
 
 sub GetHistoryLine {
   my ($id, $section, $canEdit, $row) = @_;
-  my ($html, $expirets, $rev, $summary, $host, $user, $uid, $ts, $minor);
+  my ($html, $expirets, $rev, $summary, $host, $user, $uid, $ts, $minor,$subver);
   my (%sect, %revtext);
 
   %sect = split(/$FS2/, $section, -1);
@@ -1462,14 +1470,23 @@ sub GetHistoryLine {
              . "name='diffrevision' value='$rev' $c1/> ";
     $html .= "<input type='radio' name='revision' value='$rev' $c2/></td><td>";
   }
+  $subver=$sect{'inlinerev'};
   if (0 == $row) { # current revision
     $html .= &GetPageLinkText($id, Ts('Revision %s', $rev)) . ' ';
+    for(my $i=1;$i<=$subver;$i++){
+       $html .= &GetOldPageLink('browse', $id, $rev.".$i",
+                             Ts('[%s]', $rev.".$i")) . ' ';
+    }
     if ($canEdit) {
       $html .= &GetEditLink($id, T('(edit)')) . ' ';
     }
   } else {
     $html .= &GetOldPageLink('browse', $id, $rev,
                              Ts('Revision %s', $rev)) . ' ';
+    for(my $i=1;$i<=$subver;$i++){
+       $html .= &GetOldPageLink('browse', $id, $rev.".$i",
+                             Ts('[%s]', $rev.".$i")) . ' ';
+    }
     if ($canEdit) {
       $html .= &GetOldPageLink('edit', $id, $rev, T('(edit)')) . ' ';
     }
@@ -3432,7 +3449,7 @@ sub OpenDefaultText {
 
 # Called after OpenKeptRevisions
 sub OpenKeptRevision {
-  my ($id,$revision) = @_;
+  my ($id,$revision,$inlinerev) = @_;
   my ($Text,$Section);
 
   $Section=\%{$Pages{$id}->{'section'}};
@@ -3440,7 +3457,7 @@ sub OpenKeptRevision {
 
   %$Section = split(/$FS2/, $KeptRevisions{$revision}, -1);
   %$Text = split(/$FS3/, $$Section{'data'}, -1);
-  $$Text{'text'}=&PatchPage($$Text{'text'});
+  ($$Text{'text'},$inlinerev)=&PatchPage($$Text{'text'},$inlinerev);
 }
 
 sub GetPageCache {
@@ -3651,11 +3668,11 @@ sub OpenKeptList {
   return @KeptList;
 }
 sub OpenKeptListDB {
-  my ($name) = @_; # Name of section
+  my ($nopatch) = @_; # Name of section
   my ($fname, $data, %sections,%texts,$sth);
   my $pagedb =&GetPageDB($OpenPageName);
   my ($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
-        $summary,$text,$minor,$newauthor,@KeptList);
+        $summary,$text,$minor,$newauthor,@KeptList,$inlinerev);
 
   @KeptList = ();
 
@@ -3667,7 +3684,11 @@ sub OpenKeptListDB {
 	if($pgid eq "" or $revision eq "") {next;}
 
 	%texts=();
-	$texts{'text'}=&PatchPage($text);
+	if($nopatch!=1){
+	    ($texts{'text'},$inlinerev)=&PatchPage($text);
+	}else{
+	    $texts{'text'}=$text;
+	}
 	$texts{'minor'}=$minor;
 	$texts{'newauthor'}=$newauthor;
 	$texts{'summary'}=$summary;
@@ -3676,6 +3697,7 @@ sub OpenKeptListDB {
 	$sections{'name'} = "text_default";
 	$sections{'version'} = $version;
 	$sections{'revision'} = $revision;
+	$sections{'inlinerev'} = $inlinerev if ($inlinerev ne '');
 	$sections{'tscreate'} = $tcreate;
 	$sections{'ts'} = $tupdate;
 	$sections{'ip'} = $ip;
@@ -3690,10 +3712,10 @@ sub OpenKeptListDB {
 }
 
 sub OpenKeptRevisions {
-  my ($id,$name) = @_; # Name of section
+  my ($id,$name,$nopatch) = @_; # Name of section
   my ($fname, $data, %tempSection,@KeptList,$rev);
   if($UseDBI){
-	@KeptList=&OpenKeptListDB();
+	@KeptList=&OpenKeptListDB($nopatch);
   }else{
         @KeptList=&OpenKeptList();
   }
