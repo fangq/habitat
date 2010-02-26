@@ -405,6 +405,8 @@ sub DumpSQL{
         @revnum=sort {$a <=> $b} keys %KeptRevisions;
         $items+=@revnum+1;
 
+        $KeptRevisions{$revnum[-1]+1}=join(/$FS2/,%{$Pages{$page}->{'section'}});
+
 	foreach my $revision (@revnum) {
 	  next if ($revision eq ""); # (needed?)
           %sect = split(/$FS2/, $KeptRevisions{$revision}, -1);
@@ -431,9 +433,9 @@ sub DumpSQL{
 	  }
           $oldtext=$data{'text'};
 	}
-	$content=$$Text{'text'};
-	$content=~ s/'/''/g;
-        PrintPageSQL($page,$Page,$Section,$Text,$content,$rev);
+#	$content=$$Text{'text'};
+#	$content=~ s/'/''/g;
+#        PrintPageSQL($page,$Page,$Section,$Text,$content,$rev);
   }
 #  print "dumped $items records\n";
 }
