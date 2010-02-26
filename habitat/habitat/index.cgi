@@ -448,7 +448,8 @@ sub DoCacheBrowse {
       return 0; # Only use cache for simple links
     }
   }
-  if($param{'action'} eq 'browse' && ($param{'format'} eq 'json' || $param{'raw'})){
+  if($param{'action'} eq 'browse' && ($param{'format'} eq 'json' 
+     || $param{'raw'}|| $param{'revision'} || $param{'diff'} ne '')){
      return 0;
   }
   if($param{'keywords'} ne ''){
@@ -737,6 +738,7 @@ sub BuildRuleStack {
 
 sub OpenDefaultPage {
   my ($id) = @_;
+  my ($inlinerev);
   if(defined($Pages{$id}->{'text'}->{'text'})){
      return;
   }
@@ -746,7 +748,7 @@ sub OpenDefaultPage {
       &OpenPage($id);
       &OpenDefaultText($id);
   }
-  $Pages{$id}->{'text'}->{'text'}=
+  ($Pages{$id}->{'text'}->{'text'},$inlinerev)=
       &PatchPage($Pages{$id}->{'text'}->{'text'});
 }
 
@@ -757,7 +759,7 @@ sub PatchPage{
 	my $basetext=$patches[0];
 	#my $basesec=$Pages{$OpenPageName}->{'section'}->{'revision'};
 	if($inlinerev ne '' && $inlinerev<$#patches){
-		delete @patches[$inlinerev..$#patches];
+		splice(@patches, $inlinerev+1, $#patches-$inlinerev);
 	}
 	for(my $i=1;$i<@patches;$i++){
 		if($patches[$i] ne ""){
@@ -775,11 +777,11 @@ sub BrowsePage {
   my ($id) = @_;
   my ($fullHtml, $oldId, $allDiff, $showDiff, $openKept, $extviewer);
   my ($revision, $goodRevision, $diffRevision, $newText,$kfid,$kid,$kstr,$inlinerev);
-  my ($tmpstr,$Page,$Text);
+  my ($tmpstr,$Page,$Text,$fullrev);
   my $contentlen;
   my $pagehtml;
   my @vv;
-  
+
   $extviewer=ReadPagePermissions($id,\%ExtViewer);
   if($extviewer ne ''){
       &ReBrowsePage("$extviewer#$id", "", 0);
@@ -794,10 +796,11 @@ sub BrowsePage {
 	$revision=$1;
   	$inlinerev=$2;
   }
+  $fullrev=($inlinerev eq ''?$revision:"$revision.$inlinerev");
   $revision =~ s/\D//g; # Remove non-numeric chars
   $goodRevision = $revision; # Non-blank only if exists
   if ($revision ne '') {
-    &OpenKeptRevisions($id,'text_default',$inlinerev>0);
+    &OpenKeptRevisions($id,'text_default',$inlinerev>=0);
     $openKept = 1;
     if (!defined($KeptRevisions{$revision})) {
       $goodRevision = '';
@@ -859,7 +862,8 @@ sub BrowsePage {
   $fullHtml = &GetHeader($id, &QuoteHtml($id), $oldId);
   if ($revision ne '') {
     if (($revision eq $$Page{'revision'}) || ($goodRevision ne '')) {
-      $fullHtml .= '<div class="wikiinfo">' . Ts('Showing revision %s', $revision)."</div>";
+      $fullHtml .= '<div class="wikiinfo">' . Ts('Showing revision %s', 
+           $fullrev)."</div>";
     } else {
       $fullHtml .= '<div class="wikiinfo">' . Ts('Revision %s not available', $revision)
                    . ' (' . T('showing current revision instead')
@@ -886,9 +890,9 @@ sub BrowsePage {
     $diffRevision = $goodRevision;
     $diffRevision = &GetParam('diffrevision', $diffRevision);
     # Eventually try to avoid the following keep-loading if possible?
-    &OpenKeptRevisions($id,'text_default') if (!$openKept);
+    &OpenKeptRevisions($id,'text_default',1) if (!$openKept);
     $fullHtml .= &GetDiffHTML($showDiff, $id, $diffRevision,
-                              $revision, $newText);
+                              $fullrev, $newText);
   }
   $Page=\%{$Pages{$id}->{'page'}};
   $Text=\%{$Pages{$id}->{'text'}};
@@ -1440,7 +1444,8 @@ sub GetMaskedHost {
 
 sub GetHistoryLine {
   my ($id, $section, $canEdit, $row) = @_;
-  my ($html, $expirets, $rev, $summary, $host, $user, $uid, $ts, $minor,$subver);
+  my ($html, $expirets, $rev, $summary, $host, $user, 
+      $uid, $ts, $minor,$subver,$allver,$revid);
   my (%sect, %revtext);
 
   %sect = split(/$FS2/, $section, -1);
@@ -1462,42 +1467,41 @@ sub GetHistoryLine {
   $minor = '<i>' . T('(edit)') . '</i> ' if ($revtext{'minor'});
   $host = &GetMaskedHost($host);
   $expirets = $Now - ($KeepDays * 24 * 60 * 60);
-  if ($UseDiff) {
-    my ($c1, $c2);
-    $c1 = 'checked="checked"' if 1 == $row;
-    $c2 = 'checked="checked"' if 0 == $row;
-    $html .= "<tr><td align='center'><input type='radio' "
-             . "name='diffrevision' value='$rev' $c1/> ";
-    $html .= "<input type='radio' name='revision' value='$rev' $c2/></td><td>";
-  }
+
   $subver=$sect{'inlinerev'};
-  if (0 == $row) { # current revision
-    $html .= &GetPageLinkText($id, Ts('Revision %s', $rev)) . ' ';
-    for(my $i=1;$i<=$subver;$i++){
-       $html .= &GetOldPageLink('browse', $id, $rev.".$i",
-                             Ts('[%s]', $rev.".$i")) . ' ';
-    }
-    if ($canEdit) {
-      $html .= &GetEditLink($id, T('(edit)')) . ' ';
-    }
-  } else {
-    $html .= &GetOldPageLink('browse', $id, $rev,
-                             Ts('Revision %s', $rev)) . ' ';
-    for(my $i=1;$i<=$subver;$i++){
-       $html .= &GetOldPageLink('browse', $id, $rev.".$i",
-                             Ts('[%s]', $rev.".$i")) . ' ';
-    }
-    if ($canEdit) {
-      $html .= &GetOldPageLink('edit', $id, $rev, T('(edit)')) . ' ';
-    }
+  $allver=1;
+  $allver=$subver+1 if($subver>0);
+  for(my $i=$allver;$i>=1;$i--){
+     $revid=($i==$allver?$rev:"$rev.".($i-1));
+     if ($UseDiff) {
+       my ($c1, $c2);
+       $c1 = 'checked="checked"' if 1 == $row;
+       $c2 = 'checked="checked"' if 0 == $row;
+       $html .= "<tr><td align='center'><input type='radio' "
+        	. "name='diffrevision' value='$revid' $c1/> ";
+       $html .= "<input type='radio' name='revision' value='$revid' $c2/></td><td>";
+     }
+     if (0 == $row && $i==$allver) { # current revision
+       $html .= &GetPageLinkText($id, Ts('Revision %s', $revid)) . ' ';
+
+       if ($canEdit) {
+	 $html .= &GetEditLink($id, T('(edit)')) . ' ';
+       }
+     } else {
+       $html .= &GetOldPageLink('browse', $id, $revid,
+                        	Ts('Revision %s', $revid)) . ' ';
+       if ($canEdit) {
+	 $html .= &GetOldPageLink('edit', $id, $revid, T('(edit)')) . ' ';
+       }
+     }
+     $html .= ". . " . $minor . &TimeToText($ts) . " ";
+     $html .= T('by') . ' ' . &GetAuthorLink($host, $user, $uid) . " ";
+     if (defined($summary) && ($summary ne "") && ($summary ne "*")) {
+       $summary = &QuoteHtml($summary); # Thanks Sunir! :-)
+       $html .= "<b>[$summary]</b> ";
+     }
+     $html .= $UseDiff ? "</tr>\n" : "<br>\n";
   }
-  $html .= ". . " . $minor . &TimeToText($ts) . " ";
-  $html .= T('by') . ' ' . &GetAuthorLink($host, $user, $uid) . " ";
-  if (defined($summary) && ($summary ne "") && ($summary ne "*")) {
-    $summary = &QuoteHtml($summary); # Thanks Sunir! :-)
-    $html .= "<b>[$summary]</b> ";
-  }
-  $html .= $UseDiff ? "</tr>\n" : "<br>\n";
   return $html;
 }
 
@@ -3109,13 +3113,14 @@ sub GetCacheDiff {
 # Must be done after minor diff is set and OpenKeptRevisions called
 sub GetKeptDiff {
   my ($newText, $oldRevision, $lock) = @_;
-  my (%sect, %data, $oldText);
+  my (%sect, %data, $oldText,$inlinerev,$vmajor,$vminor);
 
   $oldText = "";
-  if (defined($KeptRevisions{$oldRevision})) {
-    %sect = split(/$FS2/, $KeptRevisions{$oldRevision}, -1);
+  ($vmajor,$vminor)=split(/\./,$oldRevision);
+  if (defined($KeptRevisions{$vmajor})) {
+    %sect = split(/$FS2/, $KeptRevisions{$vmajor}, -1);
     %data = split(/$FS3/, $sect{'data'}, -1);
-    $oldText = &PatchPage($data{'text'});
+    ($oldText,$inlinerev) = &PatchPage($data{'text'},$vminor);
   }
   return "" if ($oldText eq ""); # Old revision not found
   return &GetDiff($oldText, $newText, $lock);
@@ -5637,7 +5642,7 @@ sub DoPost {
   if($UseDiff){
      my $diffstr=&GetDiff($old, $string, 0);
      if($isEdit || length($diffstr)<length($old)*0.25){
-  	$string= &ReadRawWikiPage($id). $FS4. $diffstr;
+  	$string= &ReadRawWikiPage($id,1). $FS4. $diffstr;
 	$$Section{'revision'}=$oldrev;
 	$isEdit=1;
      }else{
@@ -7134,16 +7139,18 @@ sub ReadKeyFromPage {
 }
 
 sub ReadRawWikiPage {
-    my ($id)=@_;
+    my ($id,$force)=@_;
     my ($status,$data);
     my %localPage;
     my %localSection;
     my %localText;
 
-    if(defined($TextCache{$id})){
-    	return $TextCache{$id};
-    }elsif(defined($Pages{$id}->{'text'}->{'text'})){
-    	return $Pages{$id}->{'text'}->{'text'};
+    if($force eq ''){
+      if(defined($TextCache{$id})){
+    	  return $TextCache{$id};
+      }elsif(defined($Pages{$id}->{'text'}->{'text'})){
+    	  return $Pages{$id}->{'text'}->{'text'};
+      }
     }
     if($UseDBI){
 	my  $pagedb=&GetPageDB($id);
