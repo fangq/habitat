@@ -161,10 +161,10 @@ $BuildinPages{"Habitat/Markup"}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>''italic''</nowiki></tt> || ''italic'' ||
 || <tt><nowiki>'''bold'''</nowiki></tt> || '''bold''' ||
 || <tt><nowiki>'''''bold-italic'''''</nowiki></tt> || '''''bold-italic''''' ||
-|| <tt><nowiki><u>underline</u></nowiki></tt> || <u>underline</u> ||
+|| <tt><nowiki>&lt;u&gt;underline&lt;/u&gt;</nowiki></tt> || <u>underline</u> ||
 || <tt><nowiki><tt>monospaced text</tt></nowiki></tt> || <tt>monospace text</tt> ||
 || <tt><nowiki><pre>preformatted text</pre></nowiki></tt> || <pre>preformatted text</pre> ||
-|| <tt><nowiki><nowiki>''disable all wiki formats''</nowiki></nowiki></tt> || <nowiki>''disable all wiki formats''</nowiki> ||
+|| <tt><nowiki>&lt;nowiki&gt;''disable all wiki formats''&lt;/nowiki&gt;</nowiki></tt> || <nowiki>''disable all wiki formats''</nowiki> ||
 
 == # Links ==
 !! Input !! Display as !!
@@ -182,7 +182,7 @@ $BuildinPages{"Habitat/Markup"}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</nowiki></tt> || <tt>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</tt> ||
 || <tt><nowiki>Local:LocalPage</nowiki></tt> || Local:LocalPage ||
 || <tt><nowiki>Local:LocalPage#Anchor</nowiki></tt> || Local:LocalPage#Anchor ||
-|| <tt><nowiki>[#Anchor]</nowiki></tt> || [#Anchor] [http:?HabitatTest#Anchor Click to jump here] ||
+|| <tt><nowiki>[#Anchor]</nowiki></tt> || [#Anchor] [http:?Habitat/Markup#Anchor Click to jump here] ||
 
 
 == # Headings ==

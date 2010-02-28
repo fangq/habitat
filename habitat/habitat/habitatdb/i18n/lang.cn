@@ -83,10 +83,10 @@ $BuildinPages{"HabitatTest"}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>''斜体''</nowiki></tt> || ''斜体'' ||
 || <tt><nowiki>'''粗体'''</nowiki></tt> || '''粗体''' ||
 || <tt><nowiki>'''''粗斜体'''''</nowiki></tt> || '''''粗斜体''''' ||
-|| <tt><nowiki><u>下划线</u></nowiki></tt> || <u>下划线</u> ||
+|| <tt><nowiki>&lt;u&gt;下划线&lt;/u&gt;</nowiki></tt> || <u>下划线</u> ||
 || <tt><nowiki><tt>等宽文本(monospace)</tt></nowiki></tt> || <tt>等宽文本(monospace)</tt> ||
 || <tt><nowiki><pre>代码文本(pre-text)</pre></nowiki></tt> || <pre>代码文本(pre-text)</pre> ||
-|| <tt><nowiki><nowiki>''取消<u>wiki</u>标记语法''</nowiki></nowiki></tt> || <nowiki>''取消<u>wiki</u>标记语法''</nowiki> ||
+|| <tt><nowiki>&lt;nowiki&gt;''取消 wiki 标记语法''&lt;/nowiki&gt;</nowiki></tt> || <nowiki>''取消 wiki 标记语法''</nowiki> ||
 
 == # 链接 ==
 !! 输入 !! 显示 !!
