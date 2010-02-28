@@ -81,7 +81,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $FreeLinks $WikiLinks $AdminDelete $FreeLinkPattern $RCName $RunCGI
   $ShowEdits $ThinLine $LinkPattern $InterLinkPattern $InterSitePattern
   $UrlProtocols $UrlPattern $ImageExtensions $RFCPattern $ISBNPattern
-  $FS $FS1 $FS2 $FS3 $FS4 $CookieName $SiteBase $StyleSheet $NotFoundPg
+  $FS $FS1 $FS2 $FS3 $FS4 $FS5 $CookieName $SiteBase $StyleSheet $NotFoundPg
   $FooterNote $EditNote $MaxPost $NewText $NotifyDefault $HttpCharset
   $UserGotoBar $DeletedPage $ReplaceFile @ReplaceableFiles $TableSyntax
   $MetaKeywords $NamedAnchors $InterWikiMoniker $SiteDescription $RssLogoUrl
@@ -330,6 +330,7 @@ sub InitLinkPatterns {
   $FS2 = $FS . "2"; # in stored hashtables and other data structures.
   $FS3 = $FS . "3"; # The FS character is not allowed in user data.
   $FS4 = $FS . "4"; # The FS character is not allowed in user data.
+  $FS5 = $FS . "5"; # The FS character is not allowed in user data.
 
   $UpperLetter = "[A-Z";
   $LowerLetter = "[a-z";
@@ -762,6 +763,9 @@ sub PatchPage{
 		splice(@patches, $inlinerev+1, $#patches-$inlinerev);
 	}
 	for(my $i=1;$i<@patches;$i++){
+		if($patches[$i] =~ /$FS5/){
+			$patches[$i]=(split(/$FS5/,$patches[$i]))[-1];
+		}
 		if($patches[$i] ne ""){
 			$basetext=PatchText($basetext,$patches[$i],0);
 			#$Pages{$OpenPageName}->{'section'}->{'revision'}=$basesec+$i;
@@ -1410,7 +1414,7 @@ EOF
   if(!$UseDBI) {
 	$html = &GetHistoryLine($id, $Pages{$id}->{'page'}->{'text_default'}, $canEdit, $row++);
   }
-  &OpenKeptRevisions($id,'text_default');
+  &OpenKeptRevisions($id,'text_default',1);
 
   foreach (reverse sort {$a <=> $b} keys %KeptRevisions) {
     next if ($_ eq ""); # (needed?)
@@ -1446,10 +1450,11 @@ sub GetHistoryLine {
   my ($id, $section, $canEdit, $row) = @_;
   my ($html, $expirets, $rev, $summary, $host, $user, 
       $uid, $ts, $minor,$subver,$allver,$revid);
-  my (%sect, %revtext);
+  my (%sect, %revtext, @textpatch);
 
   %sect = split(/$FS2/, $section, -1);
   %revtext = split(/$FS3/, $sect{'data'});
+  @textpatch = split(/$FS4/, $revtext{'text'});
 
   $rev = $sect{'revision'};
   if($rev == 0){return "";}
@@ -1468,10 +1473,16 @@ sub GetHistoryLine {
   $host = &GetMaskedHost($host);
   $expirets = $Now - ($KeepDays * 24 * 60 * 60);
 
-  $subver=$sect{'inlinerev'};
+  #$subver=$sect{'inlinerev'};
+  $subver=$#textpatch;
   $allver=1;
   $allver=$subver+1 if($subver>0);
   for(my $i=$allver;$i>=1;$i--){
+     if(defined($textpatch[$i])){
+	if($textpatch[$i]=~/^(.*)$FS5/){
+		($ts,$user,$host,$summary)=split(/\|/,$1);
+	}
+     }
      $revid=($i==$allver?$rev:"$rev.".($i-1));
      if ($UseDiff) {
        my ($c1, $c2);
@@ -3695,6 +3706,9 @@ sub OpenKeptListDB {
 	    ($texts{'text'},$inlinerev)=&PatchPage($text);
 	}else{
 	    $texts{'text'}=$text;
+	    if($text=~/$FS4/){
+		$inlinerev=(split(/$FS4/,$text))-1;
+	    }
 	}
 	$texts{'minor'}=$minor;
 	$texts{'newauthor'}=$newauthor;
@@ -5644,7 +5658,8 @@ sub DoPost {
   if($UseDiff){
      my $diffstr=&GetDiff($old, $string, 0);
      if($isEdit || length($diffstr)<length($old)*0.25){
-  	$string= &ReadRawWikiPage($id,1). $FS4. $diffstr;
+	my $revstr="$Now|$user|".&GetRemoteHost(1)."|$summary$FS5";
+  	$string= &ReadRawWikiPage($id,1). $FS4. $revstr. $diffstr;
 	$$Section{'revision'}=$oldrev;
 	$isEdit=1;
      }else{
