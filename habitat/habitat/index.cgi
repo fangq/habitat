@@ -448,7 +448,7 @@ sub DoCacheBrowse {
       return 0; # Only use cache for simple links
     }
   }
-  if($param{'action'} eq 'browse' && ($param{'format'} eq 'json' 
+  if(($param{'action'} eq 'browse' || $param{'keywords'} ne '')&& ($param{'format'} eq 'json' 
      || $param{'raw'}|| $param{'revision'} || $param{'diff'} ne '')){
      return 0;
   }
@@ -7165,7 +7165,7 @@ sub ReadRawWikiPage {
         if(defined $sth->[0]){
            ($maxversion,$text)=@{$sth->[0]};
            if(defined $maxversion && $maxversion ne ""){
-                ($text,$inlinerev) = &PatchPage($text);
+                ($text,$inlinerev) = &PatchPage($text) if($force eq '');
                 $TextCache{$id}=$text;
 		return $text;
 	   }
