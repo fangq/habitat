@@ -2609,6 +2609,8 @@ if(0){
 	       $text =~ s/$from/$to/;
        }elsif($to =~ /\\([0-9])/){
                $text =~ s/$from/$to/geo;
+       }elsif($from eq ".*" ){
+               $text = $to;
        }else {
 		if($opt eq "m"){
 			$text =~ s/$from/$to/mg;
@@ -7140,7 +7142,7 @@ sub ReadKeyFromPage {
 
 sub ReadRawWikiPage {
     my ($id,$force)=@_;
-    my ($status,$data);
+    my ($status,$data,$inlinerev);
     my %localPage;
     my %localSection;
     my %localText;
@@ -7163,6 +7165,8 @@ sub ReadRawWikiPage {
         if(defined $sth->[0]){
            ($maxversion,$text)=@{$sth->[0]};
            if(defined $maxversion && $maxversion ne ""){
+                ($text,$inlinerev) = &PatchPage($text);
+                $TextCache{$id}=$text;
 		return $text;
 	   }
 	}
@@ -7177,8 +7181,8 @@ sub ReadRawWikiPage {
     %localPage = split(/$FS1/, $data, -1);
     %localSection = split(/$FS2/, $localPage{'text_default'}, -1);
     %localText = split(/$FS3/, $localSection{'data'}, -1);
-    $TextCache{$id}=$localText{'text'};
-    return $localText{'text'}."\n";
+    ($TextCache{$id},$inlinerev) = &PatchPage($localText{'text'});
+    return $TextCache{$id}."\n";
 }
 
 sub ReadPagePermissions {

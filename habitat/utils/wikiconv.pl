@@ -404,8 +404,8 @@ sub DumpSQL{
 	}
         @revnum=sort {$a <=> $b} keys %KeptRevisions;
         $items+=@revnum+1;
-
-        $KeptRevisions{$revnum[-1]+1}=join(/$FS2/,%{$Pages{$page}->{'section'}});
+        $KeptRevisions{$revnum[-1]+1}=join($FS2,%$Section);
+	@revnum=sort {$a <=> $b} keys %KeptRevisions;
 
 	foreach my $revision (@revnum) {
 	  next if ($revision eq ""); # (needed?)
@@ -414,23 +414,31 @@ sub DumpSQL{
 	  $count++;
 	  if($count>1){
 	     $dif=GetDiff($oldtext,$data{'text'});
-	     if($data{'minor'}==1 || length($dif)<length($data{'text'})*0.25){
+	     if($data{'minor'}==1 || length($dif)<length($oldtext)*0.25){
 	        if($diffpatch eq ''){
-		  	$diffpatch.=$data{'text'}."$FS4".$dif;
+		  	$diffpatch.=$oldtext."$FS4".$dif;
 		}else{
 	          	$diffpatch.="$FS4".$dif;
 		}
                 $oldtext=$data{'text'};
 		next if $revision<$revnum[-1];
 	     }
-	     if($diffpatch ne ''){
-	     	$data{'text'}=$diffpatch;
+	     if($diffpatch eq '' && $oldtext ne ''){
+		if($dif ne ''){
+	        	$diffpatch=$oldtext."$FS4".$dif;
+		}else{
+                        $diffpatch=$oldtext;
+		}
 	     }
-	     $content=$data{'text'};
-	     $content=~ s/'/''/g;
+	     $content=$diffpatch;
+	     #$content=~ s/'/''/g;
 	     PrintPageSQL($page,$Page,\%sect,\%data,$content,$rev++);
 	     $diffpatch='';
 	  }
+          if(@revnum==1){
+             PrintPageSQL($page,$Page,\%sect,\%data,$data{'text'},$rev++);
+	     last;
+          }
           $oldtext=$data{'text'};
 	}
 #	$content=$$Text{'text'};
