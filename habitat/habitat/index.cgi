@@ -5936,7 +5936,7 @@ sub WriteRcLogDB {
   if($dbh eq "" || $rclogdb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $sth=$dbh->prepare("insert into $rclogdb (time,id,summary,isedit,host,kind,userid,name,reversion,isadmin) values (?,?,?,?,?,?,?,?,?,?)");
+  $sth=$dbh->prepare("insert into $rclogdb (time,id,summary,isedit,host,kind,userid,name,revision,isadmin) values (?,?,?,?,?,?,?,?,?,?)");
   $sth->execute($editTime,$id,$summary,$isEdit, $rhost,"0",$UserID,$name,$revision,$isadmin);
 }
 

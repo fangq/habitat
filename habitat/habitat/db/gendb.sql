@@ -32,7 +32,7 @@ id varchar(512) primary key,time integer,text varchar(1024)
 create table rclog(
 time integer, id varchar(512), summary  varchar(128),isedit integer,
 host varchar(64),kind varchar(8),userid integer,name varchar(64),
-reversion integer,isadmin integer
+revision integer,isadmin integer
 );
 
 create index rclog_time on rclog(time ASC);
