@@ -5719,6 +5719,7 @@ sub DoPost {
   $$Section{'host'} = &GetRemoteHost(1);
   &SaveDefaultText($id);
   $pgmode=$Pages{$id}->{'admin'}==1 || $Pages{$id}->{'editor'}==1 || $Pages{$id}->{'writeonly'}==1;
+  if(!defined($pgmode)){$pgmode=0;}
   if($UseDBI) {
         &SavePageDB($id);
         &WriteRcLogDB($id, $summary, $isEdit, $editTime, $$Section{'revision'},
