@@ -1030,9 +1030,29 @@ sub DoRc {
   # Read rclog data (and oldrclog data if needed)
   if($UseDBI){
         @fullrc =&ReadRCLogDB($starttime);
+	$lastTs = 0;
+	if (@fullrc > 0) { # Only false if no lines in file
+	  ($lastTs) = split(/$FS3/, $fullrc[$#fullrc]);
+	}
+	$lastTs++ if (($Now - $lastTs) > 5); # Skip last unless very recent
+
         if (0 == $rcType) {
           print &GetRcRss(@fullrc);
         } else {
+	  if ($showHTML) {
+	    foreach $i (@RcDays) {
+	      print " | "  if $showbar;
+	      $showbar = 1;
+	      print &ScriptLink("action=rc&days=$i",
+                        	Ts('%s day' . (($i != 1)?'s':''), $i));
+        	# Note: must have two translations (for "day" and "days")
+        	# Following comment line is for translation helper script
+        	# Ts('%s days', '');
+	    }
+	    print "<br>" . &ScriptLink("action=rc&from=$lastTs",
+                        	       T('List new changes starting from'));
+	    print " " . &TimeToText($lastTs) . "<br>\n";
+	  }
           print &GetRcHtml(@fullrc);
         }
         if ($showHTML) {
@@ -3754,7 +3774,7 @@ sub LoadUserDataDB {
   my $userdb =(split(/\//,$UserDir))[-1];
   my $sth;
   my ($id,$name,$pass,$randkey,$group,$lang,$email,$param,$createtime,
-      $createip,$tzoffset,$pagecreate,$pagemodify,$stylesheet);
+      $createip,$tzoffset,$pagecreate,$pagemodify,$stylesheet,$extradata,%extra);
 
   if($dbh eq "" || $userdb eq ""){
       return T('ERROR: database uninitialized!');
@@ -3776,7 +3796,8 @@ sub LoadUserDataDB {
 	}
   }else{
       ($id,$name,$pass,$randkey,$group,$lang,$email,$param,$createtime,
-         $stylesheet,$createip,$tzoffset,$pagecreate,$pagemodify)=@{$sth->[0]};
+         $extradata,$createip,$tzoffset,$pagecreate,$pagemodify)=@{$sth->[0]};
+	%extra=split(/$FS2/,$extradata);
   }
   $UserData{'id'}=$id;
   $UserData{'username'}=$name;
@@ -3791,7 +3812,18 @@ sub LoadUserDataDB {
   $UserData{'tzoffset'}=$tzoffset;
   $UserData{'pagecreate'}=$pagecreate;
   $UserData{'pagemodify'}=$pagemodify;
-  $UserData{'stylesheet'}=$stylesheet;
+  $UserData{'stylesheet'}=$extra{'stylesheet'};
+  $UserData{'rcdays'}=$extra{'rcdays'};
+  $UserData{'rcnewtop'}=$extra{'rcnewtop'};
+  $UserData{'rcchangehist'}=$extra{'rcchangehist'};
+  $UserData{'rcshowedit'}=$extra{'rcshowedit'};
+  $UserData{'tzoffset'}=$extra{'tzoffset'};
+  $UserData{'editrows'}=$extra{'editrows'};
+  $UserData{'editcols'}=$extra{'editcols'};
+  $UserData{'norcdiff'}=$extra{'norcdiff'};
+  $UserData{'diffrclink'}=$extra{'diffrclink'};
+  $UserData{'alldiff'}=$extra{'alldiff'};
+  $UserData{'defaultdiff'}=$extra{'defaultdiff'};
   return "";
   # need to print log
 }
@@ -5200,7 +5232,7 @@ sub GetNewUserId {
 
 sub SaveUserDataDB {
   my $userdb =(split(/\//,$UserDir))[-1];
-  my ($id,$sth,$encpass,$isnewuser,$tmp,$name,$passhash,$randkey,$adminhash,$linkchr);
+  my ($id,$sth,$encpass,$isnewuser,$tmp,$name,$passhash,$randkey,$adminhash,$linkchr,%extra);
 
   if($dbh eq "" || $userdb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -5228,12 +5260,26 @@ sub SaveUserDataDB {
   if($isnewuser && $UseActivation){
   	&SetPreRegFlag();
   }
+  %extra=(
+     'stylesheet'=>$UserData{'stylesheet'},
+     'rcdays'=>$UserData{'rcdays'},
+     'rcnewtop'=>$UserData{'rcnewtop'},
+     'rcchangehist'=>$UserData{'rcchangehist'},
+     'rcshowedit'=>$UserData{'rcshowedit'},
+     'tzoffset'=>$UserData{'tzoffset'},
+     'editrows'=>$UserData{'editrows'},
+     'editcols'=>$UserData{'editcols'},
+     'norcdiff'=>$UserData{'norcdiff'},
+     'diffrclink'=>$UserData{'diffrclink'},
+     'alldiff'=>$UserData{'alldiff'},
+     'defaultdiff'=>$UserData{'defaultdiff'},
+  );
   $sth=$dbh->prepare("replace into $userdb (id,name,pass,randkey,groupid,lang,email,param,createtime,"
      ."createip,tzoffset,pagecreate,pagemodify,stylesheet) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
   $sth->execute($UserID,$UserData{'username'},$encpass,$UserData{'randkey'},$adminhash,
       $UserData{'lang'},$UserData{'email'},$UserData{'param'},
       $UserData{'createtime'},$UserData{'createip'},$UserData{'tzoffset'},$UserData{'pagecreate'},
-      $UserData{'pagemodify'},$UserData{'stylesheet'}) or die($DBI::errstr);
+      $UserData{'pagemodify'},join($FS2,%extra)) or die($DBI::errstr);
   if($isnewuser && $UseActivation){
 	&SendRegMail();
   }
