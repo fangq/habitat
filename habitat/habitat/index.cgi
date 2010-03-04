@@ -3164,7 +3164,7 @@ sub GetDiff {
   my ($diff_out, $oldName, $newName, $key);
 
   if($UsePerlDiff){
-      return diff(\$old, \$new, { STYLE => 'Unified' });
+      return diff(\$old, \$new, { STYLE => 'OldStyle' });
   }else{
       &CreateDir($TempDir);
       $key=int(rand(1000000000));
@@ -3192,7 +3192,10 @@ sub PatchText {
   my ($patch_out, $oldName, $newName, $key);
 
   if($UsePerlDiff){
-      return patch($base, $patch, { STYLE => 'Unified' });
+      if($patch=~/^\@\@/){
+          return patch($base, $patch, { STYLE => 'Unified'});
+      }
+      return patch($base, $patch, { STYLE => 'OldStyle' });
   }else{
       &CreateDir($TempDir);
       $key=int(rand(1000000000));
@@ -3222,7 +3225,7 @@ sub DiffToHTML {
   $tChanged = T('Changed:');
   $tRemoved = T('Removed:');
   $tAdded = T('Added:');
-  if($UsePerlDiff){
+  if($UsePerlDiff && $html =~ /(^|\n)@@/){
 	$html =~ s/(\-\d+)(,(\d+))*/$tRemoved $1 $2/g;
 	$html =~ s/(\+\d+)(,(\d+))*/$tAdded $1 $2/g;
 	$html =~ s/(^|\n)@@ (.*) @@/$1 <br><strong>$2<\/strong><br>/g;
@@ -5983,6 +5986,7 @@ sub WriteRcLogDB {
   if($dbh eq "" || $rclogdb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
+  $isadmin=0 if($isadmin eq '' || !defined($isadmin));
   $sth=$dbh->prepare("insert into $rclogdb (time,id,summary,isedit,host,kind,userid,name,revision,isadmin) values (?,?,?,?,?,?,?,?,?,?)");
   $sth->execute($editTime,$id,$summary,$isEdit, $rhost,"0",$UserID,$name,$revision,$isadmin);
 }
