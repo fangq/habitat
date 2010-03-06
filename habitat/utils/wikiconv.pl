@@ -36,7 +36,7 @@ $FS1 = $FS . "1"; # The FS values are used to separate fields
 $FS2 = $FS . "2"; # in stored hashtables and other data structures.
 $FS3 = $FS . "3"; # The FS character is not allowed in user data.
 $FS4 = $FS . "4"; # The FS character is not allowed in user data.
-$FS4 = $FS . "5"; # The FS character is not allowed in user data.
+$FS5 = $FS . "5"; # The FS character is not allowed in user data.
 
 sub ReadFile {
   my ($fileName) = @_;
@@ -415,7 +415,9 @@ sub DumpSQL{
 	  $count++;
 	  if($count>1){
 	     $dif=GetDiff($oldtext,$data{'text'});
-             my $revstr="$sect{'ts'}|$sect{'username'}|$sect{'host'}|$data{'summary'}$FS5";
+             my $summ=$data{'summary'};
+             $summ=~ s/'/''/g;
+             my $revstr="$sect{'ts'}|$sect{'username'}|$sect{'host'}|$summ$FS5";
 	     if($data{'minor'}==1 || length($dif)<length($oldtext)*0.25){
 	        if($diffpatch eq ''){
 		  	$diffpatch.=$oldtext."$FS4$revstr$dif";
