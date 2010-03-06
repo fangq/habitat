@@ -8,7 +8,7 @@ use Text::Diff;
 #use Text::Patch;
 
 use vars qw($DataDir $KeepDir $PageDir $RcFile %Pages
-$OpenPageName $FS $FS1 $FS2 $FS3 $FS4 $q  $UsePerlDiff
+$OpenPageName $FS $FS1 $FS2 $FS3 $FS4 $FS5 $q  $UsePerlDiff
 %KeptRevisions $NewFS %Translate $Now $UserID $NewText
 $UCS2Str $UCS2Num $cvUTF8ToUCS2);
 
@@ -36,6 +36,7 @@ $FS1 = $FS . "1"; # The FS values are used to separate fields
 $FS2 = $FS . "2"; # in stored hashtables and other data structures.
 $FS3 = $FS . "3"; # The FS character is not allowed in user data.
 $FS4 = $FS . "4"; # The FS character is not allowed in user data.
+$FS4 = $FS . "5"; # The FS character is not allowed in user data.
 
 sub ReadFile {
   my ($fileName) = @_;
@@ -364,7 +365,7 @@ sub GetDiff {
   my ($diff_out, $oldName, $newName, $key);
 
   if($UsePerlDiff){
-      return diff(\$old, \$new, { STYLE => 'Unified' });
+      return diff(\$old, \$new, { STYLE => 'OldStyle' });
   }
 }
 
@@ -414,18 +415,19 @@ sub DumpSQL{
 	  $count++;
 	  if($count>1){
 	     $dif=GetDiff($oldtext,$data{'text'});
+             my $revstr="$sect{'ts'}|$sect{'username'}|$sect{'host'}|$data{'summary'}$FS5";
 	     if($data{'minor'}==1 || length($dif)<length($oldtext)*0.25){
 	        if($diffpatch eq ''){
-		  	$diffpatch.=$oldtext."$FS4".$dif;
+		  	$diffpatch.=$oldtext."$FS4$revstr$dif";
 		}else{
-	          	$diffpatch.="$FS4".$dif;
+	          	$diffpatch.="$FS4$revstr$dif";
 		}
                 $oldtext=$data{'text'};
 		next if $revision<$revnum[-1];
 	     }
 	     if($diffpatch eq '' && $oldtext ne ''){
 		if($dif ne ''){
-	        	$diffpatch=$oldtext."$FS4".$dif;
+	        	$diffpatch=$oldtext."$FS4$revstr$dif";
 		}else{
                         $diffpatch=$oldtext;
 		}
