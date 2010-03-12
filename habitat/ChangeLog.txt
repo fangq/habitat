@@ -3,6 +3,15 @@
 Habitat Change Log:
 
 == Habitat Change Log (current) ==
+*[2010/03/06] encode revision info into inline diff
+*[2010/03/04] change default diff patch styles to OldStyle
+*[2010/03/03] save extra user preference and print RC days
+*[2010/03/01] rename rclog field from reversion to revision
+*[2010/02/28] store internal rev info for each diff
+*[2010/02/28] debugged wikiconvert utility and fix ReadRawWikiPage
+*[2010/02/26] show subversions in the history and allow diff and browse
+*[2010/02/25] show inline reversions in the history page
+*[2010/02/15] generate page cache for different lang tags
 *[2010/02/12] UseModWiki database convertor debugged
 *[2010/02/11] support external editor and viewer
 *[2010/02/11] saving pages to multiple tables

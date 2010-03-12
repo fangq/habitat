@@ -6827,7 +6827,7 @@ sub RenamePage {
 sub DoShowVersion {
   print &GetHeader("", "Displaying Wiki Version", "");
   print '<div class="wikiinfo">
-<h2>Habitat CMS version 0.2</h2>
+<h2>Habitat CMS version 0.3</h2>
 $Rev::     $ Last Commit:$Date::                     $ by $Author:: fangq$
 <br> based on UseModWiki version 1.0</div>';
   print &GetCommonFooter();
