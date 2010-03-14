@@ -190,6 +190,7 @@ $DBPass="";
 
 $UsePerlDiff  = 1;
 $UseActivation= 0;
+$UseDetailedLog=0;
 
 $BuildinPages{"Habitat/NewSyntax"}=<<HABITAT_NEWFEATURES;
 = Habitat's new features =

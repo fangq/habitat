@@ -51,3 +51,12 @@ page varchar(512), user varchar(32)
 
 create index watch_page on watch(page ASC);
 
+create table pagelog(
+id varchar(512) primary key, lastvisit integer, visit integer, x float, y float, z float
+);
+
+create table userlog(
+id integer, time integer, ip varchar(24), action varchar(8), target varchar(512)
+);
+create index userlog_id on userlog(id ASC);
+

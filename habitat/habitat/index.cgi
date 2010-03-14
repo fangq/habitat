@@ -94,7 +94,8 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
-  $UserBuildinCSS %BuildinPages %TextCache %Pages);
+  $UserBuildinCSS %BuildinPages %TextCache %Pages $UseDetailedLog 
+  $PageLog $UserLog);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
@@ -237,6 +238,7 @@ $UseDBI       = 0;
 $DBName       = "";
 $UsePerlDiff  = 1;
 $UseActivation= 0;
+$UseDetailedLog=0;
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ('bn.com', 'amazon.com', 'search');
@@ -270,6 +272,8 @@ $RcFile      = "$DataDir/rclog";    # New RecentChanges logfile
 $RcOldFile   = "$DataDir/oldrclog"; # Old RecentChanges logfile
 $IndexFile   = "$DataDir/pageidx";  # List of all pages
 $EmailFile   = "$DataDir/watch";   # Email notification lists
+$UserLog     = "$DataDir/userlog";   # Email notification lists
+$PageLog     = "$DataDir/pagelog";   # Email notification lists
 
 if ($RepInterMap) {
   push @ReplaceableFiles, $InterFile;
@@ -331,6 +335,8 @@ sub InitLinkPatterns {
   $FS3 = $FS . "3"; # The FS character is not allowed in user data.
   $FS4 = $FS . "4"; # The FS character is not allowed in user data.
   $FS5 = $FS . "5"; # The FS character is not allowed in user data.
+
+  $Now = time; # Reset in case script is persistent
 
   $UpperLetter = "[A-Z";
   $LowerLetter = "[a-z";
@@ -465,12 +471,18 @@ sub DoCacheBrowse {
   }
   if($UseDBI){
     my $htmldb=(split(/\//,$HtmlDir))[-1];
+    my $pagelogdb=(split(/\//,$PageLog))[-1];
+
     if($dbh eq "" || $htmldb eq ""){
       die(T('ERROR: database uninitialized!'));
     }
     $text=ReadDBItems($htmldb,'text','','',"id='$query\[$language\]'");
     if($text ne ''){
     	print $text;
+	if($pagelogdb ne ""){
+	   UpdatePageLogDB($pagelogdb,$query);
+	}
+        AddUserLogDB(-1,"Cr",$query);
 	return 1;
     }
   }else{
@@ -558,7 +570,6 @@ sub InitRequest {
   if ($HttpCharset ne '') {
     $q->charset($HttpCharset);
   }
-  $Now = time; # Reset in case script is persistent
   $ScriptName = pop(@ScriptPath); # Name used in links
   $IndexInit = 0; # Must be reset for each request
   $InterSiteInit = 0;
@@ -785,13 +796,16 @@ sub BrowsePage {
   my $contentlen;
   my $pagehtml;
   my @vv;
+  my $pagelogdb=(split(/\//,$PageLog))[-1];
 
   $extviewer=ReadPagePermissions($id,\%ExtViewer);
   if($extviewer ne ''){
       &ReBrowsePage("$extviewer#$id", "", 0);
       return;
   }
-
+  if($UseDBI&&$UserID>=1000){
+      AddUserLogDB($UserID,'Br',$id);
+  }
   &OpenDefaultPage($id);
 
   $openKept = 0;
@@ -937,6 +951,9 @@ sub BrowsePage {
   $fullHtml .= &GetFooterText($id, $goodRevision);
 
   print $fullHtml;
+  if($pagelogdb ne ""){
+      UpdatePageLogDB($pagelogdb,$id);
+  }
   return if ($showDiff || ($revision ne '')); # Don't cache special version
 
   if($UseDBI) {
@@ -4173,7 +4190,7 @@ sub UpdateHtmlCacheDB {
   my ($id, $html) = @_;
   my $htmldb =(split(/\//,$HtmlDir))[-1];
   my ($sth,$language);
-  $language=&GetParam('lang','');
+  $language=&GetParam('lang',$LangID);
 
   if($dbh eq "" || $htmldb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -4738,9 +4755,13 @@ sub DoActivateUser {
 }
 
 sub DoLogout {
+   my $oldid=$UserID;
    $UserID = 0;
    %SetCookie = ();
    if($UseDBI){
+        if($UseDBI&&$oldid>=1000){
+           AddUserLogDB($oldid,'Lo',$UserData{'id'});
+        }
         &DoNewLoginDB();
    }else{
         &DoNewLogin();
@@ -4844,6 +4865,9 @@ sub DoEditPrefs {
   print $q->endform;
   print '</div>';
   print &GetMinimumFooter();
+  if($UseDBI && $UserID>=400){
+     AddUserLogDB($UserID,'Ep',$UserData{'id'}); 
+  }
 }
 
 sub GetFormText {
@@ -4982,6 +5006,9 @@ sub DoUpdatePrefs {
   }
   if($UseDBI) {
         &SaveUserDataDB();
+        if($UseDBI&&$UserID>=1000){
+           AddUserLogDB($UserID,'Sp','');
+        }
   }else{
 	&SaveUserData();
   }
@@ -5160,8 +5187,10 @@ sub DoLogin {
   print '<div class="wikiinfo">';
   if ($success) {
     print Ts('Login for user %s complete.', "$uname($UserID)");
+    AddUserLogDB($UserID,'login',$uname);
   } else {
     print Tss('Login for user %1 failed. Error: %2', "$uname($UserID)", $err);
+    AddUserLogDB($UserID,'login','-F');
   }
   print '<hr class="wikilinefooter">';
   print $q->endform;
@@ -5347,6 +5376,7 @@ sub DoWatchPage{
   if($UseDBI && not ($UserID<=1000 || $user eq ''||$id eq '')) {
       if(ReadDBItems($watchdb,'user',',','',"page='$id' and user='$user'") eq ''){
          &WriteDBItems($watchdb,'page,user',0,($id,$user));
+         AddUserLogDB($UserID,'watch',$id);
       }
   }else{
       &DoLogin();
@@ -5727,6 +5757,7 @@ sub DoPost {
         &SavePageDB($id);
         &WriteRcLogDB($id, $summary, $isEdit, $editTime, $$Section{'revision'},
               $user, $$Section{'host'}, $pgmode);
+        AddUserLogDB($UserID,'Wr',$id) if($UserID>=1000);
   }else{
         &SavePage();
         &WriteRcLog($id, $summary, $isEdit, $editTime, $$Section{'revision'},
@@ -6239,6 +6270,28 @@ sub DoPageLock {
   print &GetCommonFooter();
 }
 
+sub UpdatePageLogDB{
+  my ($dbname,$id)=@_;
+  my ($sth);
+  return if($UseDetailedLog!=1);
+  if($dbh eq "" || $dbname eq ""){
+      die(T('ERROR: database uninitialized!'));
+  }
+  $sth=$dbh->do("insert into $dbname (id,lastvisit,visit,x,y,z) values ('$id',$Now,0,-1,-1,-1);");
+  $dbh->commit;# sqlite does not support "on duplicate key update"
+  $sth=$dbh->do("update $dbname set lastvisit=$Now, visit=visit+1 where id='$id';");
+  $dbh->commit or die "Can't execute: ", $dbh->errstr;
+}
+sub AddUserLogDB{
+  my ($uid,$action,$target)=@_;
+  my $dbname=(split(/\//,$UserLog))[-1];
+  return if($UseDetailedLog!=1); 
+  if($dbh eq "" || $dbname eq ""){
+      die(T('ERROR: database uninitialized!'));
+  }
+  $dbh->do("insert into $dbname (id,time,ip,action,target) values ($uid,$Now,'".$ENV{'REMOTE_ADDR'}."','$action','$target');");
+  $dbh->commit or die "Can't execute: ", $dbh->errstr;
+}
 sub WriteDBItems{
   my ($dbname,$fields,$doreplace,@vals)=@_;
   my (@res,$sth,$action,$holder);
@@ -6567,6 +6620,7 @@ sub DeletePage {
         $res=&DeleteDBItems($htmldb,"id LIKE '$page\[%\]'");
         &WriteRcLogDB($page, GetParam("summary",""), 2, $Now, 0,
               $UserData{'username'}, $UserData{'email'},0);
+        AddUserLogDB($UserID,'De',$page) if($UserID>=1000);
 	return $res;
   }
   $fname = &GetPageFile($page);
