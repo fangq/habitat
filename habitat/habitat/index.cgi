@@ -1217,8 +1217,7 @@ sub GetRc {
     next if ((!$all) && ($ts < $changetime{$pagename}));
     next if (($idOnly ne "") && ($idOnly ne $pagename));
     %extra = split(/$FS2/, $extraTemp, -1);
-    next if($extra{'admin'} ne "" && (not &UserIsAdmin()) );
-
+    next if($extra{'admin'}==1 && (not &UserIsAdmin()) );
     if ($date ne &CalcDay($ts)) {
       $date = &CalcDay($ts);
       if (1 == $rcType) { # HTML
@@ -1250,7 +1249,7 @@ sub GetRc {
     }
   }
   if (1 == $rcType) {
-    $result .= "</UL>\n" if ($inlist); # Close final tag
+    $result .= "</ul>\n" if ($inlist); # Close final tag
   }
   return ($headList, $result); # Just ignore headList for HTML
 }
