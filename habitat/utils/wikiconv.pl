@@ -79,12 +79,11 @@ sub GetPageDirectory {
   if ($id =~ /^([a-zA-Z])/) {
     return uc($1);
   }
-  if($id =~ /^([\x80-\xff][\x80-\xff][\x80-\xff])_([89101234]*)p[tx]/ 
-  || $id=~/^\(draft\)([\x80-\xff][\x80-\xff][\x80-\xff])_([89101234]*)p[tx]/ )
+  if($id =~ /^([\x80-\xff][\x80-\xff][\x80-\xff])/)
   {
 	@letters = unpack("C*", $1);
 	$subdir= sprintf("%02X",$letters[1]);
-	return "other/$2/$subdir";
+	return "other/$subdir";
   }
   if($id =~ /^([\x80-\xff][\x80-\xff][\x80-\xff]).WQYS/)
 #  || $id=~/^\(draft\)([\x80-\xff][\x80-\xff][\x80-\xff]).WQYS/)
@@ -321,15 +320,17 @@ sub BuildWikiTree{
     $sname =~ s/\.db$//;
     $lname = $fname;
     if($lname =~ /$baseDir\/(.+)$/) {$lname=$1;$lname=~s/\.db$//;}  # lname is page id
-    if (-f $fname) {
-        if(-d "$topDir/$sname") {next;}
+    if (-f $fname && $fname=~/\.db/) {
+#        if(-d "$topDir/$sname") {next;}
+	if($topDir=~/\/other\/[0-9A-F][0-9A-F]$/ && $lname=~/^[0-9A-F][0-9A-F]\/(.*)/){ $lname=$1;}
         $treetext.= "$lname\n";
         $fcount++;
     }elsif (-d $fname){
         if(-f "$fname\.db"){
+          if($topDir=~/\/other\/[0-9A-F][0-9A-F]$/ && $lname=~/^[0-9A-F][0-9A-F]\/(.*)/){ $lname=$1;}
           $treetext.="$lname\n".&BuildWikiTree($fname,$baseDir);
         }else{
-          $treetext.="$lname\n".&BuildWikiTree($fname,$baseDir);
+          $treetext.=&BuildWikiTree($fname,$baseDir);
         }
     }
   }
@@ -375,7 +376,6 @@ sub PrintPageSQL{
    $tx=~ s/'/''/g;
    $summ=$$t{'summary'};
    $summ=~ s/'/''/g;
-
    print <<EESQL;
 INSERT INTO "page" VALUES('$id',3,'$$s{'username'}',$rev,$$p{'tscreate'},$$s{'ts'},
 '$$s{'ip'}','$$s{'host'}','$summ','$tx',$$t{'minor'},$$t{'newauthor'},'$$s{'id'}',NULL);
