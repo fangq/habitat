@@ -5788,15 +5788,19 @@ sub DoPost {
           }
      }
   }
+  $string .= "\n" if (!($string =~ /\n$/));
+
   if($UseDiff){
      my $diffstr=&GetDiff($old, $string, 0);
-     if($isEdit || length($diffstr)<length($old)*0.25){
+     if(($isEdit || length($diffstr)<length($old)*0.25) && $diffstr ne ''){
 	my $revstr="$Now|$user|".&GetRemoteHost(1)."|$summary$FS5";
   	$string= &ReadRawWikiPage($id,1). $FS4. $revstr. $diffstr;
 	$$Section{'revision'}=$oldrev;
 	$isEdit=1;
      }else{
-        &UpdateDiffs($id, $editTime, $old, $string, $isEdit, $newAuthor,$diffstr);
+        if(not $UseDBI) {
+	   &UpdateDiffs($id, $editTime, $old, $string, $isEdit, $newAuthor,$diffstr);
+	}
      }
   }
   $$Text{'text'} = $string;

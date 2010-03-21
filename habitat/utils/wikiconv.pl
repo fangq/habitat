@@ -429,6 +429,7 @@ sub DumpSQL{
 		print "$page [rev $revision] time $sect{ts}\n";
 	  }
 	  if($count>1){
+	     if(not $oldtext=~/\n$/) {$oldtext.="\n";}
 	     $dif=GetDiff($oldtext,$data{'text'});
              my $summ=$data{'summary'};
              $summ=~ s/'/''/g;
