@@ -416,6 +416,10 @@ sub InitWikiEnv {
    if($UseDBI){
      if($DBName ne ''){
        $dbh=DBI->connect($DBName,$DBUser,$DBPass,\%DBErr) or die($DBI::errstr);
+       $dbh->func('regexp', 2, sub {
+	    my ($regex, $string) = @_;
+	    return $string =~ /$regex/;
+	}, 'create_function');
      }else{
        $ConfigError .= "database $DBName does not exist";
      }
@@ -2125,6 +2129,8 @@ sub ApplyRegExp {
   my ($id,$pageText,$namespace,$pagepath)=@_;
   my ($name);
 
+  $id=~s/(.*)\/__([A-Z0-9]+)__$/"$1\/".GetDynaPageName($1,$2)/geo;
+
   foreach $name (keys %$namespace){
      if($$namespace{$name} ne ""){
         if($id =~ m/$name/){
@@ -2139,6 +2145,24 @@ sub ApplyRegExp {
   return $pageText;
 }
 
+sub getnextnum{
+   my ($id)=@_;
+   $id=~s/\/$//g;
+   if($UseDBI){
+      my @matchitem=split(/\n/,ReadDBItems(GetPageDB($id),'id',"\n",'',"id REGEXP \"^$id\/[0-9]+\" group by id"));
+      for(my $i=0;$i<@matchitem;$i++){
+	$matchitem[$i]=~s/^$id\///;
+      }
+      return sprintf("%04d",(sort(@matchitem))[-1]+1) if (@matchitem>0);
+   }else{
+     for(my $i=1;$i<999999999;$i++){
+       if(! (-f GetPageFile(sprintf("%s/%04d",$id,$i)))){
+          return sprintf("%04d",$i);
+       }
+     }
+   }
+   return 999999999;
+}
 sub WikiToHTML {
   my ($id,$pageText) = @_;
   my ($toptree,$topnode,$datestr,$timestr,$pagename,$name,$truepage,$Section);
@@ -2234,11 +2258,20 @@ sub WikiToHTML {
 sub GetLocalTree{
   my ($id,$namepat,$format)=@_;
   my ($toptree,$topnode);
-  if(!(defined $LocalTree) && $IsPrintTree)
-  {
-      $toptree=$PageDir."/".&GetPageDirectory($id);
-      $topnode=(split(/\//,$id))[0];
-      $LocalTree = &BuildWikiTree($toptree."/".$topnode,$toptree,$namepat,$format);
+  if(!(defined $LocalTree) && $IsPrintTree){
+      if($UseDBI){
+	  my @matchitem=split(/\n/,ReadDBItems(GetPageDB($id),'id',"\n",'',"id REGEXP \"$id\/$namepat\" group by id"));
+	  foreach my $subitem (@matchitem){
+             my $oo=$format;
+             my $xmltext=ReadRawWikiPage($subitem);
+             $oo=~s/%([0-9a-zA-Z_]+)%/&GetXMLFields($1,$xmltext,$subitem,$subitem)/goe;
+             $LocalTree.= "<li class=\"wikitreefile\">$oo</li>\n";
+          }
+      }else{
+          $toptree=$PageDir."/".&GetPageDirectory($id);
+          $topnode=(split(/\//,$id))[0];
+          $LocalTree = &BuildWikiTree($toptree."/".$topnode,$toptree,$namepat,$format);
+      }
       $LocalTree = "<ul class=\"wikitreedir\"><li class=\"wikitreefile\"><a href=\"$ScriptName".&ScriptLinkChar()."$topnode\">$topnode</a></li>\n  $LocalTree </ul>";
 	$LocalTree="<div class=\"wikitree\"><h5>".T("Subpage List")."</h5>"
 	      ."<div class=\"wikitreeblock\">$LocalTree</div></div>";
@@ -2329,7 +2362,18 @@ sub GetVariable {
    }
    return $res;
 }
-
+sub GetXMLFields{
+  my ($pat,$data,$thispage,$thispagefull)=@_;
+  my ($val);
+  if($pat eq "THIS"){return $thispage;}
+  if($pat eq "THISFULL"){return $thispagefull;}
+  if($data=~/<$pat>(.*)<\/$pat>/s){
+        $val=$1;
+        $val=~s/\[\[$FreeLinkPattern\]\]/&StorePageOrEditLink($1, "")/geo;
+        return $val;
+  }
+  return "";
+}
 sub BuildWikiTree{
   my ($topDir,$baseDir,$namepat,$outpat)=@_;
   my $fcount;
@@ -4546,7 +4590,7 @@ sub DoEdit {
   my ($pagehash,%pagetype,$kstr,$kid,$noeditrule,$exteditor);
   my @vv;
 
-  if ($FreeLinks) {
+  if ($FreeLinks && (not $id=~/\/__[A-Z0-9]+__$/)) {
     $id = &FreeToNormal($id); # Take care of users like Markus Lude :-)
   }
   if (!&UserCanEdit($id, 1)) {
@@ -5566,7 +5610,13 @@ sub GetPageLinks {
   }
   return @links;
 }
-
+sub GetDynaPageName{
+   my ($id,$name)=@_;
+   if($name eq 'NEW'){
+     return getnextnum($id);
+   }
+   return "";
+}
 sub DoPost {
   my ($editDiff, $old, $newAuthor, $pgtime, $oldrev, $preview, $user,$tt);
   my $string = &GetParam("text", undef);
@@ -5597,6 +5647,8 @@ sub DoPost {
       not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){
 	PrintMsg(T("Wrong CAPTCHA Answer"),T("Error"),1);
   }
+  $id=~s/(.*)\/__([A-Z0-9]+)__$/"$1\/".GetDynaPageName($1,$2)/geo;
+
   $string = &RemoveFS($string);
   $summary = &RemoveFS($summary);
   $summary =~ s/[\r\n]//g;
