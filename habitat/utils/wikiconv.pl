@@ -371,20 +371,29 @@ sub GetDiff {
 }
 
 sub PrintPageSQL{
-   my ($id,$p,$s,$t,$tx,$rev)=@_;
-   my ($summ);
+   my ($id,$p,$KeptRev,$tx,$rev,$test)=@_;
+   my ($summ,%s,%t);
    $tx=~ s/'/''/g;
-   $summ=$$t{'summary'};
+
+   %s = split(/$FS2/, $KeptRev, -1);
+   %t = split(/$FS3/, $s{'data'}, -1);
+   $summ=$t{'summary'};
    $summ=~ s/'/''/g;
-   print <<EESQL;
-INSERT INTO "page" VALUES('$id',3,'$$s{'username'}',$rev,$$p{'tscreate'},$$s{'ts'},
-'$$s{'ip'}','$$s{'host'}','$summ','$tx',$$t{'minor'},$$t{'newauthor'},'$$s{'id'}',NULL);
+
+   if($test!=1){
+      print <<EESQL;
+INSERT INTO "page" VALUES('$id',3,'$s{'username'}',$rev,$s{'ts'}, $$p{'tscreate'},
+'$s{'ip'}','$s{'host'}','$summ','$tx',$t{'minor'},$t{'newauthor'},'$s{'id'}',NULL);
 EESQL
+   }
 }
 sub DumpSQL{
-  my ($page,$Page,$Section,$Text,@pagelist,%sect,$bb,@revnum,$revision,
-      %data,$count,$oldtext,$rev,$dif,$diffpatch, $content, $items);
+  my ($debug)=@_;
+  my ($page,$Page,$Section,$Text,@pagelist,%sect,$bb,@revnum,$revision, $lasttime,
+      %data,$count,$oldtext,$rev,$dif,$diffpatch, $content, $items, 
+      @currrev);
   @pagelist=GenerateAllPagesList();
+#  @pagelist=('TodoList');
 #print(join("\n",@pagelist));
 #exit;
   $items=0;
@@ -407,12 +416,18 @@ sub DumpSQL{
         $items+=@revnum+1;
         $KeptRevisions{$revnum[-1]+1}=join($FS2,%$Section);
 	@revnum=sort {$a <=> $b} keys %KeptRevisions;
+        @currrev=();
+        undef $oldtext;
 
 	foreach my $revision (@revnum) {
 	  next if ($revision eq ""); # (needed?)
           %sect = split(/$FS2/, $KeptRevisions{$revision}, -1);
           %data = split(/$FS3/, $sect{'data'}, -1);
+          $oldtext=$data{'text'}    if(!defined($oldtext));
 	  $count++;
+	  if($debug==1){
+		print "$page [rev $revision] time $sect{ts}\n";
+	  }
 	  if($count>1){
 	     $dif=GetDiff($oldtext,$data{'text'});
              my $summ=$data{'summary'};
@@ -424,32 +439,43 @@ sub DumpSQL{
 		}else{
 	          	$diffpatch.="$FS4$revstr$dif";
 		}
+		push(@currrev,$revision);
                 $oldtext=$data{'text'};
 		next if $revision<$revnum[-1];
 	     }
-	     if($diffpatch eq '' && $oldtext ne ''){
-		if($dif ne ''){
-	        	$diffpatch=$oldtext."$FS4$revstr$dif";
-		}else{
-                        $diffpatch=$oldtext;
-		}
-	     }
 	     $content=$diffpatch;
-	     #$content=~ s/'/''/g;
-	     PrintPageSQL($page,$Page,\%sect,\%data,$content,$rev++);
+	     $content=$oldtext if($diffpatch eq '');
+             if($debug==1){
+                   print "===> $page [rev $revision] time $sect{ts} $rev, $count ".length($content)."[".join("/",@currrev)."]\n";
+             }
+	     PrintPageSQL($page,$Page,$KeptRevisions{$currrev[0]},$content,$rev++,$debug);
+	     if($revision==$revnum[-1] && !($data{'minor'}==1 || length($dif)<length($oldtext)*0.25)){
+		 @currrev=($revision);
+		 $content=$data{'text'};
+	         if($debug==1){
+                     print "~~~> $page [rev $revision] time $sect{ts} $rev, $count ".length($content)."[".join("/",@currrev)."]\n";
+	         }
+		 PrintPageSQL($page,$Page,$KeptRevisions{$currrev[0]},$content,$rev++,$debug);
+		 last;
+	     }
 	     $diffpatch='';
+	     $oldtext=$data{'text'};
+	     @currrev=();
 	  }
           if(@revnum==1){
-             PrintPageSQL($page,$Page,\%sect,\%data,$data{'text'},$rev++);
+             if($debug==1){
+                   print "---> $page [rev $revision] time $sect{ts} $rev, $count [".join("/",@currrev)."]\n";
+             }
+             PrintPageSQL($page,$Page,$KeptRevisions{$revision},$data{'text'},$rev++,$debug);
 	     last;
           }
           $oldtext=$data{'text'};
+	  push(@currrev,$revision);
 	}
-#	$content=$$Text{'text'};
-#	$content=~ s/'/''/g;
-#        PrintPageSQL($page,$Page,$Section,$Text,$content,$rev);
   }
-#  print "dumped $items records\n";
+  if($debug==1){ 
+	print "dumped $items records\n";
+  }
 }
 
-&DumpSQL();
+&DumpSQL(0);
