@@ -1485,7 +1485,7 @@ sub GetMaskedHost {
 sub GetHistoryLine {
   my ($id, $section, $canEdit, $row) = @_;
   my ($html, $expirets, $rev, $summary, $host, $user, 
-      $uid, $ts, $minor,$subver,$allver,$revid);
+      $uid, $ts, $minor,$subver,$allver,$revid,$pts,$puser,$phost,$psummary,$puid);
   my (%sect, %revtext, @textpatch);
 
   %sect = split(/$FS2/, $section, -1);
@@ -1513,13 +1513,13 @@ sub GetHistoryLine {
   $subver=$#textpatch;
   $allver=1;
   $allver=$subver+1 if($subver>0);
-  for(my $i=$allver;$i>=1;$i--){
+  for(my $i=$allver-1;$i>=0;$i--){
      if(defined($textpatch[$i])){
 	if($textpatch[$i]=~/^(.*)$FS5/){
-		($ts,$user,$host,$summary)=split(/\|/,$1);
+		($pts,$puser,$phost,$psummary)=split(/\|/,$1);
 	}
      }
-     $revid=($i==$allver?$rev:"$rev.".($i-1));
+     $revid=($i==$allver-1?$rev:"$rev.".$i);
      if ($UseDiff) {
        my ($c1, $c2);
        $c1 = 'checked="checked"' if 1 == $row;
@@ -1528,7 +1528,7 @@ sub GetHistoryLine {
         	. "name='diffrevision' value='$revid' $c1/> ";
        $html .= "<input type='radio' name='revision' value='$revid' $c2/></td><td>";
      }
-     if (0 == $row && $i==$allver) { # current revision
+     if (0 == $row && $i==$allver-1) { # current revision
        $html .= &GetPageLinkText($id, Ts('Revision %s', $revid)) . ' ';
 
        if ($canEdit) {
@@ -1541,11 +1541,14 @@ sub GetHistoryLine {
 	 $html .= &GetOldPageLink('edit', $id, $revid, T('(edit)')) . ' ';
        }
      }
-     $html .= ". . " . $minor . &TimeToText($ts) . " ";
-     $html .= T('by') . ' ' . &GetAuthorLink($host, $user, $uid) . " ";
-     if (defined($summary) && ($summary ne "") && ($summary ne "*")) {
-       $summary = &QuoteHtml($summary); # Thanks Sunir! :-)
-       $html .= "<b>[$summary]</b> ";
+     if($i==0){
+	($pts,$puser,$phost,$psummary)=($ts,$user,$host,$summary);
+     }
+     $html .= ". . " . $minor . &TimeToText($pts) . " ";
+     $html .= T('by') . ' ' . &GetAuthorLink($phost, $puser, $uid) . " ";
+     if (defined($psummary) && ($psummary ne "") && ($psummary ne "*")) {
+       $psummary = &QuoteHtml($psummary); # Thanks Sunir! :-)
+       $html .= "<b>[$psummary]</b> ";
      }
      $html .= $UseDiff ? "</tr>\n" : "<br>\n";
   }
