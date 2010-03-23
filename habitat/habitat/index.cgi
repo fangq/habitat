@@ -724,7 +724,9 @@ sub BuildRuleStack {
 
    $levelcount = ($toptree =~ tr/\///)+1;
 
-   $Pages{$id}=('preview'=>(),'postview'=>(),'preedit'=>(),'postedit'=>(),'rules'=>1);
+   $Pages{$id}=('preview'=>(),'postview'=>(),'preedit'=>(),'postedit'=>());
+   $Pages{$id}->{'rules'}=1;
+
    for($i=$levelcount;$i<@dirs;$i++){
 	$dirname="";
 	for($j=$levelcount;$j<=$i;$j++) {
@@ -744,9 +746,7 @@ sub BuildRuleStack {
 		  	$Pages{$id}->{'expire'}=$1;
 		  }
 		}
-                if(length($rules)>1){ 
-			push(@{$Pages{$id}->{$rulefiles{$ff}}},$rules);
-		}
+		push(@{$Pages{$id}->{$rulefiles{$ff}}},$rules);
             }
         }
    }
@@ -2191,7 +2191,6 @@ sub WikiToHTML {
       $pageText =~ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiPageRaw($1,$5,$7)/geo;
   }
   $pageText=&ApplyRegExp($id,$pageText,\%NameSpaceV0,$Pages{$id}->{'preview'});
-
   if($id=~/(.*)$DiscussSuffix$/){
           $truepage=$1;
 	  $pageText =~ s/&lt;origpagename&gt;/$truepage/gi;
