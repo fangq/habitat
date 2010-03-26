@@ -4601,6 +4601,9 @@ sub DoEdit {
       print T('Contact the wiki administrator for more information.');
     } else {
       print Ts('Editing not allowed: %s is read-only.', $SiteName);
+      if($UserID<1000){
+      	&EnterLoginForm();
+      }
     }
     print "</div>";
     print &GetCommonFooter();
@@ -4838,10 +4841,25 @@ sub DoEditPrefs {
         print ' ', &GetFormText('username', "", 20, 50)."<strong>*</strong>";
         print ' ' . T('(IP address will be used if not supplied)');
   }
-  print '</span><br><span class="span_prefinfo">' . T('User password:') . ' ',
-        $q->password_field(-name=>'p_password', -value=>'',
+  if($UserData{'username'} ne ''){
+        print '</span><br><span class="span_prefinfo">' . T('Old password:') . ' ',
+            $q->password_field(-name=>'p_password', -value=>'',
                            -size=>15, -maxlength=>50),
-        '<strong>*</strong></span><br/>';
+            '<strong>*</strong></span><br/>';
+        print '<span class="span_prefinfo">' . T('New password:') . ' ',
+            $q->password_field(-name=>'new_password', -value=>'',
+                           -size=>15, -maxlength=>50),
+            '</span><br/>';
+  }else{
+      print '</span><br><span class="span_prefinfo">' . T('User password:') . ' ',
+            $q->password_field(-name=>'p_password', -value=>'',
+                               -size=>15, -maxlength=>50),
+            '<strong>*</strong></span><br/>';
+  }
+  print '<span class="span_prefinfo">' . T('Repeat password:') . ' ',
+        $q->password_field(-name=>'p_password2', -value=>'',
+                           -size=>15, -maxlength=>50),
+        '</span><br/>';
   print  T('Email Address:'), ' ',&GetFormText('email', "", 15, 60).'<strong>*</strong><hr class="wikilinepref"/>';
   if (($AdminPass ne '') || ($EditPass ne '')) {
     print T('Administrator Password:'), ' ',
@@ -4932,13 +4950,15 @@ sub GetFormCheck {
 }
 
 sub DoUpdatePrefs {
-  my ($username, $password, $stylesheet, $lang, $email);
+  my ($username, $password,$password2,$newpass,$stylesheet, $lang, $email);
 
   # All link bar settings should be updated before printing the header
   &UpdatePrefCheckbox("toplinkbar");
   &UpdatePrefCheckbox("linkrandom");
   $username = &GetParam("p_username", "");
   $password = &GetParam("p_password", "");
+  $password2= &GetParam("p_password2", "");
+  $newpass  = &GetParam("new_password", "");
   $email = &GetParam("p_email", "");
 
   if ($UserID < 1001) {
@@ -4957,6 +4977,10 @@ sub DoUpdatePrefs {
      if ($UserData{'password'} ne crypt($password,$UserData{'password'})){
      	PrintMsg(T("You have to type password in order to change your preferences"),T("Error"),1);
      }
+     $password=$newpass;
+  }
+  if($password ne $password2){
+     PrintMsg(T("Two passwords do not match"),T("Error"),1);
   }
   print &GetHeader('',T('Saving Preferences'), '');
   print '<div class="wikitext"><br>';
@@ -5172,10 +5196,7 @@ sub DoNewLogin {
 
   &SaveUserData();
 }
-
-sub DoEnterLogin {
-  print &GetHeader('', T('Login'), "");
-  print '<div class="wikiinfo">';
+sub EnterLoginForm {
   print &GetFormStart();
   print &GetHiddenValue('enter_login', 1), "\n";
   print '<br>', T('User Name:'), ' ',
@@ -5185,8 +5206,16 @@ sub DoEnterLogin {
         $q->password_field(-name=>'p_password', -value=>'',
                            -size=>15, -maxlength=>50);
   print '<br>', $q->submit(-name=>'Login', -value=>T('Login')), "\n";
+  print '<br>'.Ts('If you do not have an account, please %s to register.',
+     &ScriptLink("action=newlogin",T('click here')))."\n";
   print '<hr class="wikilinefooter">';
   print $q->endform;
+}
+
+sub DoEnterLogin {
+  print &GetHeader('', T('Login'), "");
+  print '<div class="wikiinfo">';
+  &EnterLoginForm();
   print "</div>";
   print &GetMinimumFooter();
 }

@@ -464,3 +464,5 @@ $Translate{'(IP address will be used if not supplied)'}                       = 
 $Translate{'Go Back'}                                                         =        '返回前页';
 $Translate{'(Current user name is %s)'}                                       =        '当前用户: %s';
 $Translate{'Delete reason:'}                                                  =        '删除原因：';
+$Translate{'If you do not have an account, please %s to register.'}           =        '如果您尚未注册帐号，请 %s 进行注册。';
+$Translate{'click here'}                                                      =        '点击这里';
