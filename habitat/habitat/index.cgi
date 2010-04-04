@@ -72,7 +72,7 @@ local $| = 1; # Do not buffer output (localized for mod_perl)
 use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $TempDir $LockDir $DataDir $HtmlDir $UserDir $KeepDir $PageDir
   $InterFile $RcFile $RcOldFile $IndexFile $FullUrl $SiteName $HomePage
-  $LogoUrl $RcDefault $IndentLimit $RecentTop $EditAllowed $UseDiff
+  $LogoUrl $RcDefault $IndentLimit $RecentTop $PermEditAllowed $UseDiff
   $UseSubpage $UseCache $RawHtml $SimpleLinks $NonEnglish $LogoLeft
   $KeepDays $HtmlTags $HtmlLinks $UseDiffLog $KeepMajor $KeepAuthor
   $FreeUpper $EmailNotify $SendMail $EmailFrom $FastGlob $EmbedWiki
@@ -89,7 +89,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UpperFirst $AdminBar $RepInterMap $ConfirmDel
   $MaskHosts $LockCrash $ConfigFile $LangFile $LangID $HistoryEdit $OldThinLine
   @IsbnNames @IsbnPre @IsbnPost $EmailFile $FavIcon $RssDays $UserHeader
-  $UserBody $StartUID $ParseParas $AuthorFooter $UseUpload $AllUpload
+  $UserBody $StartUID $ParseParas $AuthorFooter $PermUseUpload $AllUpload
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
@@ -164,7 +164,7 @@ $UploadUrl   = '';              # Full URL (like http://foo.com/uploads)
 # Major options:
 $UseSubpage  = 1;           # 1 = use subpages,       0 = do not use subpages
 $UseCache    = 0;           # 1 = cache HTML pages,   0 = generate every page
-$EditAllowed = 1;           # 1 = editing allowed,    0 = read-only
+$PermEditAllowed = 1;           # 1 = editing allowed,    0 = read-only
 $RawHtml     = 1;           # 1 = allow <html> tag,   0 = no raw HTML in pages
 $HtmlTags    = 0;           # 1 = "unsafe" HTML tags, 0 = only minimal tags
 $UseDiff     = 1;           # 1 = use diff features,  0 = do not use diff
@@ -179,7 +179,7 @@ $ReplaceFile = 'ReplaceFile';   # 0 = disable, 'PageName' = indicator tag
 @ReplaceableFiles = ();     # List of allowed server files to replace
 $TableSyntax = 1;           # 1 = wiki syntax tables, 0 = no table syntax
 $NewFS       = 0;           # 1 = new multibyte $FS,  0 = old $FS
-$UseUpload   = 0;           # 1 = allow uploads,      0 = no uploads
+$PermUseUpload   = 0;           # 1 = allow uploads,      0 = no uploads
 
 # Minor options:
 $LogoLeft     = 1;      # 1 = logo on left,       0 = logo on right
@@ -564,7 +564,7 @@ sub InitRequest {
   my @ScriptPath = split('/', "$ENV{SCRIPT_NAME}");
 
   $CGI::POST_MAX = $MaxPost;
-  if ($UseUpload) {
+  if ($PermUseUpload) {
     $CGI::DISABLE_UPLOADS = 0; # allow uploads
   } else {
     $CGI::DISABLE_UPLOADS = 1; # no uploads
@@ -738,10 +738,13 @@ sub BuildRuleStack {
 	    $rules=&ReadRawWikiPage($fname);
             if($rules ne ""){
 	        if($rules=~/=/){
-                  $Pages{$id}->{'admin'}=1 if($rules =~ /\bADMIN=1\b/);
-                  $Pages{$id}->{'editor'}=1 if($rules =~ /\bEDITOR=1\b/);
-                  $Pages{$id}->{'private'}=1 if($rules =~ /\bPRIVATE=1\b/);
-                  $Pages{$id}->{'writeonly'}=1 if($rules =~ /\bWRITEONLY=1\b/);
+                  $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},100) if($rules =~ /\bADMIN=1\b/);
+                  $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},50)  if($rules =~ /\bEDITOR=1\b/);
+                  $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},200) if($rules =~ /\bPRIVATE=1\b/);
+                  $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},50)  if($rules =~ /\bWRITEONLY=1\b/);
+                  if($rules =~ /\bALLOW=([0-9.]+)\b/) {
+                        $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},$1);
+                  }
                   if($rules =~ /\bEXPIRE=\s*(.*)\b/) {
 		  	$Pages{$id}->{'expire'}=$1;
 		  }
@@ -835,9 +838,7 @@ sub BrowsePage {
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0) || &GetParam('format', '') eq 'json') {
      &BuildRuleStack($id);
-     if(defined($Pages{$id}->{'admin'}) && (not &UserIsAdmin() ) ||
-        defined($Pages{$id}->{'editor'}) && (not &UserIsEditor() ) ||
-	defined($Pages{$id}->{'writeonly'}) && (not &UserIsAdmin() )){
+     if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
                 return "";
      }
      print &GetHttpHeader('text/plain',$Pages{$id}->{'expire'});
@@ -1221,7 +1222,7 @@ sub GetRc {
     next if ((!$all) && ($ts < $changetime{$pagename}));
     next if (($idOnly ne "") && ($idOnly ne $pagename));
     %extra = split(/$FS2/, $extraTemp, -1);
-    next if($extra{'admin'}==1 && (not &UserIsAdmin()) );
+    next if($extra{'admin'} && (&UserPermission()<$extra{'admin'}) );
     if ($date ne &CalcDay($ts)) {
       $date = &CalcDay($ts);
       if (1 == $rcType) { # HTML
@@ -1429,8 +1430,7 @@ sub DoHistory {
   
   &BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
-  if($Pages{$id}->{'admin'}==1 && (not &UserIsAdmin() ) || 
-     $Pages{$id}->{'editor'}==1 && (not &UserIsEditor() )){
+  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
         print "<div class=wikiinfo>no permission</div>\n";
 	print &GetCommonFooter();
 	return;
@@ -1830,14 +1830,7 @@ sub GetHeader {
     $result .=  "<li class='activetab'>$title</li>";
   }
   if($id ne '' && $action ne 'edit' && $action ne 'history') {
-    $result .= '<li class=inactivetab>';
-    if (&UserCanEdit($id, 0)) {
-	$result .= &GetEditLink($id, T('Edit this page'));
-    } else {
-      $result .= T('Read-only Page');
-    }
-    $result .= '</li>';
-
+    $result .= '<li class=inactivetab>'. &GetEditLink($id, T('Edit this page')).'</li>';
     $result .= '<li class=inactivetab>';
     $result .= &GetHistoryLink($id,T('View other revisions'));
     $result .= '</li><li class=inactivetab>';
@@ -2023,7 +2016,7 @@ sub GetGotoBar {
     $bartext .= '<li>'. &GetPageLink($main). '</li>';
   }
   $bartext .= "<li>" . &GetPageLinkText($RCName,T('RecentChanges')). '</li>';
-  if ($UseUpload && &UserCanUpload()) {
+  if ($PermUseUpload && &UserCanUpload()) {
     $bartext .= "<li>" . &GetUploadLink(). '</li>';
   }
   if (&GetParam("linkrandom", 0)) {
@@ -2033,7 +2026,7 @@ sub GetGotoBar {
     $bartext .= "<li>" . $UserGotoBar. '</li>';
   }
   if($UserData{'username'} eq ''){
-      if(&GetLockState!=1 || $EditAllowed ){
+      if(&GetLockState!=1 || $PermEditAllowed ){
          $bartext .= "<li><a href=\"$ScriptName".&ScriptLinkChar()."action=newlogin\">". T('Register') .'</a>'. '</li>';
       }
       $bartext .= "<li><a href=\"$ScriptName".&ScriptLinkChar()."action=login\">". T('Login') .'</a>'. '</li>';
@@ -2172,8 +2165,7 @@ sub WikiToHTML {
 
   &RestorePageHash($id);
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if($Pages{$id}->{'admin'} && (not &UserIsAdmin() ) ||
-     $Pages{$id}->{'editor'} && (not &UserIsEditor() )){
+  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
 		$UseCache=0;
 		return "";
   }
@@ -2490,7 +2482,7 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
     s/\[$InterLinkPattern\]/&StoreBracketInterPage($1, "", 0)/geo;
     s/\b$UrlPattern/&StoreUrl($1, $useImage)/geo;
     s/\b$InterLinkPattern/&StoreInterPage($1, $useImage)/geo;
-    if ($UseUpload) {
+    if ($PermUseUpload) {
       s/$UploadPattern/&StoreUpload($1)/geo;
     }
 
@@ -3975,35 +3967,28 @@ sub ValidIdOrDie {
 
 sub UserCanEdit {
   my ($id, $deepCheck) = @_;
-  my ($permit);
+  my ($permit, $clearance);
 
+  $clearance=&UserPermission();
   if($id=~/\/\./){
-    return 0 if (! &UserIsAdmin()); # Requires more privledges
-  }
-  $permit=ReadPagePermissions($id,\%Permissions);
-  if($permit eq "ANONY"){
-	return 1;
+    return 0 if ($clearance<100); # Requires more privledges
   }
 
   # Optimized for the "everyone can edit" case (don't check passwords)
   if (($id ne "") && (IsPageLocked($id))) {
-    return 1 if (&UserIsAdmin()); # Requires more privledges
+    return 1 if ($clearance==100); # Requires more privledges
     # Consider option for editor-level to edit these pages?
     return 0;
   }
-  if (!$EditAllowed) {
-    return 1 if (&UserIsEditor());
+  $permit=ReadPagePermissions($id,\%Permissions);
+  if($clearance>=$permit){
+	return 1;
+  }
+  if (!$PermEditAllowed) {
+    return 1 if ($clearance>=$PermEditAllowed);
     return 0;
   }
-  if (-f "$DataDir/noedit") {
-    return 1 if (&UserIsEditor());
-    return 0;
-  }
-  if ($deepCheck) { # Deeper but slower checks (not every page)
-    return 1 if (&UserIsEditor());
-    return 0 if (&UserIsBanned());
-  }
-  return 1;
+  return 0;
 }
 
 sub UserIsBanned {
@@ -4024,6 +4009,17 @@ sub UserIsBanned {
     return 1 if ($host =~ /$_/i);
   }
   return 0;
+}
+
+sub UserPermission {
+  return 100  if UserIsAdmin();
+  return -100 if UserIsBanned(); # can not ban admin
+  return 50   if UserIsEditor();
+  if($UserID > 1000 && $UserData{'id'} ne ''){
+     return 1;  # for registered users
+  }else{
+     return -1; # for anonymous users
+  }
 }
 
 sub UserIsAdmin {
@@ -4054,7 +4050,7 @@ sub UserIsEditor {
 }
 
 sub UserCanUpload {
-  return 1 if (&UserIsEditor());
+  return 1 if (&UserPermission() >= $PermUseUpload);
   return $AllUpload;
 }
 
@@ -4523,7 +4519,7 @@ sub DoOtherRequest {
       &DoRss();
     } elsif ($action eq "delete") {
       &DoDeletePage($id);
-    } elsif ($UseUpload && ($action eq "upload")) {
+    } elsif ($PermUseUpload && ($action eq "upload")) {
       &DoUpload();
     } elsif ($action eq "maintainrc") {
       &DoMaintainRc();
@@ -4558,7 +4554,7 @@ sub DoOtherRequest {
     &DoUpdateLinks();
     return;
   }
-  if ($UseUpload && (&GetParam("upload", 0))) {
+  if ($PermUseUpload && (&GetParam("upload", 0))) {
     &SaveUpload();
     return;
   }
@@ -4677,8 +4673,7 @@ name=\"myform\">";
   $noeditrule=&GetParam("noeditrule","");
   if($noeditrule eq "") {
     &BuildRuleStack($id); # added 05/13/06 by fangq
-    if($Pages{$id}->{'admin'} && (not &UserIsAdmin() )||
-       $Pages{$id}->{'editor'} && (not &UserIsEditor() )){
+    if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
                 $UseCache=0;
                 return "";
     }
@@ -5033,7 +5028,7 @@ sub DoUpdatePrefs {
       }
     }
   }
-  if(&GetLockState==1 || ((!$EditAllowed) && !&UserIsAdmin() && !&UserIsEditor()) ){
+  if(&GetLockState==1 || ((!$PermEditAllowed) && &UserPermission()<$PermEditAllowed ) ){
         ErrMsg(T("Wiki read-only"),T("Error"),1);
   }
   $UserData{'email'} = &GetParam("p_email", "");
@@ -5671,7 +5666,7 @@ sub DoPost {
     return;
   }
 
-  if( $UseCaptcha && (not &UserIsAdmin()) && (not &UserIsEditor()) && 
+  if( $UseCaptcha && (&UserPermission()<50) && 
       not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){
 	PrintMsg(T("Wrong CAPTCHA Answer"),T("Error"),1);
   }
@@ -5691,8 +5686,7 @@ sub DoPost {
   # called routines can die, leaving locks.)
 
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if($Pages{$id}->{'admin'} && (not &UserIsAdmin() ) ||
-     $Pages{$id}->{'editor'} && (not &UserIsEditor() )){
+  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
 	    $UseCache=0;
 	    PrintMsg(T("no permission"),T("Error"),1);
   }
@@ -5837,7 +5831,7 @@ sub DoPost {
   $$Text{'summary'} = $summary;
   $$Section{'host'} = &GetRemoteHost(1);
   &SaveDefaultText($id);
-  $pgmode=$Pages{$id}->{'admin'}==1 || $Pages{$id}->{'editor'}==1 || $Pages{$id}->{'writeonly'}==1;
+  $pgmode=$Pages{$id}->{'clearance'};
   if(!defined($pgmode)){$pgmode=0;}
   if($UseDBI) {
         &SavePageDB($id);
@@ -7125,7 +7119,7 @@ sub DoDeletePage {
 sub DoUpload {
   print &GetHeader('', T('File Upload Page'), '');
   if (!$AllUpload) {
-    return if (!&UserIsEditorOrError());
+    return if (&UserPermission()<$PermUseUpload);
   }
   print '<div class="wikitext"><p>' . Ts('The current upload size limit is %s.', $MaxPost) . ' '
         . Ts('Change the %s variable to increase this limit.', '$MaxPost');
@@ -7144,7 +7138,7 @@ sub SaveUpload {
  
   print &GetHeader('', T('Upload Finished'), '');
   if (!$AllUpload) {
-    return if (!&UserIsEditorOrError());
+    return if (&UserPermission()<$PermUseUpload);
   }
   print '<div class="wikitext">';
 

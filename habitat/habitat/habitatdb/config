@@ -51,7 +51,7 @@ $UploadUrl   = '';              # Full URL (like http://foo.com/uploads)
 # Major options:
 $UseSubpage  = 1;           # 1 = use subpages,       0 = do not use subpages
 $UseCache    = 1;           # 1 = cache HTML pages,   0 = generate every page
-$EditAllowed = 1;           # 1 = editing allowed,    0 = read-only
+$PermEditAllowed = 1;           # 1 = editing allowed,    0 = read-only
 $RawHtml     = 1;           # 1 = allow <HTML> tag,   0 = no raw HTML in pages
 $HtmlTags    = 1;           # 1 = "unsafe" HTML tags, 0 = only minimal tags
 $UseDiff     = 1;           # 1 = use diff features,  0 = do not use diff
@@ -66,7 +66,7 @@ $ReplaceFile = 'ReplaceFile';   # 0 = disable, 'PageName' = indicator tag
 @ReplaceableFiles = ();     # List of allowed server files to replace
 $TableSyntax = 1;           # 1 = wiki syntax tables, 0 = no table syntax
 $NewFS       = 0;           # 1 = new multibyte $FS,  0 = old $FS
-$UseUpload   = 0;           # 1 = allow uploads,      0 = no uploads
+$PermUseUpload   = 0;           # 1 = allow uploads,      0 = no uploads
 $AMathML     = 0;           # 1 = allow <amathml> tags, 0 = no amath markup
 
 # Minor options:
