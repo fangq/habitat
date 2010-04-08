@@ -3981,10 +3981,10 @@ sub UserCanEdit {
     return 0;
   }
   $permit=ReadPagePermissions($id,\%Permissions);
-  if($clearance>=$permit){
+  if($permit ne '' && $clearance>=$permit){
 	return 1;
   }
-  if (!$PermEditAllowed) {
+  if (defined $PermEditAllowed) {
     return 1 if ($clearance>=$PermEditAllowed);
     return 0;
   }

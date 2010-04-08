@@ -163,12 +163,13 @@ $EmailFile   = "$DataDir/watch";   # Email notification lists
   ,"_BUG\$","plugin/wiki2bugzilla/bug.postedit"
   ,"_TODO\$","plugin/wiki2bugzilla/todo.postedit"
   ,"_TASK\$","plugin/wiki2bugzilla/task.postedit");
-%Permissions=("$DiscussPage\$","ANONY"
-  ,"_BUG\$","ANONY"
-  ,"_TODO\$","ANONY"
-  ,"_TASK\$","ANONY"
+%Permissions=("$DiscussPage\$",1
+  ,"_BUG\$",1
+  ,"_TODO\$",1
+  ,"_TASK\$",1
 );
-%DBPrefix=("$DiscussPage\$","talk");
+
+#%DBPrefix=("$DiscussPage\$","talk");
 
 %ExtViewer=("^test/Uni[0-9A-F]{4,5}\$","test/UnicodeViewer");
 %ExtEditor=();
