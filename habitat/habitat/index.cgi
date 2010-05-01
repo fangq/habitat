@@ -3840,9 +3840,9 @@ sub LoadUserDataDB {
      $sth=$dbh->selectall_arrayref("select * from $userdb where id=$uid");
   }else{
      if($uname=~/\@/){
-          $sth=$dbh->selectall_arrayref("select * from $userdb where email='$uname'");
+          $sth=$dbh->selectall_arrayref("select * from $userdb where email like '$uname'");
      }else{
-          $sth=$dbh->selectall_arrayref("select * from $userdb where name='$uname'");
+          $sth=$dbh->selectall_arrayref("select * from $userdb where name like '$uname'");
      }
   }
   if (!defined $sth->[0]) {
@@ -3860,7 +3860,13 @@ sub LoadUserDataDB {
   $UserData{'username'}=$name;
   $UserData{'password'}=$pass;
   $UserData{'adminpw'}=$group;
-  $UserData{'randkey'}=$randkey;
+  $UserData{'rawrandkey'}=$randkey;
+  if($randkey=~/$FS2/){
+  	my %rkey=split(/$FS2/,$randkey);
+	$UserData{'randkey'}=$rkey{$ENV{'REMOTE_ADDR'}};
+  }else{
+	$UserData{'randkey'}=$randkey;
+  }
   $UserData{'lang'}=$lang;
   $UserData{'email'}=$email;
   $UserData{'param'}=$param;
@@ -5255,10 +5261,10 @@ sub DoLogin {
   print &GetHeader('', T('Login Results'), '');
   print '<div class="wikiinfo">';
   if ($success) {
-    print Ts('Login for user %s complete.', "$uname($UserID)");
+    print Ts('Login for user %s complete.', "$uname");
     AddUserLogDB($UserID,'login',$uname);
   } else {
-    print Tss('Login for user %1 failed. Error: %2', "$uname($UserID)", $err);
+    print Tss('Login for user %1 failed. Error: %2', "$uname", $err);
     AddUserLogDB($UserID,'login','-F');
   }
   print '<hr class="wikilinefooter">';
@@ -5284,8 +5290,13 @@ sub ResetRandKeyDB{
   }
   $sth=$dbh->selectall_arrayref("select id from $userdb where id=$uid");
   if(defined $sth->[0]){
-     $sth=$dbh->prepare("update $userdb set randkey='".$UserData{'randkey'}."' where id=$uid");
-     $sth->execute();
+     my %rkey;
+     if($sth=~/$FS2/){
+  	%rkey=split(/$FS2/,$sth);
+     }
+     $rkey{$ENV{'REMOTE_ADDR'}}=$UserData{'randkey'};
+     $sth=$dbh->prepare("update $userdb set randkey= ? where id=$uid");
+     $sth->execute(join($FS2,%rkey));
   }
 }
 
@@ -5333,7 +5344,8 @@ sub GetNewUserId {
 
 sub SaveUserDataDB {
   my $userdb =(split(/\//,$UserDir))[-1];
-  my ($id,$sth,$encpass,$isnewuser,$tmp,$name,$passhash,$randkey,$adminhash,$linkchr,%extra);
+  my ($id,$sth,$encpass,$isnewuser,$tmp,$name,$passhash,
+      $randkey,$adminhash,$linkchr,%extra,%rkey);
 
   if($dbh eq "" || $userdb eq ""){
       die(T('ERROR: database uninitialized!'));
@@ -5375,9 +5387,14 @@ sub SaveUserDataDB {
      'alldiff'=>$UserData{'alldiff'},
      'defaultdiff'=>$UserData{'defaultdiff'},
   );
+  if(defined($UserData{'rawrandkey'})){
+  	%rkey=split(/$FS2/,$UserData{'rawrandkey'});
+  }
+  $rkey{$ENV{'REMOTE_ADDR'}}=$UserData{'randkey'};
+
   $sth=$dbh->prepare("replace into $userdb (id,name,pass,randkey,groupid,lang,email,param,createtime,"
      ."createip,tzoffset,pagecreate,pagemodify,stylesheet) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  $sth->execute($UserID,$UserData{'username'},$encpass,$UserData{'randkey'},$adminhash,
+  $sth->execute($UserID,$UserData{'username'},$encpass,join($FS2,%rkey),$adminhash,
       $UserData{'lang'},$UserData{'email'},$UserData{'param'},
       $UserData{'createtime'},$UserData{'createip'},$UserData{'tzoffset'},$UserData{'pagecreate'},
       $UserData{'pagemodify'},join($FS2,%extra)) or die($DBI::errstr);
