@@ -95,7 +95,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
   $UserBuildinCSS %BuildinPages %TextCache %Pages $UseDetailedLog 
-  $PageLog $UserLog);
+  $PageLog $UserLog $PrintedHeader);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
@@ -1799,6 +1799,11 @@ sub GetHeader {
   my $altText = T('[Home]');
   my ($action, $tab);
 
+  if($PrintedHeader==1){
+  	return;
+  }
+  $PrintedHeader=1;
+  
   $result = &GetHttpHeader('',&GetParam('expires', ''));
   if ($FreeLinks) {
     $title =~ s/_/ /g; # Display as spaces
@@ -6684,6 +6689,26 @@ sub EditRecentChangesFile {
   &WriteStringToFile($fname, $outrc);
 }
 
+sub DeletePageRevisionFrom{
+  my ($page, $major, $minor) = @_;
+  my ($text,@patches);
+  my $pagedb=&GetPageDB($page);
+
+  if($dbh eq "" || $pagedb eq ""){
+     die(T('ERROR: database uninitialized!'));
+  }
+  $text=ReadDBItems($pagedb,'text','','',"page='$page' and revision='$major'");
+  if($text eq ""){
+     die(T('ERROR: specified revision does not exist!'));
+  }
+  @patches=split(/$FS4/,$text);
+  if($#patches>$minor){
+      my $sth=$dbh->prepare("update $pagedb set text= ? where id='$page' and revision='$major'");
+      splice(@patches,$minor+1,@patches-$minor);
+      $sth->execute(join($FS4,@patches));  
+  }
+}
+
 # Delete and rename must be done inside locks.
 sub DeletePage {
   my ($page, $doRC, $doText, $rev) = @_;
@@ -6706,9 +6731,15 @@ sub DeletePage {
             die(T('ERROR: database uninitialized!'));
         }
         if($rev ne "" && $rev>=0){
+	    if($rev=~/^([0-9]+)\.([0-9]+)/ && $2>0){
+                $res=&CopyDBItems($pagedb,"deleted$pagedb","id='$page' and revision=$1");
+	        $res=&DeletePageRevisionFrom($page,$1,$2);
+		$res=&DeleteDBItems($rclogdb,"id='$page' and revision=$rev") if ($doRC);
+	    }else{
                 $res=&CopyDBItems($pagedb,"deleted$pagedb","id='$page' and revision=$rev");
 	        $res=&DeleteDBItems($pagedb,"id='$page' and revision=$rev");
 		$res=&DeleteDBItems($rclogdb,"id='$page' and revision=$rev") if ($doRC);
+	    }
 	}else{
                 $res=&CopyDBItems($pagedb,"deleted$pagedb","id='$page'");
 		$res=&DeleteDBItems($pagedb,"id='$page'");
@@ -7094,8 +7125,13 @@ sub DoDeletePage {
   my ($rev);
   $rev= &GetParam("revision", "");
 
-  return if (!&ValidIdOrDie($id));
-  return if (!&UserIsAdminOrError());
+  if (!&ValidId($id) || !&UserIsAdmin()){
+	print &GetHeader('', T('No Permission ...'), '');
+	print '<div class="wikiinfo">'.T("Can not delete page - no permission")."</div>";;
+        print &GetMinimumFooter();
+	return;
+  }
+  
   if ($ConfirmDel && !&GetParam('confirm', 0)) {
     print &GetHeader('', Ts('Confirm Delete %s', $id), '');
     print &GetFormStart();
