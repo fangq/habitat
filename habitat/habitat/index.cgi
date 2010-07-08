@@ -1250,7 +1250,9 @@ sub GetRc {
                          $extra{'id'}, $summary, $isEdit,
                          $pagecount{$pagename}, $extra{'revision'},
                          $tEdit, $tDiff, $tChanges, $all, $rcchangehist);
-      $result .= $extra{'admin'};
+      if($extra{'admin'}>0){
+      	$result .= $extra{'admin'};
+      }
     }
   }
   if (1 == $rcType) {
@@ -1526,8 +1528,8 @@ sub GetHistoryLine {
      $revid=($i==$allver-1?$rev:"$rev.".$i);
      if ($UseDiff) {
        my ($c1, $c2);
-       $c1 = 'checked="checked"' if 1 == $row;
-       $c2 = 'checked="checked"' if 0 == $row;
+       $c1 = 'checked="checked"' if 1 == $row && $i==$allver-1;
+       $c2 = 'checked="checked"' if 0 == $row && $i==$allver-1;
        $html .= "<tr><td align='center'><input type='radio' "
         	. "name='diffrevision' value='$revid' $c1/> ";
        $html .= "<input type='radio' name='revision' value='$revid' $c2/></td><td>";
@@ -4981,12 +4983,15 @@ sub DoUpdatePrefs {
      }
   }else{ # for existing users, you have to match password before changing anything
      if ($UserData{'password'} ne crypt($password,$UserData{'password'})){
-     	PrintMsg(T("You have to type password in order to change your preferences"),T("Error"),1);
+     	PrintMsg(T("You have to type the correct password in order to change your preferences"),T("Error"),1);
      }
-     $password=$newpass;
-  }
-  if($password ne $password2){
-     PrintMsg(T("Two passwords do not match"),T("Error"),1);
+     if($newpass ne "" && $password2 ne ""){
+     	if($newpass eq $password2){
+		$password=$newpass;
+	}else{
+		PrintMsg(T("Two passwords do not match"),T("Error"),1);
+	}
+     }
   }
   print &GetHeader('',T('Saving Preferences'), '');
   print '<div class="wikitext"><br>';
@@ -6581,7 +6586,7 @@ sub UpdateLinksList {
     print T("Processing")." $_<br>\n";
     if (/^\!([^,]+)\s*$/) {
       &DeletePage($1, $doRC, $doText);
-    } elsif (/^\!(.+),([0-9]+)/){
+    } elsif (/^\!(.+),([0-9.]+)/){
       &DeletePage($1, $doRC, $doText,$2);
     } elsif (/^\=(?:\[\[)?([^]=]+)(?:\]\])?\=(?:\[\[)?([^]=]+)(?:\]\])?/) {
       &RenamePage($1, $2, $doRC, $doText);
@@ -6697,14 +6702,14 @@ sub DeletePageRevisionFrom{
   if($dbh eq "" || $pagedb eq ""){
      die(T('ERROR: database uninitialized!'));
   }
-  $text=ReadDBItems($pagedb,'text','','',"page='$page' and revision='$major'");
+  $text=ReadDBItems($pagedb,'text','','',"id='$page' and revision=$major");
   if($text eq ""){
-     die(T('ERROR: specified revision does not exist!'));
+     die(T('ERROR: specified revision does not exist!')."$page:$major.$minor");
   }
   @patches=split(/$FS4/,$text);
-  if($#patches>$minor){
+  if($#patches>=$minor){
       my $sth=$dbh->prepare("update $pagedb set text= ? where id='$page' and revision='$major'");
-      splice(@patches,$minor+1,@patches-$minor);
+      splice(@patches,$minor,@patches-$minor);
       $sth->execute(join($FS4,@patches));  
   }
 }
@@ -7125,9 +7130,9 @@ sub DoDeletePage {
   my ($rev);
   $rev= &GetParam("revision", "");
 
-  if (!&ValidId($id) || !&UserIsAdmin()){
+  if (&ValidId($id) ne "" || !&UserIsAdmin()){
 	print &GetHeader('', T('No Permission ...'), '');
-	print '<div class="wikiinfo">'.T("Can not delete page - no permission")."</div>";;
+	print '<div class="wikiinfo">'.T("Can not delete page - no permission".ValidId($id))."</div>";;
         print &GetMinimumFooter();
 	return;
   }
@@ -7137,7 +7142,7 @@ sub DoDeletePage {
     print &GetFormStart();
     print '<div class="wikitext">';
     print Ts('Confirm deletion of %s by following this link:', $id);
-    print "<br>".T("Delete reason:").$q->textfield(-name=>'summary', -size=>10, 
+    print "<br>".T("Delete reason:").$q->textfield(-name=>'summary', -size=>30, 
                         -value=>'', -class=>'wikisearchbox');
     print &GetHiddenValue("action", "delete");
     print &GetHiddenValue("id", $id);
@@ -7552,6 +7557,7 @@ sub JSONFormat{
     return "$callback({\npage:\"$id\",\nhtml:\"$text\"\n});";
     
 }
+
 #END_OF_OTHER_CODE
 
 &DoWikiRequest() if ($RunCGI && ($_ ne 'nocgi')); # Do everything. 1; # In case we are loaded from elsewhere
