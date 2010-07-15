@@ -838,7 +838,8 @@ sub BrowsePage {
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0) || &GetParam('format', '') eq 'json') {
      &BuildRuleStack($id);
-     if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
+     if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
+       && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
                 return "";
      }
      print &GetHttpHeader('text/plain',$Pages{$id}->{'expire'});
@@ -1432,7 +1433,8 @@ sub DoHistory {
   
   &BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
-  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
+  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
+     && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
         print "<div class=wikiinfo>no permission</div>\n";
 	print &GetCommonFooter();
 	return;
@@ -2172,7 +2174,8 @@ sub WikiToHTML {
 
   &RestorePageHash($id);
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
+  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
+    && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
 		$UseCache=0;
 		return "";
   }
@@ -4025,14 +4028,23 @@ sub UserIsBanned {
 }
 
 sub UserPermission {
-  return 100  if UserIsAdmin();
-  return -100 if UserIsBanned(); # can not ban admin
-  return 50   if UserIsEditor();
-  if($UserID > 1000 && $UserData{'id'} ne ''){
-     return 1;  # for registered users
-  }else{
-     return -1; # for anonymous users
+  my $up;
+  if(defined($UserData{'clearance'})){
+	return $UserData{'clearance'};
   }
+  if(UserIsAdmin()){
+     $up=100;
+  }elsif(UserIsBanned()){
+     $up=-100;
+  }elsif(UserIsEditor()){
+     $up=50;
+  }elsif($UserID > 1000 && $UserData{'id'} ne ''){
+     $up=1;
+  }else{
+     $up=-1;
+  }
+  $UserData{'clearance'}=$up;
+  return $up;
 }
 
 sub UserIsAdmin {
@@ -4611,7 +4623,7 @@ sub DoEdit {
     } else {
       print Ts('Editing not allowed: %s is read-only.', $SiteName);
       if($UserID<1000){
-      	&EnterLoginForm();
+       	&EnterLoginForm();
       }
     }
     print "</div>";
@@ -4685,8 +4697,10 @@ name=\"myform\">";
   }
   $noeditrule=&GetParam("noeditrule","");
   if($noeditrule eq "") {
+    my $u=&UserPermission();
     &BuildRuleStack($id); # added 05/13/06 by fangq
-    if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
+    if(defined($Pages{$id}->{'clearance'}) && $u < $Pages{$id}->{'clearance'}
+        && $u < ReadPagePermissions($id,\%Permissions) ){
                 $UseCache=0;
                 return "";
     }
@@ -5713,7 +5727,8 @@ sub DoPost {
   # called routines can die, leaving locks.)
 
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}){
+  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'} 
+     && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
 	    $UseCache=0;
 	    PrintMsg(T("no permission"),T("Error"),1);
   }
@@ -7555,7 +7570,14 @@ sub JSONFormat{
     $text=~s/\n/\\n/g;
     $text=~s/\r/\\r/g;
     return "$callback({\npage:\"$id\",\nhtml:\"$text\"\n});";
-    
+}
+sub max {
+    my ($max) = shift(@_);
+    my ($temp);
+    foreach $temp (@_) {
+        $max = $temp if $temp > $max;
+    }
+    return($max);
 }
 
 #END_OF_OTHER_CODE
