@@ -741,7 +741,7 @@ sub BuildRuleStack {
                   $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},100) if($rules =~ /\bADMIN=1\b/);
                   $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},50)  if($rules =~ /\bEDITOR=1\b/);
                   $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},200) if($rules =~ /\bPRIVATE=1\b/);
-                  $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},50)  if($rules =~ /\bWRITEONLY=1\b/);
+                  $Pages{$id}->{'writeonly'}=1  if($rules =~ /\bWRITEONLY=1\b/);
                   if($rules =~ /\bALLOW=([0-9.]+)\b/) {
                         $Pages{$id}->{'clearance'}=max($Pages{$id}->{'clearance'},$1);
                   }
@@ -2130,6 +2130,8 @@ sub RemoveFS {
 sub ApplyRegExp {
   my ($id,$pageText,$namespace,$pagepath)=@_;
   my ($name);
+
+  if($id=~/\/\.[^\/]+$/){return $pageText;}
 
   $id=~s/(.*)\/__([A-Z0-9]+)__$/"$1\/".GetDynaPageName($1,$2)/geo;
 
@@ -4652,7 +4654,10 @@ sub DoEdit {
       $header = Ts('Editing revision %s of ', $revision ) . $id;
     }
   }
-
+  &BuildRuleStack($id); # added 05/13/06 by fangq
+  if($Pages{$id}->{'writeonly'}==1){
+	$Pages{$id}->{'text'}->{'text'}='';	
+  }
   $oldText = $Pages{$id}->{'text'}->{'text'};
   if ($preview && !$isConflict) {
     $oldText = $newText;
@@ -4698,7 +4703,6 @@ name=\"myform\">";
   $noeditrule=&GetParam("noeditrule","");
   if($noeditrule eq "") {
     my $u=&UserPermission();
-    &BuildRuleStack($id); # added 05/13/06 by fangq
     if(defined($Pages{$id}->{'clearance'}) && $u < $Pages{$id}->{'clearance'}
         && $u < ReadPagePermissions($id,\%Permissions) ){
                 $UseCache=0;
@@ -4723,6 +4727,13 @@ name=\"myform\">";
 
   if($noeditrule eq "") {
     print &ApplyRegExp($id,"",\%NameSpaceE0,$Pages{$id}->{'preedit'});
+  }elsif(&UserPermission()<100){
+      print "<div class='wikiinfo'>".T('noeditrule mode only allowed for admin.');
+      if($UserID<1000){
+        &EnterLoginForm();
+      }
+      print "</div>";
+      return;
   }
         print &GetTextArea('text', $oldText, $editRows, $editCols);
         $summary = &GetParam("summary", "*");
