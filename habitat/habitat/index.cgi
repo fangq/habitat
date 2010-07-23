@@ -2071,9 +2071,13 @@ sub GetRedirectPage {
   my ($url, $html);
   my ($nameLink);
 
-  # Normally get URL from script, but allow override.
-  $FullUrl = $q->url(-path=>1) if ($FullUrl eq "");
-  $url = $FullUrl . &ScriptLinkChar() . &UrlEncode($newid);
+  if($newid =~/^http[s:]+\/\//){
+    $url=$newid;
+  }else{
+    # Normally get URL from script, but allow override.
+    $FullUrl = $q->url(-path=>1) if ($FullUrl eq "");
+    $url = $FullUrl . &ScriptLinkChar() . &UrlEncode($newid);
+  }
 
   $nameLink = "<a href=\"$url\">$name</a>";
   if ($RedirType < 3) {
@@ -4637,6 +4641,7 @@ sub DoEdit {
       &ReBrowsePage("$exteditor#$id", "", 0);
       return;
   }
+  &BuildRuleStack($id); # added 05/13/06 by fangq
   # Consider sending a new user-ID cookie if user does not have one
   &OpenDefaultPage($id);
   $pageTime = $Pages{$id}->{'section'}->{'ts'};
@@ -4654,7 +4659,6 @@ sub DoEdit {
       $header = Ts('Editing revision %s of ', $revision ) . $id;
     }
   }
-  &BuildRuleStack($id); # added 05/13/06 by fangq
   if($Pages{$id}->{'writeonly'}==1){
 	$Pages{$id}->{'text'}->{'text'}='';	
   }
@@ -5704,6 +5708,7 @@ sub DoPost {
   my $authorAddr = $ENV{REMOTE_ADDR};
   my (%pagetype,$pgmode,$Page,$Text,$Section);
   my $editmode= &GetParam("editmode", "");
+  my $redirect= &GetParam("redirect", "");
 
   if (!&UserCanEdit($id, 1)) {
     # This is an internal interface--we don't need to explain
@@ -5916,7 +5921,11 @@ sub DoPost {
     unlink($IndexFile); # Regenerate index on next request
   }
   &ReleaseLock();
-  &ReBrowsePage($id, "", 1);
+  if($redirect ne ""){
+    GetRedirectPage($redirect,T("if your browser does not support redirect, please click this link"),0);
+  }else{
+    &ReBrowsePage($id, "", 1);
+  }
 }
 
 sub UpdateDiffs {
