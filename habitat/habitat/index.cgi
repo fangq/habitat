@@ -5790,7 +5790,7 @@ sub DoPost {
   $newAuthor = 1 if ($oldrev == 0); # New page
   $newAuthor = 0 if (!$newAuthor); # Standard flag form, not empty
   # Detect editing conflicts and resubmit edit
-  if (($oldrev > 0) && ($newAuthor && ($oldtime != $pgtime))) {
+  if (($oldrev > 0) && ($newAuthor && ($oldtime-$pgtime != 0 ))) {
     &ReleaseLock();
     if ($oldconflict > 0) { # Conflict again...
       &DoEdit($id, 2, $pgtime, $string, $preview);
@@ -5922,7 +5922,7 @@ sub DoPost {
   }
   &ReleaseLock();
   if($redirect ne ""){
-    GetRedirectPage($redirect,T("if your browser does not support redirect, please click this link"),0);
+    print &GetRedirectPage($redirect,T("if your browser does not support redirect, please click this link"),0);
   }else{
     &ReBrowsePage($id, "", 1);
   }
