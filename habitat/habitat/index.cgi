@@ -1433,8 +1433,9 @@ sub DoHistory {
   
   &BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
-  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
-     && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
+  if((defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
+     && &UserPermission() < ReadPagePermissions($id,\%Permissions)) || 
+      (&UserPermission()!=100 && $Pages{$id}->{'writeonly'}==1) ){
         print "<div class=wikiinfo>no permission</div>\n";
 	print &GetCommonFooter();
 	return;
@@ -5964,6 +5965,14 @@ sub UpdateDiffs {
 sub SendEmail {
   my ($to, $from, $reply, $subject, $message) = @_;
 
+  if($SendMail=~/\/mail$/){
+open FF,">debugmail.log";
+print FF "$to, $from, $reply, $subject, $message\n\n$SendMail";
+close(FF);
+     &MailEmail($to, $from, $reply, $subject, $message);
+     return;
+  }
+
   # sendmail options:
   #    -odq : send mail to queue (i.e. later when convenient) -oi : do not wait for "." line to exit -t : headers 
   #    determine recipient.
@@ -5976,6 +5985,16 @@ Subject: $subject\n
 $message
 EOF
   close(SENDMAIL) or warn "sendmail didn't close nicely";
+}
+
+# Translation note: the email messages are still sent in English Send an email message.
+sub MailEmail {
+  my ($to, $from, $reply, $subject, $message) = @_;
+  open (SENDMAIL, "| $SendMail -s '$subject' '$to'") or die "Can't send email: $!\n";
+  print SENDMAIL <<"EOF";
+$message
+EOF
+  close(SENDMAIL) or warn "mail didn't close nicely";
 }
 
 sub ReadWatchListDB{
@@ -6016,10 +6035,10 @@ sub EmailNotify {
       $user = " by $user";
     }
     my $address;
-    return if (!-f $EmailFile); # No notifications yet
     if($UseDBI){
 	$address=&ReadWatchListDB($id);
     }else{
+        return if (!-f $EmailFile); # No notifications yet
         $address=&ReadWatchList();
     }
     my $home_url = $q->url(-path=>1);
