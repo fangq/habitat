@@ -2162,7 +2162,7 @@ sub getnextnum{
       for(my $i=0;$i<@matchitem;$i++){
 	$matchitem[$i]=~s/^$id\///;
       }
-      return sprintf("%04d",(sort(@matchitem))[-1]+1) if (@matchitem>0);
+      return sprintf("%04d",(sort(@matchitem))[-1]+1) if (@matchitem>=0);
    }else{
      for(my $i=1;$i<999999999;$i++){
        if(! (-f GetPageFile(sprintf("%s/%04d",$id,$i)))){
@@ -5710,6 +5710,7 @@ sub DoPost {
   my (%pagetype,$pgmode,$Page,$Text,$Section);
   my $editmode= &GetParam("editmode", "");
   my $redirect= &GetParam("redirect", "");
+  my $isdynapg;
 
   if (!&UserCanEdit($id, 1)) {
     # This is an internal interface--we don't need to explain
@@ -5727,6 +5728,9 @@ sub DoPost {
   if( $UseCaptcha && (&UserPermission()<50) && 
       not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){
 	PrintMsg(T("Wrong CAPTCHA Answer"),T("Error"),1);
+  }
+  if($id=~/(.*)\/__([A-Z0-9]+)__$/){
+	$isdynapg=$1;
   }
   $id=~s/(.*)\/__([A-Z0-9]+)__$/"$1\/".GetDynaPageName($1,$2)/geo;
 
@@ -5911,6 +5915,9 @@ sub DoPost {
 	 die(T('ERROR: database uninitialized!'));
        }
        DeleteDBItems($htmldb,"id='$id\[$language\]'");
+       if($isdynapg ne ''){
+          DeleteDBItems($htmldb,"id='$isdynapg\[$language\]'");
+       }
     }else{
        &UnlinkHtmlCache($id); # Old cached copy is invalid
        if ($$Page{'revision'} < 2) { # If this is a new page...
