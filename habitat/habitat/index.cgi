@@ -3371,7 +3371,7 @@ sub OpenNewSection {
   $$Section{'revision'} = 0; # Number of edited times
   $$Section{'tscreate'} = $Now; # Set once at creation
   $$Section{'ts'} = $Now; # Updated every edit
-  $$Section{'ip'} = $ENV{REMOTE_ADDR};
+  $$Section{'ip'} = &RemoteAddr;
   $$Section{'host'} = ''; # Updated only for real edits (can be slow)
   $$Section{'id'} = $UserID;
   $$Section{'username'} = &GetParam("username", "");
@@ -3660,7 +3660,7 @@ sub SaveSection {
 
   $$Section{'revision'} += 1; # Number of edited times
   $$Section{'ts'} = $Now; # Updated every edit
-  $$Section{'ip'} = $ENV{REMOTE_ADDR};
+  $$Section{'ip'} = &RemoteAddr;
   $$Section{'id'} = $UserID;
   $$Section{'username'} = &GetParam("username", "");
   $$Section{'data'} = $data;
@@ -3880,7 +3880,7 @@ sub LoadUserDataDB {
   $UserData{'rawrandkey'}=$randkey;
   if($randkey=~/$FS2/){
   	my %rkey=split(/$FS2/,$randkey);
-	$UserData{'randkey'}=$rkey{$ENV{'REMOTE_ADDR'}};
+	$UserData{'randkey'}=$rkey{&RemoteAddr};
   }else{
 	$UserData{'randkey'}=$randkey;
   }
@@ -4024,7 +4024,7 @@ sub UserIsBanned {
   }
   return 0 if (!$status); # No file exists, so no ban
   $data =~ s/\r//g;
-  $ip = $ENV{'REMOTE_ADDR'};
+  $ip = &RemoteAddr;
   $host = &GetRemoteHost(0);
   foreach (split(/\n/, $data)) {
     next if ((/^\s*$/) || (/^#/)); # Skip empty, spaces, or comments
@@ -4472,11 +4472,11 @@ sub GetRemoteHost {
   $rhost = $ENV{REMOTE_HOST};
   if ($UseLookup && ($rhost eq "")) {
     # Catch errors (including bad input) without aborting the script
-    eval 'use Socket; $iaddr = inet_aton($ENV{REMOTE_ADDR});'
+    eval 'use Socket; $iaddr = inet_aton(&RemoteAddr);'
          . '$rhost = gethostbyaddr($iaddr, AF_INET)';
   }
   if ($rhost eq "") {
-    $rhost = $ENV{REMOTE_ADDR};
+    $rhost = &RemoteAddr;
   }
   $rhost = &GetMaskedHost($rhost) if ($doMask);
   return $rhost;
@@ -5207,7 +5207,7 @@ sub DoNewLoginDB {
   # The cookie will be transmitted in the next header
   %UserData = %UserCookie;
   $UserData{'createtime'} = $Now;
-  $UserData{'createip'} = $ENV{REMOTE_ADDR};
+  $UserData{'createip'} = &RemoteAddr;
   $UserData{'pagecreate'} = '';
   $UserData{'pagemodify'} = '';
   $UserData{'param'}='';
@@ -5229,7 +5229,7 @@ sub DoNewLogin {
   # The cookie will be transmitted in the next header
   %UserData = %UserCookie;
   $UserData{'createtime'} = $Now;
-  $UserData{'createip'} = $ENV{REMOTE_ADDR};
+  $UserData{'createip'} = &RemoteAddr;
   $UserData{'pagecreate'} = '';
   $UserData{'pagemodify'} = '';
   $UserData{'param'}='';
@@ -5334,7 +5334,7 @@ sub ResetRandKeyDB{
      if($sth=~/$FS2/){
   	%rkey=split(/$FS2/,$sth);
      }
-     $rkey{$ENV{'REMOTE_ADDR'}}=$UserData{'randkey'};
+     $rkey{&RemoteAddr}=$UserData{'randkey'};
      $sth=$dbh->prepare("update $userdb set randkey= ? where id=$uid");
      $sth->execute(join($FS2,%rkey));
   }
@@ -5430,7 +5430,7 @@ sub SaveUserDataDB {
   if(defined($UserData{'rawrandkey'})){
   	%rkey=split(/$FS2/,$UserData{'rawrandkey'});
   }
-  $rkey{$ENV{'REMOTE_ADDR'}}=$UserData{'randkey'};
+  $rkey{&RemoteAddr}=$UserData{'randkey'};
 
   $sth=$dbh->prepare("replace into $userdb (id,name,pass,randkey,groupid,lang,email,param,createtime,"
      ."createip,tzoffset,pagecreate,pagemodify,stylesheet) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
@@ -5706,7 +5706,7 @@ sub DoPost {
   my $oldconflict = &GetParam("oldconflict", "");
   my $isEdit = 0;
   my $editTime = $Now;
-  my $authorAddr = $ENV{REMOTE_ADDR};
+  my $authorAddr = &RemoteAddr;
   my (%pagetype,$pgmode,$Page,$Text,$Section);
   my $editmode= &GetParam("editmode", "");
   my $redirect= &GetParam("redirect", "");
@@ -6457,7 +6457,7 @@ sub AddUserLogDB{
   if($dbh eq "" || $dbname eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $dbh->do("insert into $dbname (id,time,ip,action,target) values ($uid,$Now,'".$ENV{'REMOTE_ADDR'}."','$action','$target');");
+  $dbh->do("insert into $dbname (id,time,ip,action,target) values ($uid,$Now,'".&RemoteAddr."','$action','$target');");
   $dbh->commit or die "Can't execute: ", $dbh->errstr;
 }
 sub WriteDBItems{
@@ -7616,6 +7616,12 @@ sub JSONFormat{
     $text=~s/\n/\\n/g;
     $text=~s/\r/\\r/g;
     return "$callback({\npage:\"$id\",\nhtml:\"$text\"\n});";
+}
+sub RemoteAddr {
+    my $remote = $ENV{'REMOTE_ADDR'};
+    $remote = $ENV{'HTTP_X_REMOTE_ADDR'} if $ENV{'HTTP_X_REMOTE_ADDR'} && ( !$remote || $remote =~ /^(127|192)\./);
+    
+    return $remote;
 }
 sub max {
     my ($max) = shift(@_);
