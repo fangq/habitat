@@ -460,7 +460,7 @@ sub DoCacheBrowse {
     }
   }
   if(($param{'action'} eq 'browse' || $param{'keywords'} ne '')&& ($param{'format'} eq 'json' 
-     || $param{'raw'}|| $param{'revision'} || $param{'diff'} ne '')){
+     || $param{'raw'}|| $param{'revision'} || $param{'embed'}==1 || $param{'diff'} ne '')){
      return 0;
   }
   if($param{'keywords'} ne ''){
@@ -960,7 +960,7 @@ sub BrowsePage {
   if($pagelogdb ne ""){
       UpdatePageLogDB($pagelogdb,$id);
   }
-  return if ($showDiff || ($revision ne '')); # Don't cache special version
+  return if ($showDiff || ($revision ne '') || &GetParam("embed", "") ne ""); # Don't cache special version
 
   if($UseDBI) {
 	  &UpdateHtmlCacheDB($id, $fullHtml) if ($UseCache && ($oldId eq ''));
