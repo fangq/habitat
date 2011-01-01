@@ -990,25 +990,25 @@ sub ReadRCLogDB{
   my ($stime)=@_;
   my ($sth,$rclogdb);
   my ($ts,$pagename,$summary,$isEdit,$host,$kind,$uid,$name,$rev,$admin,$lim,
-      $offset,$moretocome,$searchcmd,$maxtime);
+      $offset,$moretocome,$searchcmd,$mintime);
   my @fullrc=();
   my %extra;
 
   $lim=GetParam('listc', $RCHistoryLimit)+1;
 
-  $offset=GetParam('offset', 0);
+  $offset=GetParam('offset', 1e10);
 
   $rclogdb=(split(/\//,$RcFile))[-1];
   if($dbh eq "" || $rclogdb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
   if($offset>0){
-	$searchcmd="select * from $rclogdb where time>$offset limit $lim";
-  }else{  
-	$searchcmd="select * from $rclogdb where time>$stime  limit $lim";
+	$searchcmd="select * from $rclogdb where time>$stime and time<$offset order by time desc limit 0,$lim";
+  }else{
+	$searchcmd="select * from $rclogdb where time>$stime order by time desc limit 0,$lim";
   }
   $sth=$dbh->selectall_arrayref($searchcmd);
-  $maxtime=1e10;
+  $mintime=1e10;
   if(defined $sth->[0]){
      if(@{$sth}>$RCHistoryLimit){
   	   pop(@{$sth});
@@ -1022,14 +1022,14 @@ sub ReadRCLogDB{
             $extra{'name'}=$name;
             $extra{'admin'}=$admin;
             push(@fullrc,"$ts$FS3$pagename$FS3$summary$FS3$isEdit$FS3$host$FS3$kind$FS3".join($FS2,%extra));
-	    $maxtime=$ts if($ts<$maxtime);
+	    $mintime=$ts if($ts<$mintime);
         }
     }
   }
-  if($maxtime>0){
-    return ("Internal:Offset:$maxtime$moretocome",@fullrc);
+  if($mintime>0){
+    return ("Internal:Offset:$mintime$moretocome",reverse(@fullrc));
   }else{
-    return @fullrc;
+    return reverse(@fullrc);
   }
 }
 
