@@ -192,6 +192,11 @@ $DBPass="";
 $UsePerlDiff  = 1;
 $UseActivation= 0;
 $UseDetailedLog=0;
+$PageItemCount =20;
+$ListItemCount =100;
+$HistoryLimit  =50;
+$RCHistoryLimit=100;
+
 
 $BuildinPages{"Habitat/NewSyntax"}=<<HABITAT_NEWFEATURES;
 = Habitat's new features =

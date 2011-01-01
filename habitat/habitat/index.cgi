@@ -95,7 +95,8 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
   $UserBuildinCSS %BuildinPages %TextCache %Pages $UseDetailedLog 
-  $PageLog $UserLog $PrintedHeader);
+  $PageLog $UserLog $PrintedHeader $PageItemCount $ListItemCount 
+  $HistoryLimit $RCHistoryLimit);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
@@ -239,6 +240,11 @@ $DBName       = "";
 $UsePerlDiff  = 1;
 $UseActivation= 0;
 $UseDetailedLog=0;
+$PageItemCount =20;
+$ListItemCount =100;
+$HistoryLimit  =50;
+$RCHistoryLimit=100;
+
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ('bn.com', 'amazon.com', 'search');
@@ -983,33 +989,53 @@ sub ReBrowsePage {
 sub ReadRCLogDB{
   my ($stime)=@_;
   my ($sth,$rclogdb);
-  my ($ts,$pagename,$summary,$isEdit,$host,$kind,$uid,$name,$rev,$admin);
+  my ($ts,$pagename,$summary,$isEdit,$host,$kind,$uid,$name,$rev,$admin,$lim,
+      $offset,$moretocome,$searchcmd,$maxtime);
   my @fullrc=();
   my %extra;
+
+  $lim=GetParam('listc', $RCHistoryLimit)+1;
+
+  $offset=GetParam('offset', 0);
 
   $rclogdb=(split(/\//,$RcFile))[-1];
   if($dbh eq "" || $rclogdb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $sth=$dbh->selectall_arrayref("select * from $rclogdb where time>$stime;");
+  if($offset>0){
+	$searchcmd="select * from $rclogdb where time>$offset limit $lim";
+  }else{  
+	$searchcmd="select * from $rclogdb where time>$stime  limit $lim";
+  }
+  $sth=$dbh->selectall_arrayref($searchcmd);
+  $maxtime=1e10;
   if(defined $sth->[0]){
+     if(@{$sth}>$RCHistoryLimit){
+  	   pop(@{$sth});
+	   $moretocome="+";
+     }
      foreach my $rec (@$sth){
         ($ts,$pagename,$summary,$isEdit,$host,$kind,$uid,$name,$rev,$admin)=@{$rec};
-	$extra{'id'}=$uid;
-        $extra{'revision'}=$rev;
-        $extra{'name'}=$name;
-        $extra{'admin'}=$admin;
         if($ts ne ""){
+	    $extra{'id'}=$uid;
+            $extra{'revision'}=$rev;
+            $extra{'name'}=$name;
+            $extra{'admin'}=$admin;
             push(@fullrc,"$ts$FS3$pagename$FS3$summary$FS3$isEdit$FS3$host$FS3$kind$FS3".join($FS2,%extra));
+	    $maxtime=$ts if($ts<$maxtime);
         }
     }
   }
-  return @fullrc;
+  if($maxtime>0){
+    return ("Internal:Offset:$maxtime$moretocome",@fullrc);
+  }else{
+    return @fullrc;
+  }
 }
 
 sub DoRc {
   my ($rcType) = @_; # 0 = RSS, 1 = HTML
-  my ($fileData, $rcline, $i, $daysago, $lastTs, $ts, $idOnly);
+  my ($fileData, $rcline, $i, $daysago, $lastTs, $ts, $idOnly,$offs,$moretocome);
   my (@fullrc, $status, $oldFileData, $firstTs, $errorText, $showHTML);
   my $starttime = 0;
   my $showbar = 0;
@@ -1053,6 +1079,11 @@ sub DoRc {
   # Read rclog data (and oldrclog data if needed)
   if($UseDBI){
         @fullrc =&ReadRCLogDB($starttime);
+	if(@fullrc>0 && $fullrc[0]=~/^Internal:Offset:([0-9]+)([+]*)/){
+		$offs=$1;
+		$moretocome=$2;
+		shift(@fullrc);
+	}
 	$lastTs = 0;
 	if (@fullrc > 0) { # Only false if no lines in file
 	  ($lastTs) = split(/$FS3/, $fullrc[$#fullrc]);
@@ -1077,6 +1108,18 @@ sub DoRc {
 	    print " " . &TimeToText($lastTs) . "<br>\n";
 	  }
           print &GetRcHtml(@fullrc);
+	  if($offs ne ''){
+	    my $url;
+	    print "<div class='wikipager'>";
+	    if($moretocome ne ''){
+        	if($offs>=$RCHistoryLimit){
+			print "&nbsp;&nbsp;";
+		}
+        	$url="keywords=$RCName&offset=".$offs;
+        	print &ScriptLink($url,Ts('Next %s',$RCHistoryLimit)."&raquo;");
+	    }
+	    print "</div>";
+	  }
         }
         if ($showHTML) {
           print '<p>' . Ts('Page generated %s', &TimeToText($Now)), "<br>\n";
@@ -1428,8 +1471,7 @@ sub DoRandom {
 
 sub DoHistory {
   my ($id) = @_;
-  my ($html, $canEdit, $row, $newText);
-
+  my ($html, $canEdit, $row, $newText, $offs, $moretocome);
   
   &BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
@@ -1463,9 +1505,31 @@ EOF
 
   foreach (reverse sort {$a <=> $b} keys %KeptRevisions) {
     next if ($_ eq ""); # (needed?)
+    next if ($_ =~ /^Internal:/);
     $html .= &GetHistoryLine($id, $KeptRevisions{$_}, $canEdit, $row++);
   }
   print $html;
+  if($KeptRevisions{"Internal:Offset"} =~ /^([0-9]+)([+]*)$/){
+	$offs=$1;
+  	$moretocome=$2;
+  }
+  if($offs ne ''){
+    my $url;
+    print "<div class='wikipager'>";
+    print "<input type='hidden' name='offset' value='$offs'/>" if ($offs >0);
+    if($offs>=$HistoryLimit){
+        $url="action=history&id=$id&offset=".($offs-$HistoryLimit);
+        print &ScriptLink($url,"&laquo;".Ts('Previous %s pages',$HistoryLimit));
+    }
+    if($moretocome ne ''){
+        if($offs>=$HistoryLimit){
+		print "&nbsp;&nbsp;";
+	}
+        $url="action=history&id=$id&offset=".($offs+$HistoryLimit);
+        print &ScriptLink($url,Ts('Next %s pages',$HistoryLimit)."&raquo;");
+    }
+    print "</div>";
+  }
   if ($UseDiff) {
     my $label = T('Compare');
     print "<tr><td align='center'><input type='submit' "
@@ -1652,7 +1716,7 @@ sub GetPageOrEditAnchoredLink {
     $id = &FreeToNormal($id);
   }
   $exists = 0;
-  if ($UseIndex) {
+  if ($UseIndex && not $UseDBI) {
     if (!$IndexInit) {
       @temp = &AllPagesList(); # Also initializes hash
     }
@@ -1874,7 +1938,7 @@ sub GetHttpHeader {
             . "&id&" . $SetCookie{'id'}
             . "&randkey&" . $SetCookie{'randkey'}
             . "&lang&". $SetCookie{'lang'};
-    $cookie .= ";expires=Fri, 08-Sep-2013 19:48:23 GMT";
+    $cookie .= ";expires=".gmtime(time()+60*24*3600)." GMT";
     if ($HttpCharset ne '') {
       return $q->header(-cookie=>$cookie,-expires=>$exptime,
                         -type=>"$type; charset=$HttpCharset");
@@ -3415,9 +3479,9 @@ sub ReadLatestPageDB{
       die(T('ERROR: database uninitialized!'));
   }
   if($rev eq ""){
-	  $sth=$dbh->selectall_arrayref("select max(version),* from $pagedb where id='$id';");
+	  $sth=$dbh->selectall_arrayref("select max(version),* from $pagedb where id='$id'");
   }else{
-          $sth=$dbh->selectall_arrayref("select revision,* from $pagedb where id='$id' and revision=$rev;");
+          $sth=$dbh->selectall_arrayref("select revision,* from $pagedb where id='$id' and revision=$rev limit 1");
   }
   if(defined $sth->[0]){
      ($maxversion,$pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
@@ -3449,7 +3513,7 @@ sub OpenPageDB {
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $sth=$dbh->selectall_arrayref("select max(version),* from $pagedb where id='$id';");
+  $sth=$dbh->selectall_arrayref("select max(version),* from $pagedb where id='$id'");
   if(defined $sth->[0]){
      ($maxversion,$pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
         $summary,$text,$minor,$newauthor,$data)=@{$sth->[0]};
@@ -3596,7 +3660,7 @@ sub SavePageDB{
   }
   $$Page{'name'}=$name;
 
-  $sth=$dbh->selectall_arrayref("select max(revision),data from $pagedb where id='$name'");
+  $sth=$dbh->selectall_arrayref("select max(revision),data from $pagedb where id='$name';");
   if (defined $sth->[0]) {
 	($version,$data)=@{$sth->[0]};
 	$$Page{'revision'}=$version;
@@ -3781,15 +3845,26 @@ sub OpenKeptList {
 }
 sub OpenKeptListDB {
   my ($nopatch) = @_; # Name of section
-  my ($fname, $data, %sections,%texts,$sth);
+  my ($fname, $data, %sections,%texts,$sth,$lim,$offset,$searchcmd,$moretocome);
   my $pagedb =&GetPageDB($OpenPageName);
   my ($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
         $summary,$text,$minor,$newauthor,@KeptList,$inlinerev);
 
+  $lim=GetParam('listc', $HistoryLimit)+1;
+  $offset=GetParam('offset', 0);
+
   @KeptList = ();
 
-  $sth=$dbh->selectall_arrayref("select * from $pagedb where id='$OpenPageName';");
+  $searchcmd="select * from $pagedb where id='$OpenPageName' limit $lim";
+  if($offset ne '' && $offset >0){
+     $searchcmd.=" offset $offset";
+  }
+  $sth=$dbh->selectall_arrayref($searchcmd);
   if(defined $sth->[0]){
+     if(@{$sth}==$lim){
+  	   pop(@{$sth});
+	   $moretocome="+";
+     }
      foreach my $rec (@{$sth}){
 	my ($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
         $summary,$text,$minor,$newauthor,$data)=@$rec;
@@ -3823,7 +3898,7 @@ sub OpenKeptListDB {
         $KeptList[$revision] =join($FS2, %sections);
      }
   }
-  return @KeptList;
+  return ("Internal:Offset:$offset$moretocome",@KeptList);
 }
 
 sub OpenKeptRevisions {
@@ -3837,6 +3912,10 @@ sub OpenKeptRevisions {
   %KeptRevisions = ();
   foreach $rev (@KeptList) {
     next if($rev eq '');
+    if($rev=~/^Internal:Offset:([0-9]+[+]*)/){
+        $KeptRevisions{"Internal:Offset"}=$1;
+    	next;
+    }
     %tempSection = split(/$FS2/, $rev, -1);
     next if ($tempSection{'name'} ne $name);
     $KeptRevisions{$tempSection{'revision'}} = $rev;
@@ -3854,12 +3933,12 @@ sub LoadUserDataDB {
       return T('ERROR: database uninitialized!');
   }
   if($uname eq ""){
-     $sth=$dbh->selectall_arrayref("select * from $userdb where id=$uid");
+     $sth=$dbh->selectall_arrayref("select * from $userdb where id=$uid limit 1");
   }else{
      if($uname=~/\@/){
-          $sth=$dbh->selectall_arrayref("select * from $userdb where email like '$uname'");
+          $sth=$dbh->selectall_arrayref("select * from $userdb where email like '$uname' limit 1");
      }else{
-          $sth=$dbh->selectall_arrayref("select * from $userdb where name like '$uname'");
+          $sth=$dbh->selectall_arrayref("select * from $userdb where name like '$uname' limit 1");
      }
   }
   if (!defined $sth->[0]) {
@@ -4287,16 +4366,28 @@ sub UpdateHtmlCache {
 sub GenerateAllPagesListDB {
    my @pages;
    my $pagedb =GetParam("dbprefix","").(split(/\//,$PageDir))[-1];
-   my ($sth,$pg);
+   my ($sth,$pg,$lim,$offset,$searchcmd);
+   
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $sth=$dbh->selectall_arrayref("select id from $pagedb group by id");
+  $lim=GetParam('listc', $ListItemCount)+1;
+  $offset=GetParam('offset', 0);
+  $searchcmd="select id from $pagedb group by id limit ".$lim;
+  if($offset ne '' && $offset >0){
+     $searchcmd.=" offset $offset";
+  }
+  $sth=$dbh->selectall_arrayref($searchcmd);
   foreach $pg (@{$sth}){
      push(@pages,$pg->[0]);
   }
-  @pages=sort (@pages,keys (%BuildinPages));
-  return @pages;
+  if(@pages==$lim){
+  	pop(@pages);
+        @pages=sort (@pages);
+	return ("Internal:Offset:$offset+",@pages);
+  }
+  @pages=sort (@pages);
+  return ("Internal:Offset:$offset",@pages);
   # need to print log
 }
 sub GenerateAllPagesList {
@@ -4824,9 +4915,9 @@ sub DoActivateUser {
         if($dbh eq "" || $userdb eq ""){
             die(T('ERROR: database uninitialized!'));
         }
-        $sth=$dbh->selectall_arrayref("select id from $userdb where id=$uid");
+        $sth=$dbh->selectall_arrayref("select id from $userdb where id=$uid limit 1");
         if(defined $sth->[0]){
-            $sth=$dbh->prepare("update $userdb set param='' where id=$uid");
+            $sth=$dbh->prepare("update $userdb set param='' where id=$uid limit 1");
             $sth->execute();
         }
         ResetRandKeyDB($uid,'');
@@ -5191,8 +5282,13 @@ sub UpdatePrefNumber {
 
 sub DoIndex {
   print &GetHeader('', T('Index of all pages'), '');
-  print '<br>';
+  print &GetWrapperStart();
   &PrintPageList(&AllPagesList());
+  if(&GetParam("offset","") ==0){
+     print '<div class="wikitext"><h3>'.T('Search build-in pages ...').'</h3></div>';
+     &PrintPageList(keys %BuildinPages);
+  }
+  print &GetWrapperEnd();
   print &GetCommonFooter();
 }
 # Create a new user file/cookie pair
@@ -5328,7 +5424,7 @@ sub ResetRandKeyDB{
   if($dbh eq "" || $userdb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $sth=$dbh->selectall_arrayref("select id from $userdb where id=$uid");
+  $sth=$dbh->selectall_arrayref("select id from $userdb where id=$uid limit 1");
   if(defined $sth->[0]){
      my %rkey;
      if($sth=~/$FS2/){
@@ -5543,14 +5639,38 @@ sub DoBackLinks {
 }
 
 sub PrintPageList {
-  my $pagename;
+  my ($pagename,$offs,$moretocome);
   print '<div class="wikitext">';
+  $offs=0;
+  if($_[0]=~/^Internal:Offset:([0-9]+)([+]*)$/){
+  	$offs=$1;
+	$moretocome=$2;
+  }
+  shift(@_);
   print "<h2>", Ts('%s pages found:', ($#_ + 1)), "</h2>\n";
-  foreach $pagename (@_) {
+  foreach $pagename (@_){
     print ".... " if ($pagename =~ m|/|);
     print &GetPageLink($pagename), "<br>\n";
   }
-  print '</div>';
+  {
+    my $url;
+    print "<div class='wikipager'>";
+    if($offs>=$ListItemCount){
+        $url="search=".UrlEncode(&GetParam("search"),"")
+            ."&dosearch=1&offset=".($offs-$ListItemCount);
+        print &ScriptLink($url,"&laquo;".Ts('Previous %s pages',$ListItemCount));
+    }
+    if($moretocome ne ''){
+        if($offs>=$ListItemCount){
+		print "&nbsp;&nbsp;";
+	}
+        $url="search=".UrlEncode(&GetParam("search"),"")
+            ."&dosearch=1&offset=".($offs+$ListItemCount);
+        print &ScriptLink($url,Ts('Next %s pages',$ListItemCount)."&raquo;");
+    }
+    print "</div>";
+  }
+  print "</div>";
 }
 
 sub DoLinks {
@@ -6079,7 +6199,12 @@ END_MAIL_CONTENT
 
 sub SearchTitleAndBody {
   my ($string) = @_;
-  my ($name, $freeName, @found,@keywords,%cmd,$searchcmd,$sth,$pagedb,$rev);
+  my ($name, $freeName, @found,@keywords,%cmd,$searchcmd,$sth,$pagedb,$rev,$lim,$offset);
+
+  $lim=GetParam('listc', $ListItemCount)+1;
+
+  $offset=GetParam('offset', 0);
+  
   if($UseDBI){
 	$pagedb=(split(/\//,$PageDir))[-1];
 	@keywords=split(/&&/,$string);
@@ -6102,14 +6227,22 @@ sub SearchTitleAndBody {
 		$searchcmd.="$key '".$cmd{$key}."' ";
 	}
 	if($searchcmd eq "") {return ();}
-        $sth=$dbh->selectall_arrayref("select id from $pagedb where $searchcmd group by id;");
+	$searchcmd="select id from $pagedb where $searchcmd group by id limit $lim";
+	if($offset ne '' && $offset >0){
+	   $searchcmd.=" offset $offset";
+	}
+        $sth=$dbh->selectall_arrayref($searchcmd);
         if(defined $sth->[0]){
           foreach my $rec (@{$sth}){
               my ($pgid)=@$rec;
               push(@found,$pgid);
           }
+	  if(@{$sth}==$lim){
+	  	pop(@found);
+		return ("Internal:Offset:$offset+",@found);
+	  }
         }
-	return @found;
+	return ("Internal:Offset:$offset",@found);
   }
   foreach $name (&AllPagesList()) {
     &OpenDefaultPage($name);
@@ -6123,7 +6256,7 @@ sub SearchTitleAndBody {
       }
     }
   }
-  return @found;
+  return ("Internal:Offset:$offset",@found);
 }
 
 sub SearchBody {

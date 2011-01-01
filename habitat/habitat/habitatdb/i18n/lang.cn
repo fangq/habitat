@@ -466,3 +466,6 @@ $Translate{'(Current user name is %s)'}                                       = 
 $Translate{'Delete reason:'}                                                  =        '删除原因：';
 $Translate{'If you do not have an account, please %s to register.'}           =        '如果您尚未注册帐号，请 %s 进行注册。';
 $Translate{'click here'}                                                      =        '点击这里';
+$Translate{'Next %s pages'}                                                   =        '后 %s 页';
+$Translate{'Previous %s pages'}                                               =        '前 %s 页';
+$Translate{'Search build-in pages ...'}                                       =        '搜索内置页面...';
