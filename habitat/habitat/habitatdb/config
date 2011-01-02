@@ -196,6 +196,7 @@ $PageItemCount =20;
 $ListItemCount =100;
 $HistoryLimit  =50;
 $RCHistoryLimit=100;
+$InlineDiffLimit=50;
 
 
 $BuildinPages{"Habitat/NewSyntax"}=<<HABITAT_NEWFEATURES;

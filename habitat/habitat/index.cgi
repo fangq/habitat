@@ -96,7 +96,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
   $UserBuildinCSS %BuildinPages %TextCache %Pages $UseDetailedLog 
   $PageLog $UserLog $PrintedHeader $PageItemCount $ListItemCount 
-  $HistoryLimit $RCHistoryLimit);
+  $HistoryLimit $RCHistoryLimit $InlineDiffLimit);
 # Note: $NotifyDefault is kept because it was a config variable in 0.90 
 # Other global variables:
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
@@ -244,7 +244,7 @@ $PageItemCount =20;
 $ListItemCount =100;
 $HistoryLimit  =50;
 $RCHistoryLimit=100;
-
+$InlineDiffLimit=50;
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ('bn.com', 'amazon.com', 'search');
@@ -5998,10 +5998,16 @@ sub DoPost {
   if($UseDiff){
      my $diffstr=&GetDiff($old, $string, 0);
      if(($isEdit || length($diffstr)<length($old)*0.25) && $diffstr ne ''){
-	my $revstr="$Now|$user|".&GetRemoteHost(1)."|$summary$FS5";
-  	$string= &ReadRawWikiPage($id,1). $FS4. $revstr. $diffstr;
-	$$Section{'revision'}=$oldrev;
-	$isEdit=1;
+	my $rawdata=&ReadRawWikiPage($id,1);
+	my @oldrec=split(/$FS4/,$rawdata);
+	if(@oldrec<=$InlineDiffLimit){
+		my $revstr="$Now|$user|".&GetRemoteHost(1)."|$summary$FS5";
+	  	$string= $rawdata. $FS4. $revstr. $diffstr;
+		$$Section{'revision'}=$oldrev;
+		$isEdit=1;
+	}else{
+		$isEdit=0;
+	}
      }else{
         if(not $UseDBI) {
 	   &UpdateDiffs($id, $editTime, $old, $string, $isEdit, $newAuthor,$diffstr);
