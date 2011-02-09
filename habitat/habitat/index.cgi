@@ -1958,7 +1958,7 @@ sub GetHtmlHeader {
   my ($dtd, $html, $bodyExtra, $stylesheet, $printcss);
 
   $html = '';
-  $dtd = '-//IETF//DTD HTML//EN';
+  $dtd = '-//W3C//DTD XHTML 1.0 Transitional//EN';
   $html = qq(<!DOCTYPE HTML PUBLIC "$dtd">\n);
   $title = $q->escapeHTML($title);
   $html .= "<html><head><title>$title</title>\n";
@@ -2097,7 +2097,7 @@ sub GetGotoBar {
     $bartext .= "<li>" . &GetRandomLink(). '</li>';
   }
   if ($UserGotoBar ne '') {
-    $bartext .= "<li>" . $UserGotoBar. '</li>';
+    $bartext .= $UserGotoBar;
   }
   if($UserData{'username'} eq ''){
       if(&GetLockState!=1 || $PermEditAllowed ){
