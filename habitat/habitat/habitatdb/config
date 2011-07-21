@@ -171,7 +171,7 @@ $EmailFile   = "$DataDir/watch";   # Email notification lists
 
 #%DBPrefix=("$DiscussPage\$","talk");
 
-%ExtViewer=("^test/Uni[0-9A-F]{4,5}\$","test/UnicodeViewer");
+%ExtViewer=("^test/Uni[0-9A-F]{4,5}\$","test/UnicodeViewer",'^test/demofun1$',\&DemoContentFromFunc);
 %ExtEditor=();
 
 
@@ -370,6 +370,15 @@ hr.menusep{\
 }\
 <\/style>\
 <script type="text\/javascript" src="\/plugin\/menu\/menuscript.js"><\/script>';
+
+
+# external content modifiers (plugins or addons)
+
+sub DemoContentFromFunc{
+    my ($id,$text)=@_;
+    $text="this line is generated from a function <tt>DemoContentFromFunc()</tt>.";
+    return $text;
+}
 
 1
 # == End of Configuration =================================================

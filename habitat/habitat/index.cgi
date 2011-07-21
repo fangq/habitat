@@ -813,8 +813,10 @@ sub BrowsePage {
 
   $extviewer=ReadPagePermissions($id,\%ExtViewer);
   if($extviewer ne ''){
-      &ReBrowsePage("$extviewer#$id", "", 0);
-      return;
+      if(ref($extviewer) != "CODE"){
+          &ReBrowsePage("$extviewer#$id", "", 0);
+          return;
+      }
   }
   if($UseDBI&&$UserID>=1000){
       AddUserLogDB($UserID,'Br',$id);
@@ -841,6 +843,12 @@ sub BrowsePage {
   }
   $Page=\%{$Pages{$id}->{'page'}};
   $Text=\%{$Pages{$id}->{'text'}};
+
+  # build-in pages are only used for browsing
+  if(defined $$Text{'isnew'} && $BuildinPages{$id} ne ''){
+     $$Text{'text'}=$BuildinPages{$id};
+  }
+
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0) || &GetParam('format', '') eq 'json') {
      &BuildRuleStack($id);
@@ -855,6 +863,11 @@ sub BrowsePage {
      	print JSONFormat($id,$$Text{'text'},&GetParam('jsoncallback', ''));
      }
      return;
+  }
+  if($extviewer ne ''){
+      if(ref($extviewer) == "CODE"){
+          $$Text{'text'}=$extviewer->($id,$$Text{'text'});
+      }
   }
   $newText = $$Text{'text'}; # For differences
 
@@ -910,10 +923,6 @@ sub BrowsePage {
      if(defined $$Text{'isnew'}){
 	$$Text{'text'}='';
      }
-  }
-  # build-in pages are only used for browsing
-  if(defined $$Text{'isnew'} && $BuildinPages{$id} ne ''){
-     $$Text{'text'}=$BuildinPages{$id};
   }
   $showDiff = &GetParam('diff', $allDiff);
   if ($UseDiff && $showDiff) {
