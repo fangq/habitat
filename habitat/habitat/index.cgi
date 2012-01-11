@@ -813,7 +813,7 @@ sub BrowsePage {
 
   $extviewer=ReadPagePermissions($id,\%ExtViewer);
   if($extviewer ne ''){
-      if(ref($extviewer) != "CODE"){
+      if(ref($extviewer) ne "CODE"){
           &ReBrowsePage("$extviewer#$id", "", 0);
           return;
       }
@@ -865,7 +865,7 @@ sub BrowsePage {
      return;
   }
   if($extviewer ne ''){
-      if(ref($extviewer) == "CODE"){
+      if(ref($extviewer) eq "CODE"){
           $$Text{'text'}=$extviewer->($id,$$Text{'text'});
       }
   }
