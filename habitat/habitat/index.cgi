@@ -586,6 +586,8 @@ sub InitRequest {
   %InterSite = ();
   $MainPage = "."; # For subpages only, the name of the top-level page
   $OpenPageName = ""; # Currently open page
+  $FullUrl = $q->url(-path=>1);
+
   &CreateDir($DataDir); # Create directory if it doesn't exist
   if (!-d $DataDir) {
     &ReportError(Ts('Could not create %s', $DataDir) . ": $!");
@@ -2165,6 +2167,13 @@ sub GetRedirectPage {
     } else { # Minimal header
       $html = "Status: 302 Moved\n";
       $html .= "Location: $url\n";
+      if (defined($SetCookie{'id'})) {
+	$html .= "Set-Cookie: $CookieName="
+        	. "rev&" . $SetCookie{'rev'}
+        	. "&id&" . $SetCookie{'id'}
+        	. "&randkey&" . $SetCookie{'randkey'}
+        	. "&lang&". $SetCookie{'lang'}."\n";
+      }
       $html .= "Content-Type: text/html\n\n"; # Needed for browser failure
       $html .= "<html><script type='text/javascript'>
 <!--
@@ -4730,7 +4739,8 @@ sub DoEdit {
     } else {
       print Ts('Editing not allowed: %s is read-only.', $SiteName);
       if($UserID<1000){
-       	&EnterLoginForm();
+       	&EnterLoginForm($FullUrl . &ScriptLinkChar()
+                                . $ENV{QUERY_STRING});
       }
     }
     print "</div>";
@@ -4835,7 +4845,8 @@ name=\"myform\">";
   }elsif(&UserPermission()<100){
       print "<div class='wikiinfo'>".T('noeditrule mode only allowed for admin.');
       if($UserID<1000){
-        &EnterLoginForm();
+        &EnterLoginForm($FullUrl . &ScriptLinkChar()
+                                . $ENV{QUERY_STRING});
       }
       print "</div>";
       return;
@@ -5343,8 +5354,10 @@ sub DoNewLogin {
   &SaveUserData();
 }
 sub EnterLoginForm {
+  my ($refurl)=@_;
   print &GetFormStart();
   print &GetHiddenValue('enter_login', 1), "\n";
+  print &GetHiddenValue('refer_url', $refurl), "\n" if($refurl=~/^http/i);
   print '<br>', T('User Name:'), ' ',
         $q->textfield(-name=>'p_username', -value=>'',
                       -size=>15, -maxlength=>50);
@@ -5400,7 +5413,13 @@ sub DoLogin {
     }
   }
   if($success) {
+        my $refurl=&GetParam("refer_url", "");
 	ResetRandKeyDB($UserID,$UserData{'param'});
+        if($refurl=~/^http/i){
+            AddUserLogDB($UserID,'login',$uname);
+	    print &GetRedirectPage($refurl,T("if your browser does not support redirect, please click this link"),1);
+	    return;
+	}
   }
 
   print &GetHeader('', T('Login Results'), '');
