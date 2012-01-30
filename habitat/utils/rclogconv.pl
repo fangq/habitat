@@ -45,6 +45,7 @@ sub ParseRCLog{
       = split(/$FS3/, $rcline);
     %extra = split(/$FS2/, $extraTemp, -1);
     $summary=~s/'/''/g;
+    $pagename=~s/'/''/g;
     print <<EEOFRC;
 INSERT INTO "rclog" VALUES($ts,'$pagename','$summary',$isEdit,'$host','$kind',
 '$extra{'id'}','$extra{'name'}',$extra{'revision'},NULL);

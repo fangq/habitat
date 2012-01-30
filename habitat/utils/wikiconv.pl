@@ -379,6 +379,7 @@ sub PrintPageSQL{
    %t = split(/$FS3/, $s{'data'}, -1);
    $summ=$t{'summary'};
    $summ=~ s/'/''/g;
+   $id=~ s/'/''/g;
 
    if($test!=1){
       print <<EESQL;
