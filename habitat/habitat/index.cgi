@@ -1872,7 +1872,7 @@ sub ShortString {
 }
 
 sub GetHeader {
-  my ($id, $title, $oldId) = @_;
+  my ($id, $title, $oldId, $nocache) = @_;
   my $logoImage = "";
   my $result = "";
   my $embed = &GetParam('embed', $EmbedWiki);
@@ -1888,7 +1888,7 @@ sub GetHeader {
   if ($FreeLinks) {
     $title =~ s/_/ /g; # Display as spaces
   }
-  $result .= &GetHtmlHeader("$SiteName: $title");
+  $result .= &GetHtmlHeader("$SiteName: $title",$nocache);
   return $result if ($embed);
 
   if ((!$embed) && ($LogoUrl ne "")) {
@@ -1965,7 +1965,7 @@ sub GetHttpHeader {
 }
 
 sub GetHtmlHeader {
-  my ($title) = @_;
+  my ($title,$nocache) = @_;
   my ($dtd, $html, $bodyExtra, $stylesheet, $printcss);
 
   $html = '';
@@ -1974,6 +1974,9 @@ sub GetHtmlHeader {
   $title = $q->escapeHTML($title);
   $html .= "<html><head><title>$title</title>\n";
   $html .= "<meta http-equiv=\"content-type\" content=\"text/html; charset=$HttpCharset\"/>";
+  if($nocache ne ''){
+	$html .= "<meta http-equiv=\"cache-control\" content=\"$nocache\"/>";
+  }
   if ($FavIcon ne '') {
     $html .= '<link rel="SHORTCUT ICON" href="' . $FavIcon . '">'
   }
@@ -4730,7 +4733,7 @@ sub DoEdit {
     $id = &FreeToNormal($id); # Take care of users like Markus Lude :-)
   }
   if (!&UserCanEdit($id, 1)) {
-    print &GetHeader("", T('Editing Denied'), "");
+    print &GetHeader("", T('Editing Denied'), "","no-cache");
     print '<div class="wikiinfo">';
     if (&UserIsBanned()) {
       print T('Editing not allowed: user, ip, or network is blocked.');
@@ -4779,7 +4782,7 @@ sub DoEdit {
   }
   $editRows = &GetParam("editrows", 20);
   $editCols = &GetParam("editcols", 65);
-  print &GetHeader('', &QuoteHtml($header), '');
+  print &GetHeader('', &QuoteHtml($header), '','no-cache');
   print '<div class="wikieditform">';
   if ($revision ne '') {
     print "\n<b>"
