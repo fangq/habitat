@@ -1,17 +1,17 @@
 ^/<html><h2><a href="?action=edit&editmode=prepend&id=<\/html>\
-&lt;fullpagename&gt;<html>">点击添加新的留言:<\/a><\/h2>\
+&lt;fullpagename&gt;<html>">Post New Message<\/a><\/h2>\
 <style type="text\/css">\
 div.commblock{\
         border:1px solid;\
         border-left-width: 8px;\
         border-left-style: solid;\
-        border-left-color: #333333;\
+        border-left-color: rgb(51,51,51);\
         padding: 10pt;\
         margin-top: 10pt;\
         background-color:white;\
 }\
 span.commenttext{\
-        color:#336600;\
+        color:rgb(51,102,0);\
 }\
 <\/style><\/html>
 \@/&lt;at&gt;

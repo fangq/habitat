@@ -1,0 +1,24 @@
+.*/ 
+^/<html><style type="text\/css">\
+div.commblock{\
+        border:1px solid;\
+        border-left-width: 8px;\
+        border-left-style: solid;\
+        border-left-color: #333333;\
+        padding: 10pt;\
+        margin-top: 10pt;\
+        background-color:white;\
+	display:none;\
+}\
+span.commenttext{\
+        color:#336600;\
+}\
+<\/style><h2>Thank you for registering MCX! we appreciate any comment or feedback.<\/h2>\
+<br>If you have not registered, please click on the link below.<br>\
+<h3><a href="index.cgi?action=edit&editmode=prepend&id=<\/html>\
+&lt;fullpagename&gt;<html>">Register and download <tt>MCX<\/tt><\/a><\/h3><br>\
+if you have already registered, or want to skip registration, please click \
+<a href="https:\/\/sourceforge.net\/projects\/mcx\/files\/">\
+this link<\/a> to go to the download page. (<b>orbit server uses https \
+protocol, you need to accept a certificate to proceed with downloading<\/b>)<\/html>
+\@/&lt;at&gt;

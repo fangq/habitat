@@ -5,16 +5,16 @@
 <input type="hidden" name="keyval" value=""  \/>\
 <input type="hidden" name="keyfield" value="bugid"  \/>\
 <input type="hidden" name="keyblock" value="bugblock"  \/>\
-提交人: <br><input type="text" name="bugperson" value="" size="60" maxlength="200" \/>\
-<br>Bug简述:<br><input type="text" name="bugtitle" value="" size="60" maxlength="200" \/>\
-<br>字体版本:<br><input type="text" name="fontversion" value="" size="20" maxlength="40" \/>\
-<br>Bug优先级:<br><select name="bugpriority" id="bugpriority" size="1">\
-<option value=5>紧急(5)<\/option><option value=4>高(4)<\/option><option value=3>中(3)<\/option>\
-<option value=2>低(2)<\/option><option value=1>最低(1)<\/option><\/select>\
-<br>Bug状态:<br><select name="bugstatus" id="bugstatus" size="1">\
-<option value=3>待解决(3)<\/option><option value=2>取消(2)<\/option><option value=1>着手解决中(1)<\/option>\
-<option value=0>已解决(0)<\/option><\/select>\
-<br>详细说明:<br><textarea name="description" rows="20" cols="65" wrap="virtual" style="width:100%">\
+Reported By: <br><input type="text" name="bugperson" value="" size="60" maxlength="200" \/>\
+<br>Title: <br><input type="text" name="bugtitle" value="" size="60" maxlength="200" \/>\
+<br>Version: <br><input type="text" name="version" value="" size="20" maxlength="40" \/>\
+<br>Priority:<br><select name="bugpriority" id="bugpriority" size="1">\
+<option value=5>Emergency(5)<\/option><option value=4>High(4)<\/option><option value=3>Medium(3)<\/option>\
+<option value=2>Low(2)<\/option><option value=1>No Action Needed(1)<\/option><\/select>\
+<br>Status: <br><select name="bugstatus" id="bugstatus" size="1">\
+<option value=3>New(3)<\/option><option value=2>Invalid(2)<\/option><option value=1>In Progress(1)<\/option>\
+<option value=0>Fixed(0)<\/option><\/select>\
+<br>Bug Description:<br><textarea name="description" rows="20" cols="65" wrap="virtual" style="width:100%">\
 <\/textarea>\
-<br><input type="button" name="sendcomment" value="发送" onClick="submitform();"\/>\
+<br><input type="button" name="sendcomment" value="Submit" onClick="submitform();"\/>\
 <script src="?keywords=plugin\/bug\/preedit&raw=1"><\/script>

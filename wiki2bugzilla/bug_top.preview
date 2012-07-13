@@ -1,0 +1,39 @@
+^/<html><h2><a href="?action=edit&id=<\/html>\
+&lt;fullpagename&gt;<html>\/__NEW__" title="click to add new bug">Click to report new bug<\/a><\/h2>\
+<style type="text\/css">\
+table.xmlreport{\
+        border:1px solid;\
+	background-repeat:no-repeat;\
+	background-color:white;\
+}\
+span.blocktext{\
+        color:yellow;\
+}\
+div.wikitree{\
+	max-width: 100%;\
+	float:none;\
+	position: static;\
+	width:100%;\
+	background-color: white;\
+	padding: 10pt;\
+}\
+.ownerfield{\
+        white-space: nowrap;\
+        max-width:200px;\
+	width:200px;\
+}\
+.statusfield{\
+        width:60px\
+        max-width:60px;\
+}\
+.titlefield{\
+        width:800px;\
+        max-width:800px;\
+	color: blue;\
+	cursor: pointer;\
+}\
+<\/style><\/html>
+\@/&lt;at&gt;
+<bugid>/<html><a href="?action=edit&id=&lt;fullpagename&gt;<\/html><bugid>
+$/<listxml name='[0-9]+$' format='<table class="xmlreport"><tr class='tracker_status_%bugstatus%'><td class=titlefield onclick="document.location.href='?%THISFULL%';">[%THIS%] %bugtitle%<\/td><td class=statusfield>%bugpriority%<\/td><td class=ownerfield>%assignee%<\/td><\/tr><\/table>'> 
+

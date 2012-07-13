@@ -1,20 +1,20 @@
 ^/<script src="?keywords=plugin\/bug\/postview&raw=1"><\/script>
-&lt;assignee&gt;/<br><b>提交人<\/b><span class="bugperson">:
+&lt;assignee&gt;/<br><b>Submitted by<\/b><span class="bugperson">:
 &lt;\/assignee&gt;/<\/span><br>
-&lt;bugpriority&gt;/<b>优先级<\/b><span class="bugpriority">:
+&lt;bugpriority&gt;/<b>Priority<\/b><span class="bugpriority">:
 &lt;\/bugpriority&gt;/<\/span><br>
-&lt;bugtitle&gt;/<b>Bug简述<\/b><span class="bugtitle">:
+&lt;bugtitle&gt;/<b>Summary<\/b><span class="bugtitle">:
 &lt;\/bugtitle&gt;/<\/span><br>
-&lt;bugstatus&gt;/<b>Bug状态<\/b><span class="bugstatus">:
+&lt;bugstatus&gt;/<b>Status<\/b><span class="bugstatus">:
 &lt;\/bugstatus&gt;/<\/span><br>
-&lt;fontversion&gt;/<b>字体版本<\/b><span class="fontversion">:
-&lt;\/fontversion&gt;/<\/span><br>
-&lt;description&gt;/<br><b>详细说明<\/b>: <hr><span class="bugdescription">
+&lt;version&gt;/<b>Version<\/b><span class=version">:
+&lt;\/version&gt;/<\/span><br>
+&lt;description&gt;/<br><b>Description<\/b>: <hr><span class="bugdescription">
 &lt;\/description&gt;/<\/span><hr>
 &lt;bugblock&gt;/<html><div class="bugblock"><\/html>
 &lt;\/bugblock&gt;/<html><\/div><\/html>
-&lt;timestamp&gt;/更新时间
+&lt;timestamp&gt;/Submitted at
 &lt;\/timestamp&gt;/<br>
 &lt;bugid&gt;/&keyfield=bugid&keyval=
-&lt;\/bugid&gt;/&keyblock=bugblock" class=wikipageedit>修改Bug报告<\/a><hr>
-$/<script>setblockcolor();setdisslink();<\/script>
+&lt;\/bugid&gt;/&keyblock=bugblock" class=wikipageedit>Edit Bug Report<\/a><hr>
+$/<script>setblockcolor();<\/script>

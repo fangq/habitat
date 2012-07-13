@@ -3,7 +3,7 @@ div.taskblock{\
         border:1px solid;\
         border-left-width: 8px;\
         border-left-style: solid;\
-        border-left-color: #333333;\
+        border-left-color: rgb(51,51,51);\
         padding: 10pt;\
         margin-top: 10pt;\
         background-repeat:no-repeat;\

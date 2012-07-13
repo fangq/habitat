@@ -1,12 +1,10 @@
 &lt;author&gt;/<br><b>Name<\/b><span class="author">:
 &lt;email&gt;/<br><b>Email<\/b><span class="email">:
-&lt;comment&gt;/<br><b>Message<\/b>: <hr><span class="commenttext">
+&lt;inst&gt;/<br><b>Institution<\/b><span class="inst">:
+&lt;comment&gt;/<br><b>Comment<\/b>: <hr><span class="commenttext">
 &lt;\/comment&gt;/<\/span><hr>
 &lt;commblock&gt;/<html><div class="commblock"><\/html>
 &lt;\/commblock&gt;/<html><\/div><\/html>
 &lt;timestamp&gt;/Time:
 &lt;\/timestamp&gt;/
-&lt;inst&gt;/<br><b>Institution<\/b><span class="inst">:
-&lt;\/author&gt;/<\/span>
-&lt;\/email&gt;/<\/span>
-&lt;\/inst&gt;/<\/span>
+

@@ -3,9 +3,10 @@
 #text, #btn_save, #btn_preview{display:none;}\
 <\/style>\
 <input type="hidden" name="editmode" value="prepend"  \/>\
-留言人: <br><input type="text" name="authorid" value="" size="60" maxlength="200" \/>\
-<br>电子邮件:<br><input type="text" name="emailaddr" value="" size="60" maxlength="200" \/>\
-<br>留言内容:<br><textarea name="comment" rows="20" cols="65" wrap="virtual" style="width:100%">\
+Your Name:*<br><input type="text" name="authorid" value="" size="60" maxlength="200" \/>\
+<br>Email:*<br><input type="text" name="emailaddr" value="" size="60" maxlength="200" \/>\
+<br>Institution (Company):<br><input type="text" name="inst" value="" size="60" maxlength="200" \/>\
+<br>Message:*<br><textarea name="comment" rows="20" cols="65" wrap="virtual" style="width:100%">\
 <\/textarea>\
-<br><input type="button" name="sendcomment" value="发送" onClick="submitform();"\/>\
+<br><input type="button" name="sendcomment" value="Submit" onClick="submitform();"\/>\
 <\/html>

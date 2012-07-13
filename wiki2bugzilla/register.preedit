@@ -1,0 +1,18 @@
+.*/ 
+^/<html><script src="?keywords=plugin\/register\/preedit&raw=1"><\/script>\
+<style type="text\/css">\
+#text, #btn_save, #btn_preview{display:none;}\
+.mx{color:red;}\
+<\/style>\
+<input type="hidden" name="editmode" value="prepend"  \/>\
+<input type="hidden" name="redirect" value="https:\/\/sourceforge.net\/projects\/mcx\/files\/"  \/>\
+Your Name(<span class="mx">*<\/span>):<br><input type="text" \
+name="authorid" value="" size="60" maxlength="200" \/>\
+<br>Email(<span class="mx">*<\/span>):<br><input type="text" name="emailaddr" value="" size="60" maxlength="200" \/>\
+<br>Institution(<span class="mx">*<\/span>) <b>Please give the full name<\/b>:<br><input type="text" name="inst" value="" size="100" maxlength="200" \/>\
+<br><input type="checkbox" name="notify" value="yes" checked>Please notify me in the future for major upgrades (expected a few times every year) \
+<br><br>Comment (related research):<br><textarea name="comment" rows="20" cols="65" wrap="virtual" style="width:100%">\
+<\/textarea>\
+<br><input type="button" name="sendcomment" value="Submit" onClick="submitform();"\/><br>\
+Fields with <span class="mx">*<\/span> are required. The registration info will not be displayed in public.\
+<\/html>
