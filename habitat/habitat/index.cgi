@@ -1898,7 +1898,7 @@ sub GetHeader {
   $result .= '<div class=wikiheader>';
 
   if ($oldId ne '') {
-    $result .= $q->h3('(' . Ts('redirected from %s',
+    $result .= $q->h5('(' . Ts('redirected from %s',
                                &GetEditLink($oldId, $oldId)) . ')');
   }
   if (&GetParam("toplinkbar", 1)) {
@@ -2358,16 +2358,18 @@ sub GetLocalTree{
              my $oo=$format;
              my $xmltext=ReadRawWikiPage($subitem);
              $oo=~s/%([0-9a-zA-Z_]+)%/&GetXMLFields($1,$xmltext,$subitem,$subitem)/goe;
-             $LocalTree.= "<li class=\"wikitreefile\">$oo</li>\n";
+             $LocalTree.= $oo; #"<li class=\"wikitreefile\">$oo</li>\n";
           }
       }else{
           $toptree=$PageDir."/".&GetPageDirectory($id);
           $topnode=(split(/\//,$id))[0];
           $LocalTree = &BuildWikiTree($toptree."/".$topnode,$toptree,$namepat,$format);
       }
-      $LocalTree = "<ul class=\"wikitreedir\"><li class=\"wikitreefile\"><a href=\"$ScriptName".&ScriptLinkChar()."$topnode\">$topnode</a></li>\n  $LocalTree </ul>";
-	$LocalTree="<div class=\"wikitree\"><h5>".T("Subpage List")."</h5>"
-	      ."<div class=\"wikitreeblock\">$LocalTree</div></div>";
+      if($toptree ne ''){
+        $LocalTree = "<ul class=\"wikitreedir\"><li class=\"wikitreefile\"><a href=\"$ScriptName".&ScriptLinkChar()."$topnode\">$topnode</a></li>\n  $LocalTree </ul>";
+      }
+      $LocalTree="<div class=\"wikitree\"><h5>".T("Subpage List")."</h5>"
+	      ."<table class=\"wikitreeblock\">$LocalTree</table></div>";
   }
   return $LocalTree;
 }
