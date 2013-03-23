@@ -582,8 +582,10 @@ sub InitRequest {
   }
   $ScriptName = pop(@ScriptPath); # Name used in links
   $IndexInit = 0; # Must be reset for each request
-  $InterSiteInit = 0;
-  %InterSite = ();
+  if(!defined($InterSiteInit)){
+     $InterSiteInit = 0;
+     %InterSite = ();
+  }
   $MainPage = "."; # For subpages only, the name of the top-level page
   $OpenPageName = ""; # Currently open page
   $FullUrl = $q->url(-path=>1);
@@ -644,7 +646,12 @@ sub InitCookie {
 }
 sub GetPageDB{
   my ($id)=@_;
-  return ReadPagePermissions($id,\%DBPrefix).(split(/\//,$PageDir))[-1];
+  my $pref=ReadPagePermissions($id,\%DBPrefix);
+  if($pref ne ""){
+	return $pref;
+  }else{
+	return (split(/\//,$PageDir))[-1];
+  }
 }
 
 sub PageExists{
@@ -3719,7 +3726,9 @@ sub SavePageDB{
     $sth=$dbh->do("delete from $pagedb where id='$pgid' and revision=$revision");
     $dbh->commit;
   }
-  $sth=$dbh->prepare("insert into $pagedb (id,version,author,revision,tupdate,tcreate,ip,host,summary,text,minor,newauthor,data) values (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+  $sth=$dbh->prepare("insert into $pagedb (id,version,author,revision,tupdate,".
+       "tcreate,ip,host,summary,text,minor,newauthor,data) values (?,?,?,?,?,?,?,?,?,?,?,?,?)") 
+         or die "Couldn't prepare statement: " . $dbh->errstr;
   $sth->execute($pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
     $summary,$text,$minor,$newauthor,$data);
   # need to print log
