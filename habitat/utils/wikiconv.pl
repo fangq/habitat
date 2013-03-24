@@ -432,6 +432,7 @@ sub DumpSQL{
 	  if($count>1){
 	     if(not $oldtext=~/\n$/) {$oldtext.="\n";}
 	     $dif=GetDiff($oldtext,$data{'text'});
+             if($dif eq '') {next;}
              my $summ=$data{'summary'};
              $summ=~ s/'/''/g;
              my $revstr="$sect{'ts'}|$sect{'username'}|$sect{'host'}|$summ$FS5";

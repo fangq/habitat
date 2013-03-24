@@ -796,6 +796,7 @@ sub PatchPage{
 		splice(@patches, $inlinerev+1, $#patches-$inlinerev);
 	}
 	for(my $i=1;$i<@patches;$i++){
+                if($patches[$i] =~ /$FS5$/){next;}
 		if($patches[$i] =~ /$FS5/){
 			$patches[$i]=(split(/$FS5/,$patches[$i]))[-1];
 		}
