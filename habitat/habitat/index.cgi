@@ -1134,7 +1134,7 @@ sub DoRc {
         	if($offs>=$RCHistoryLimit){
 			print "&nbsp;&nbsp;";
 		}
-        	$url="keywords=$RCName&offset=".$offs;
+                $url="action=rc&days=$daysago&offset=".$offs;
         	print &ScriptLink($url,Ts('Next %s',$RCHistoryLimit)."&raquo;");
 	    }
 	    print "</div>";
