@@ -6078,7 +6078,6 @@ sub DoPost {
   
   if ($UseCache) {
     if($UseDBI){
-     if(0){ #disable deleting cache, use replace into anyways
        my $htmldb=(split(/\//,$HtmlDir))[-1];
        my $language=&GetParam("lang",$LangID);
        if($dbh eq "" || $htmldb eq ""){
@@ -6088,7 +6087,6 @@ sub DoPost {
        if($isdynapg ne ''){
           DeleteDBItems($htmldb,"id='$isdynapg\[$language\]'");
        }
-      }
     }else{
        &UnlinkHtmlCache($id); # Old cached copy is invalid
        if ($$Page{'revision'} < 2) { # If this is a new page...
