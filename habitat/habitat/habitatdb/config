@@ -17,7 +17,7 @@ $FullUrl     = "";              # Set if the auto-detected URL is wrong
 $RedirType   = 2;               # 1 = CGI.pm, 2 = script, 3 = no redirect
 $AdminPass   = "`tWtI:T6"; # Set to non-blank to enable password(s)
 $EditPass    = "";              # Like AdminPass, but for editing only
-$StyleSheet  = "css/wiki.css";   # URL for CSS stylesheet (like "/wiki.css")
+$StyleSheet  = "css/wikistyle_column.css";   # URL for CSS stylesheet (like "/wiki.css")
 $NotFoundPg  = "";              # Page for not-found links ("" for blank pg)
 $EmailFrom   = "Habitat";          # Text for "From: " field of email notes.
 $SendMail    = "/usr/sbin/sendmail";  # Full path to sendmail executable

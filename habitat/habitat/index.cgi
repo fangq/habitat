@@ -1662,21 +1662,24 @@ sub ScriptLink {
 }
 
 sub ScriptLinkClass {
-  my ($action, $text, $class) = @_;
-
+  my ($action, $text, $class, $hint) = @_;
+  if($hint ne ''){
+      $hint="title='$hint'";
+  }
   return "<a href=\"$ScriptName" . &ScriptLinkChar() . &UrlEncode($action) . "\""
-         . ' class=' . $class . ">$text</a>";
+         . " class='$class' $hint>$text</a>";
 }
 
 sub GetPageLinkText {
-  my ($id, $name) = @_;
+  my ($id, $name, $style, $hint) = @_;
 
   $id =~ s|^/|$MainPage/|;
   if ($FreeLinks) {
     $id = &FreeToNormal($id);
     $name =~ s/_/ /g;
   }
-  return &ScriptLinkClass($id, $name, 'wikipagelink');
+  $style='wikipagelink' if($style eq '');
+  return &ScriptLinkClass($id, $name, $style, $hint);
 }
 
 sub GetPageLink {
@@ -1686,13 +1689,14 @@ sub GetPageLink {
 }
 
 sub GetEditLink {
-  my ($id, $name) = @_;
+  my ($id, $name ,$style, $hint) = @_;
 
   if ($FreeLinks) {
     $id = &FreeToNormal($id);
     $name =~ s/_/ /g;
   }
-  return &ScriptLinkClass("action=edit&id=$id", $name, 'wikipageedit');
+  $style='wikipageedit' if($style eq '');
+  return &ScriptLinkClass("action=edit&id=$id", $name, $style, $hint);
 }
 
 sub GetDeleteLink {
@@ -1766,7 +1770,7 @@ sub GetPageOrEditLink {
 }
 
 sub GetBackLinksSearchLink {
-  my ($id) = @_;
+  my ($id, $style, $hint) = @_;
   my $name = $id;
 
   $id =~ s|.+/|/|; # Subpage match: search for just /SubName
@@ -1774,7 +1778,8 @@ sub GetBackLinksSearchLink {
     $name =~ s/_/ /g; # Display with spaces
     $id =~ s/_/+/g; # Search for url-escaped spaces
   }
-  return &ScriptLink("back=$id", $name);
+  return &ScriptLink("back=$id", $name) if($style eq '');
+  return &ScriptLinkClass("back=$id", $name, $style, $hint);
 }
 
 sub GetPrefsLink {
@@ -1841,31 +1846,34 @@ sub GetAuthorLink {
   return $html;
 }
 sub GetBrowseLink {
-  my ($id, $text) = @_;
+  my ($id, $text, $style, $hint) = @_;
 
   if ($FreeLinks) {
     $id =~ s/ /_/g;
   }
-  return &ScriptLinkClass("$id", $text.$id, 'wikidiscusslink');
+  $style='wikidiscusslink' if($style eq '');
+  return &ScriptLinkClass("$id", $text.$id, $style, $hint);
 }
 
 sub GetCommentLink {
-  my ($id, $text) = @_;
+  my ($id, $text, $style, $hint) = @_;
 
   if ($FreeLinks) {
     $id =~ s/ /_/g;
   }
 #  return &ScriptLinkClass("action=discuss&id=$id", $text.$id, 'wikidiscusslink');
-  return &ScriptLinkClass("action=discuss&id=$id", $text, 'wikidiscusslink');
+  $style='wikidiscusslink' if($style eq '');
+  return &ScriptLinkClass("action=discuss&id=$id", $text, $style, $hint);
 }
 
 sub GetHistoryLink {
-  my ($id, $text) = @_;
+  my ($id, $text, $style, $hint) = @_;
 
   if ($FreeLinks) {
     $id =~ s/ /_/g;
   }
-  return &ScriptLinkClass("action=history&id=$id", $text, 'wikihistorylink');
+  $style='wikihistorylink' if($style eq '');
+  return &ScriptLinkClass("action=history&id=$id", $text, $style, $hint);
 }
 
 sub ShortString {
@@ -1917,20 +1925,20 @@ sub GetHeader {
   $action = &GetParam("action", "");
   $tab="inactivetab";
   $tab="activetab" if($action eq "browse" ||$action eq "");
-  if ($id ne '') {
-    $result .=  "<li class='activetab'>".&GetBackLinksSearchLink($id)."</li>";
-  } else {
-    $result .=  "<li class='activetab'>$title</li>";
-  }
+#  if ($id ne '') {
+#    $result .=  "<li class='activetab'>".&GetBackLinksSearchLink($id,"icon-link")."</li>";
+#  } else {
+#    $result .=  "<li class='activetab'><span class='icon-link'>$title</span></li>";
+#  }
   if($id ne '' && $action ne 'edit' && $action ne 'history') {
-    $result .= '<li class=inactivetab>'. &GetEditLink($id, T('Edit this page')).'</li>';
-    $result .= '<li class=inactivetab>';
-    $result .= &GetHistoryLink($id,T('View other revisions'));
-    $result .= '</li><li class=inactivetab>';
+    $result .= "<li class='inactivetab'>". &GetEditLink($id, T('Edit this page'),'icon-edit',T('Edit this page')).'</li>';
+    $result .= "<li class='inactivetab'>";
+    $result .= &GetHistoryLink($id,T('View other revisions'),"icon-time",T('View other revisions'));
+    $result .= "</li><li class='inactivetab'>";
     if(not ($id =~ m|$DiscussSuffix$|)){
-	    $result .= &GetCommentLink($id,T('Discuss')." ");
+	    $result .= &GetCommentLink($id,T('Discuss'),"icon-comments",T('Discuss'));
     }else{
-            $result .= &GetBrowseLink(substr($id,0,length($id)-length($DiscussSuffix)),T('Return')." ");
+            $result .= &GetBrowseLink(substr($id,0,length($id)-length($DiscussSuffix)),T('Return'),"icon-undo",T('Return'));
     }
     $result .= '</li>';
   }
@@ -1974,7 +1982,7 @@ sub GetHttpHeader {
 
 sub GetHtmlHeader {
   my ($title,$nocache) = @_;
-  my ($dtd, $html, $bodyExtra, $stylesheet, $printcss);
+  my ($dtd, $html, $bodyExtra, $stylesheet, $printcss, $fontcss);
 
   $html = '';
   $dtd = '-//W3C//DTD XHTML 1.0 Transitional//EN';
@@ -2004,6 +2012,8 @@ sub GetHtmlHeader {
   $stylesheet = '' if ($stylesheet eq '*'); # Allow removing override
   $printcss = $stylesheet;
   $printcss =~ s/\.[Cc][Ss][Ss]$/_print.css/;
+  $fontcss = $stylesheet;
+  $fontcss =~ s/\.[Cc][Ss][Ss]$/_webfont.css/;
   if ($stylesheet ne '') {
     $html .= qq(<style type="text/css">
 .wikiheader ul li{display:inline;padding-left:10px;}
@@ -2015,6 +2025,7 @@ sub GetHtmlHeader {
 .wikisearchbox {float:right;}
 .wikieditor {width:100%;}
 $UserBuildinCSS</style>\n);
+    $html .= qq(<link rel="stylesheet" href="$fontcss">\n);
     $html .= qq(<link rel="stylesheet" href="$stylesheet">\n);
     $html .= qq(<link rel="stylesheet" href="$printcss" media="print">\n);
   }
@@ -2142,7 +2153,9 @@ sub GetSearchForm {
   $result = &GetFormStart();
   $result .= $q->textfield(-name=>'search', -size=>10, 
     -value=>T('Search ...'), -class=>'wikisearchbox',
-    -onfocus=>"if(!this._haschanged){this.value=''};this._haschanged=true;");
+    -onfocus=>"if(!this._haschanged){this.value=''};this._haschanged=true;",
+    -onblur=>"if(this.value===''){this.value='".T('Search ...')."'};this._haschanged=false;",
+  );
   if ($SearchButton) {
     $result .= $q->submit('dosearch', T('Go!'));
   } else {
