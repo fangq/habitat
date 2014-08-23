@@ -4,8 +4,9 @@
 body {
 	margin:0px;
 	padding:0px;
-	background-color:#bbcd72;
+	background-color:#789cb0;
 	font-family: 'Raleway', sans-serif;
+	font-weight: 200;
 }
 a:link
 	{color:#3399ff;
@@ -170,7 +171,7 @@ div.wikifooter {
 	border-top-right-radius: 8px;
         border-top-left-radius: 8px;
 }
-div.wikifooter a,a:visited {
+div.wikifooter a {
 	color: lightgreen;
 }
 hr {
@@ -452,7 +453,7 @@ ul.userlist li:before {
 	text-align:center;
 	text-decoration:none;
 	text-transform:uppercase;
-	border-top: 5px solid green;
+	border-top: 5px solid lightgreen;
 }
 .wikisearchbox {
      /*float:none;*/
