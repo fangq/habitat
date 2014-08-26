@@ -1911,7 +1911,7 @@ sub GetHeader {
     $logoImage = "img src=\"$LogoUrl\" id='logoimg' alt=\"$altText\" border=0";
     $result .= '<div class=wikilogo>'. &ScriptLink($HomePage, "<$logoImage>") .'</div>';
   }
-  $result .= '<div class=wikiheader>';
+  $result .= '<div class="wikiheader">';
 
   if ($oldId ne '') {
     $result .= $q->h5('(' . Ts('redirected from %s',
@@ -2122,7 +2122,7 @@ sub GetGotoBar {
     $main =~ s|/.*||; # Only the main page name (remove subpage)
     $bartext .= '<li>'. &GetPageLink($main). '</li>';
   }
-  $bartext .= "<li>" . &GetPageLinkText($RCName,T('RecentChanges')). '</li>';
+  $bartext .= "<li>" . &GetPageLinkText($RCName,T('Activities')). '</li>';
   if ($PermUseUpload && &UserCanUpload()) {
     $bartext .= "<li>" . &GetUploadLink(). '</li>';
   }
@@ -2133,15 +2133,11 @@ sub GetGotoBar {
     $bartext .= $UserGotoBar;
   }
   if($UserData{'username'} eq ''){
-      if(&GetLockState!=1 || $PermEditAllowed ){
-         $bartext .= "<li><a href=\"$ScriptName".&ScriptLinkChar()."action=newlogin\">". T('Register') .'</a>'. '</li>';
-      }
       $bartext .= "<li><a href=\"$ScriptName".&ScriptLinkChar()."action=login\">". T('Login') .'</a>'. '</li>';
   }else{
       $bartext .= "<li>" . &GetPrefsLink() . '</li>';
       $bartext .= "<li><a href=\"$ScriptName".&ScriptLinkChar()."action=logout\">". T('Logout') .'</a>'. '</li>';
   }
-  $bartext .= "<li><a href=\"$ScriptName".&ScriptLinkChar()."action=rss\">". T('RSS Feed') .'</a>'. '</li>';
   $bartext .= "</ul>\n";
   $bartext .= &GetSearchForm();
 
@@ -5901,7 +5897,7 @@ sub DoPost {
     return;
   }
 
-  if( $UseCaptcha && (&UserPermission()<50) && 
+  if( $UseCaptcha && (&UserPermission()<50) && (&ReadPagePermissions($id,\%Permissions)!=-999) &&
       not VerifyCaptcha(&GetParam("captchaans"), &GetParam("captchaopt") )){
 	PrintMsg(T("Wrong CAPTCHA Answer"),T("Error"),1);
   }

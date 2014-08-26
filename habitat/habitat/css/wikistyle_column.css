@@ -5,8 +5,9 @@ body {
 	margin:0px;
 	padding:0px;
 	background-color:#789cb0;
-	font-family: 'Raleway', sans-serif;
-	font-weight: 200;
+	font-family: 'Ubuntu', sans-serif;
+        font-weight: 100;
+	font-size: 11pt;
 }
 a:link
 	{color:#3399ff;
@@ -35,6 +36,7 @@ hr {
 h1, h2, h3, h4, h5, h6 {
 /*    color: Black;*/
     background: none;
+    font-family: 'Raleway';
     font-weight: normal;
     margin: 0;
     padding-top: 0.5em;
@@ -61,7 +63,8 @@ h4 { font-size: 116%; }
 h5 { font-size: 100%; }
 h6 { font-size: 80%;  }
 h1, h2{
-    font-family: "Ubuntu";
+    font-family: "Raleway";
+    font-weight: 300;
 }
 div.wikimain{
 	width:904px;
