@@ -15,18 +15,26 @@ Habitat is a light-weight, fast, easy-to-install and highly customizable
 wiki engine. With Habitat, you can set up a user-editable website 
 in just a few minutes. Once it's up and running, your Habitat-based website 
 can be accessed from anywhere by a web browser, allowing you and
-your collaborators to jointly create, edit and manage 
-format-rich wiki pages. Habitat is ideal small-sized projects,
-though, it has been used for large-scaled open-source communities
-involving thousands of contributors.
+your collaborators to jointly create, edit and manage web pages
+using a rich-format wiki syntax. Habitat is ideal small-sized 
+projects, though, it has been used for large-scaled open-source 
+communities involving thousands of contributors.
 
-Habitat is highly versetile, featuring a Wikipedia-compatible 
-text formatting syntax, hierachical page structure, excellent 
-content reusability through page-oriented design, and much more. 
+Habitat is highly versetile, featuring a Wikipedia-like text 
+formatting language, hierachical page structure, excellent 
+content reusability, plug-in interface for easy extensions, and much more. 
 Being a wiki, Habitat provides a dynamic website that users 
 can add new content or edit existing pages over time. It is 
 particularly useful when multiple users jointly develop 
 documentations or resources in a collaborative project.
+
+Habitat was derived from [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]
+by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang],
+who had also founded the collaborative font development project -
+[http://wenq.org/en/ WenQuanYi]. Habitat is a result of over a decade
+continuous improvement of the WenQuanYi Wiki.
+See [http://wenq.org/habitat/index.cgi?WhatsNew What's New] for
+a full list of the new features.
 
 {(Habitat/Download)}
 
