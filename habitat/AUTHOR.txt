@@ -1,7 +1,7 @@
-Habitat is written by Qianqian Fang, 2009, 2010
+Habitat is written by Qianqian Fang, 2009, 2010, 2014
 Email: fangq (at) nmr.mgh.harvard.edu
 Author's Webpage: http://nmr.mgh.harvard.edu/~fangq/
-Copyright (C) 2009,2010 Qianqian Fang
+Copyright (C) 2009,2010,2014 Qianqian Fang
 
 Habitat is derived from UseModWiki version 1.0 (September 12, 2003)
 Copyright (C) 2000-2003 Clifford A. Adams  <caadams@usemod.com>

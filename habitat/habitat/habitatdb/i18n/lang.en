@@ -92,11 +92,11 @@ following svn command:
 On Windows, you might want to install [http://tortoisesvn.net/downloads TortoiseSVN]
 to run the above command.
 
-You may run Habitat in 4 modes: Standard, Extended, 
-Basic and Tiny. Under "Tiny" mode, you can get most
-functionalities by using a SINGLE script (only 200kB in size)!
+You may run Habitat in 4 modes: "Standard", "Extended", 
+"Basic" and "Compatibility". Under the "Compatibility" mode, you can get 
+a fully functional wiki even by using a SINGLE script (only 200kB in size)!
 
-It is recommended to run Habitat under the Standard mode.
+It is recommended to run Habitat under the "Standard" mode.
 With this mode, sqlite database is used as
 the backend, which not only saves a lot of disk space,
 but also makes it super fast for searching and data backup. 

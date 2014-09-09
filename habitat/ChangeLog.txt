@@ -2,7 +2,17 @@
 
 Habitat Change Log:
 
-== Habitat Change Log (current) ==
+== Habitat Change Log (version 0.5) ==
+*[2014-08-26] webfont support
+*[2014-08-23] new wiki style
+*[2011/07/21] build-in content modifier
+*[2011/01/01] sql searches now support limit and offset
+*[2010/04/04] user permission control
+*[2010/03/21] listxml and dynamic wiki page support
+*[2010/03/14] detailed page and user log
+
+
+== Habitat Change Log (version 0.3) ==
 *[2010/03/06] encode revision info into inline diff
 *[2010/03/04] change default diff patch styles to OldStyle
 *[2010/03/03] save extra user preference and print RC days
