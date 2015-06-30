@@ -2639,8 +2639,8 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
     if ($TableMode) {
       if(m/\|\|_+/)
       {
-        s/((\|\|)+)(\_*)/"<\/td><td colspan=\"" . (length($1)\/2) . "\" rowspan=\"".
-                (length($3)) . "\">"/ge;
+        s/((\|\|)+)(\_*)/"<\/td><td colspan=\"" . (length($1)\/2) . (length($3)<=1 ? "\"" : "\" rowspan=\"".
+                (length($3))) . "\">"/ge;
       }
       else
       {
@@ -2649,8 +2649,8 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
 
       if(m/\!\!_+/)
       {
-        s/((\!\!)+)(\_*)/"<\/th><th colspan=\"" . (length($1)\/2) . "\" rowspan=\"".
-                (length($3)) . "\">"/ge;
+        s/((\!\!)+)(\_*)/"<\/th><th colspan=\"" . (length($1)\/2) . (length($3)<=1 ? "\"" : "\" rowspan=\"".
+                (length($3))) . "\">"/ge;
       }
       else
       {
@@ -2691,24 +2691,24 @@ sub WikiLinesToHtml {
       $codeAttributes = "class='wikiollevel$depth'";
     }elsif ($TableSyntax &&
              s/^((\|\|)+)(\_+)(.*)\|\|\s*$/"<tr "
-                       . "align='center'><td colspan='"
-          . (length($1)\/2) . "' rowspan='".length($1)."'>$4<\/td><\/tr>\n"/e) {
+                       . "align='center'><td". (length($1)>2 ? (" colspan='"
+          . (length($1)\/2)) . "'" : "") . (length($3)<=1 ? "" : (" rowspan='".length($3))."'" ).">$4<\/td><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
       $depth = 1;
     } elsif ($TableSyntax &&
              s/^((\|\|)+)(.*)\|\|\s*$/"<tr "
-                   . "align='center'><td colspan='"
-                   . (length($1)\/2) . "'>$3<\/td><\/tr>\n"/e) {
+                   . "align='center'><td". (length($1)>2 ? (" colspan='"
+          . (length($1)\/2)) ."'" : "") . ">$3<\/td><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
       $depth = 1;
     }elsif ($TableSyntax &&
              s/^((\!\!)+)(\_+)(.*)\!\!\s*$/"<tr "
-                       . "align='center'><th colspan='"
-          . (length($1)\/2) . "' rowspan='".length($1)."'>$4<\/th><\/tr>\n"/e) {
+                       . "align='center'><th". (length($1)>2 ? (" colspan='"
+          . (length($1)\/2)) . "'" : "") . (length($3)<=1 ? "" :" rowspan='".length($3)."'").">$4<\/th><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "border='1'";
       $TableMode = 1;
