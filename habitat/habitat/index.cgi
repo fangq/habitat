@@ -2716,7 +2716,7 @@ sub WikiLinesToHtml {
     } elsif ($TableSyntax &&
              s/^((\!\!)+)(.*)\!\!\s*$/"<tr "
                    . "align='center'><th". (length($1)>2 ? (" colspan='"
-                   . (length($1)\/2)."'") : "") . "'>$3<\/th><\/tr>\n"/e) {
+                   . (length($1)\/2)."'") : "") . ">$3<\/th><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
