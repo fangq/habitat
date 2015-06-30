@@ -2639,22 +2639,22 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
     if ($TableMode) {
       if(m/\|\|_+/)
       {
-        s/((\|\|)+)(\_*)/"<\/td><td colspan=\"" . (length($1)\/2) . (length($3)<=1 ? "\"" : "\" rowspan=\"".
-                (length($3))) . "\">"/ge;
+        s/((\|\|)+)(\_*)/"<\/td><td". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : " rowspan='".
+                (length($3)). "'") . ">"/ge;
       }
       else
       {
-        s/((\|\|)+)/"<\/td><td colspan=\"" . (length($1)\/2) . "\">"/ge;
+        s/((\|\|)+)/"<\/td><td". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") .">"/ge;
       }
 
       if(m/\!\!_+/)
       {
-        s/((\!\!)+)(\_*)/"<\/th><th colspan=\"" . (length($1)\/2) . (length($3)<=1 ? "\"" : "\" rowspan=\"".
-                (length($3))) . "\">"/ge;
+        s/((\!\!)+)(\_*)/"<\/th><th". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : " rowspan='".
+                (length($3)). "'") . ">"/ge;
       }
       else
       {
-        s/((\!\!)+)/"<\/th><th colspan=\"" . (length($1)\/2) . "\">"/ge;
+        s/((\!\!)+)/"<\/th><th". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . ">"/ge;
       }
     }
   }
@@ -2692,7 +2692,7 @@ sub WikiLinesToHtml {
     }elsif ($TableSyntax &&
              s/^((\|\|)+)(\_+)(.*)\|\|\s*$/"<tr "
                        . "align='center'><td". (length($1)>2 ? (" colspan='"
-          . (length($1)\/2)) . "'" : "") . (length($3)<=1 ? "" : (" rowspan='".length($3))."'" ).">$4<\/td><\/tr>\n"/e) {
+                       . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : (" rowspan='".length($3))."'" ).">$4<\/td><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
@@ -2700,7 +2700,7 @@ sub WikiLinesToHtml {
     } elsif ($TableSyntax &&
              s/^((\|\|)+)(.*)\|\|\s*$/"<tr "
                    . "align='center'><td". (length($1)>2 ? (" colspan='"
-          . (length($1)\/2)) ."'" : "") . ">$3<\/td><\/tr>\n"/e) {
+                   . (length($1)\/2) ."'") : "") . ">$3<\/td><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
@@ -2708,15 +2708,15 @@ sub WikiLinesToHtml {
     }elsif ($TableSyntax &&
              s/^((\!\!)+)(\_+)(.*)\!\!\s*$/"<tr "
                        . "align='center'><th". (length($1)>2 ? (" colspan='"
-          . (length($1)\/2)) . "'" : "") . (length($3)<=1 ? "" :" rowspan='".length($3)."'").">$4<\/th><\/tr>\n"/e) {
+                       . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" :" rowspan='".length($3)."'").">$4<\/th><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "border='1'";
       $TableMode = 1;
       $depth = 1;
     } elsif ($TableSyntax &&
              s/^((\!\!)+)(.*)\!\!\s*$/"<tr "
-                   . "align='center'><th colspan='"
-                   . (length($1)\/2) . "'>$3<\/th><\/tr>\n"/e) {
+                   . "align='center'><th". (length($1)>2 ? (" colspan='"
+                   . (length($1)\/2)."'") : "") . "'>$3<\/th><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
