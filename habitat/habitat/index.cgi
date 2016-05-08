@@ -2105,7 +2105,7 @@ sub GetMinimumFooter {
 }
 
 sub GetFormStart {
-  return $q->startform("POST", "$ScriptName",
+  return $q->start_form("POST", "$ScriptName",
                        "application/x-www-form-urlencoded");
 }
 
@@ -2157,7 +2157,7 @@ sub GetSearchForm {
   } else {
     $result .= &GetHiddenValue("dosearch", 1);
   }
-  $result .= $q->endform;
+  $result .= $q->end_form;
 
   return $result;
 }
@@ -4926,14 +4926,14 @@ name=\"myform\">";
     print &WikiToHTML($id,$oldText) . '<hr class="wikilinefooter">';
     print "<h2>", T('Preview only, not yet saved'), "</h2>\n";
   }
-  print $q->endform;
+  print $q->end_form;
   print "\n</div>\n";
 
   print '<div class="wikifooter">';
   #print &GetFormStart();
   #print &GetHistoryLink($id, T('View other revision')) . "<br>\n";
   #print &GetGotoBar($id);
-  #print $q->endform;
+  #print $q->end_form;
   print "</div>";
   print &GetMinimumFooter();
 }
@@ -5098,7 +5098,7 @@ sub DoEditPrefs {
   print '<hr class="wikilinefooter">';
   print '<div class="wikifooter">';
   #print &GetGotoBar('');
-  print $q->endform;
+  print $q->end_form;
   print '</div>';
   print &GetMinimumFooter();
   if($UseDBI && $UserID>=400){
@@ -5392,7 +5392,7 @@ sub EnterLoginForm {
   print '<br>'.Ts('If you do not have an account, please %s to register.',
      &ScriptLink("action=newlogin",T('click here')))."\n";
   print '<hr class="wikilinefooter">';
-  print $q->endform;
+  print $q->end_form;
 }
 
 sub DoEnterLogin {
@@ -5456,7 +5456,7 @@ sub DoLogin {
     AddUserLogDB($UserID,'login','-F');
   }
   print '<hr class="wikilinefooter">';
-  print $q->endform;
+  print $q->end_form;
   print "</div>";
   print &GetMinimumFooter();
 }
@@ -6756,7 +6756,7 @@ sub DoEditBanned {
   print &GetTextArea('banlist', $banList, 12, 50);
   print "<br>", $q->submit(-name=>'Save'), "\n";
   print '<hr class="wikilinefooter">';
-  print $q->endform;
+  print $q->end_form;
   print "</div>\n";
   print &GetMinimumFooter();
 }
@@ -6819,7 +6819,7 @@ sub DoEditLinks {
                       -label=>T("Substitute text for rename"));
   print "<br>", $q->submit(-name=>'Edit'), "\n";
   print '<hr class="wikilinefooter">';
-  print $q->endform;
+  print $q->end_form;
   print "</div>";
   print &GetMinimumFooter();
 }
@@ -7402,7 +7402,7 @@ sub DoDeletePage {
     print $q->submit(-name=>'submitdelete', 
                      -value=>T('Confirm Delete'));
     print '</div>';
-    print $q->endform;
+    print $q->end_form;
     print &GetCommonFooter();
     return;
   }
