@@ -108,7 +108,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix $UseDBI $UsePerlDiff 
-  %ExtViewer %ExtEditor $UseActivation);
+  %ExtViewer %ExtEditor $UseActivation %ExportPage);
 
 
 # == Configuration =====================================================
@@ -987,6 +987,16 @@ sub BrowsePage {
   }
   return if ($showDiff || ($revision ne '') || &GetParam("embed", "") ne ""); # Don't cache special version
 
+  my $exportfile=ReadPagePermissions($id,\%ExportPage);
+  if($exportfile ne ''){
+      $exportfile .= "${id}.html" if($exportfile =~ /\/$/);
+      my $exportpath=$exportfile;
+      $exportpath=$1 if($exportpath =~ m#^(.*?)([^/]*)$#);
+      &CreateDir($exportpath);
+      my $saveHtml=$fullHtml;
+      $saveHtml =~ s/.*<\!DOCTYPE/<!DOCTYPE/gs;
+      &WriteStringToFile($exportfile,$saveHtml);
+  }
   if($UseDBI) {
 	  &UpdateHtmlCacheDB($id, $fullHtml) if ($UseCache && ($oldId eq ''));
   }else{
