@@ -3529,7 +3529,7 @@ sub ReadLatestPageDB{
       die(T('ERROR: database uninitialized!'));
   }
   if($rev eq ""){
-	  $sth=$dbh->selectall_arrayref("select max(version),* from $pagedb where id='$id'");
+	  $sth=$dbh->selectall_arrayref("select max(revision),* from $pagedb where id='$id'");
   }else{
           $sth=$dbh->selectall_arrayref("select revision,* from $pagedb where id='$id' and revision=$rev limit 1");
   }
@@ -3563,7 +3563,7 @@ sub OpenPageDB {
   if($dbh eq "" || $pagedb eq ""){
       die(T('ERROR: database uninitialized!'));
   }
-  $sth=$dbh->selectall_arrayref("select max(version),* from $pagedb where id='$id'");
+  $sth=$dbh->selectall_arrayref("select max(revision),* from $pagedb where id='$id'");
   if(defined $sth->[0]){
      ($maxversion,$pgid,$version,$author,$revision,$tupdate,$tcreate,$ip,$host,
         $summary,$text,$minor,$newauthor,$data)=@{$sth->[0]};
@@ -7681,7 +7681,7 @@ sub ReadRawWikiPage {
 	if($dbh eq "" || $pagedb eq ""){
 	      die(T('ERROR: database uninitialized!'));
 	}
-	$sth=$dbh->selectall_arrayref("select max(version),text from $pagedb where id='$id';");
+	$sth=$dbh->selectall_arrayref("select max(revision),text from $pagedb where id='$id';");
         if(defined $sth->[0]){
            ($maxversion,$text)=@{$sth->[0]};
            if(defined $maxversion && $maxversion ne ""){

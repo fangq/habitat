@@ -3,7 +3,7 @@
 # Based on UseModWiki 1.0
 
 $CookieName  = "HabitatCookie";       # Name for this wiki (for multi-wiki sites)
-$SiteName    = "Habitat: Small Wiki Does Big Things";       # Name of site (used for titles)
+$SiteName    = "Computational Imaging Lab (FangLab) Wiki";       # Name of site (used for titles)
 $HomePage    = "Home";          # Home page (change space to _)
 $RCName      = "RecentChanges"; # Name of changes page (change space to _)
 $LogoUrl     = "images/habitat_icon.png";     # URL for site logo ("" for nologo)
@@ -15,7 +15,7 @@ $KeepDays    = 30;              # Days to keep old revisions
 $SiteBase    = "";              # Full URL for <BASE> header
 $FullUrl     = "";              # Set if the auto-detected URL is wrong
 $RedirType   = 2;               # 1 = CGI.pm, 2 = script, 3 = no redirect
-$AdminPass   = "`tWtI:T6"; # Set to non-blank to enable password(s)
+$AdminPass   = "Bi0-Ph0t0n1cs"; # Set to non-blank to enable password(s)
 $EditPass    = "";              # Like AdminPass, but for editing only
 $StyleSheet  = "css/wikistyle_column.css";   # URL for CSS stylesheet (like "/wiki.css")
 $NotFoundPg  = "";              # Page for not-found links ("" for blank pg)
@@ -43,8 +43,8 @@ $UserHeader  = '';              # Optional HTML header additional content
 $UserBody    = '';              # Optional <BODY> tag additional content
 $StartUID    = 1001;            # Starting number for user IDs
 
-$UploadDir   = '';              # Full path (like /foo/www/uploads) for files
-$UploadUrl   = '';              # Full URL (like http://foo.com/uploads)
+$UploadDir   = '/var/www/html/wiki/upload';              # Full path (like /foo/www/uploads) for files
+$UploadUrl   = 'http://kwafoo.coe.neu.edu/wiki/upload';              # Full URL (like http://foo.com/uploads)
 
 @ImageSites  = qw();            # Url prefixes of good image sites: ()=all
 
@@ -66,7 +66,7 @@ $ReplaceFile = 'ReplaceFile';   # 0 = disable, 'PageName' = indicator tag
 @ReplaceableFiles = ();     # List of allowed server files to replace
 $TableSyntax = 1;           # 1 = wiki syntax tables, 0 = no table syntax
 $NewFS       = 0;           # 1 = new multibyte $FS,  0 = old $FS
-$PermUseUpload   = 0;           # 1 = allow uploads,      0 = no uploads
+$PermUseUpload   = 1;           # 1 = allow uploads,      0 = no uploads
 $AMathML     = 0;           # 1 = allow <amathml> tags, 0 = no amath markup
 
 # Minor options:
