@@ -147,7 +147,7 @@ ul.pagetree{
 }
 
 div.wikiheader {
-	width:864px;
+	width:865px;
 	height:30px;
 	margin:0px;
 	padding-left:20px;
@@ -344,7 +344,7 @@ div.wikilogo {
 div.wikilogo{
 	background-image: url(../images/habitat_logo.png);
 	background-repeat: no-repeat;
-        background-position: 0px 30px;
+        background-position: 0px 26px;
 }
 table.viewgrid {border-collapse: collapse; background-color:#EEEEEE;}
 table.viewgrid tr td { width:10px; height:10px; border: 0px; padding:0;}
