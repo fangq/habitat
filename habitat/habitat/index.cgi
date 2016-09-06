@@ -188,7 +188,7 @@ $RecentTop    = 1;      # 1 = recent on top,      0 = recent on bottom
 $UseDiffLog   = 0;      # 1 = save diffs to log,  0 = do not save diffs
 $KeepMajor    = 1;      # 1 = keep major rev,     0 = expire all revisions
 $KeepAuthor   = 1;      # 1 = keep author rev,    0 = expire all revisions
-$ShowEdits    = 0;      # 1 = show minor edits,   0 = hide edits by default
+$ShowEdits    = 1;      # 1 = show minor edits,   0 = hide edits by default
 $HtmlLinks    = 0;      # 1 = allow A HREF links, 0 = no raw HTML links
 $SimpleLinks  = 0;      # 1 = only letters,       0 = allow _ and numbers
 $NonEnglish   = 0;      # 1 = extra link chars,   0 = only A-Za-z chars
@@ -5016,55 +5016,55 @@ sub DoEditPrefs {
   print &GetFormStart();
   print GetHiddenValue("edit_prefs", 1), "\n";
   print '<h4>' . T('User info:') . "</h4>";
-  print '<span class="span_prefinfo">' . T('User name:'); 
+  print '<span class="span_prefinfo"><label class="formlabel">' . T('User name:') . '</label>';
   if($UserData{'username'} ne ''){
 	print "<span class='span_username'>".$UserData{'username'}."</span> ($UserID)";
         print &GetHiddenValue('p_username', $UserData{'username'}), "\n";
   }else{
-        print ' ', &GetFormText('username', "", 20, 50)."<strong>*</strong>";
-        print ' ' . T('(IP address will be used if not supplied)');
+        print &GetFormText('username', "", 20, 30)."<strong>*</strong>";
+        print T('(IP address will be used if not supplied)');
   }
   if($UserData{'username'} ne ''){
-        print '</span><br><span class="span_prefinfo">' . T('Old password:') . ' ',
+        print '</span><br><span class="span_prefinfo"><label class="formlabel">' . T('Old password:') . '</label>',
             $q->password_field(-name=>'p_password', -value=>'',
-                           -size=>15, -maxlength=>50),
+                           -size=>20, -maxlength=>50),
             '<strong>*</strong></span><br/>';
-        print '<span class="span_prefinfo">' . T('New password:') . ' ',
+        print '<span class="span_prefinfo"><label class="formlabel">' . T('New password:')  . '</label>',
             $q->password_field(-name=>'new_password', -value=>'',
-                           -size=>15, -maxlength=>50),
+                           -size=>20, -maxlength=>50),
             '</span><br/>';
   }else{
-      print '</span><br><span class="span_prefinfo">' . T('User password:') . ' ',
+      print '</span><br><span class="span_prefinfo"><label class="formlabel">' . T('User password:') . '</label>',
             $q->password_field(-name=>'p_password', -value=>'',
-                               -size=>15, -maxlength=>50),
+                               -size=>20, -maxlength=>50),
             '<strong>*</strong></span><br/>';
   }
-  print '<span class="span_prefinfo">' . T('Repeat password:') . ' ',
+  print '<span class="span_prefinfo"><label class="formlabel">' . T('Repeat password:') . '</label>',
         $q->password_field(-name=>'p_password2', -value=>'',
-                           -size=>15, -maxlength=>50),
+                           -size=>20, -maxlength=>50),
         '</span><br/>';
-  print  T('Email Address:'), ' ',&GetFormText('email', "", 15, 60).'<strong>*</strong><hr class="wikilinepref"/>';
+  print  '<span class="span_prefinfo"><label class="formlabel">'. T('Email Address:'), '</label>',&GetFormText('email', "", 20, 60).'<strong>*</strong></span><hr class="wikilinepref"/>';
   if (($AdminPass ne '') || ($EditPass ne '')) {
-    print T('Administrator Password:'), ' ',
+    print '<span class="span_prefinfo"><label class="formlabel">'.T('Administrator Password:'), '</label>',
           $q->password_field(-name=>'p_adminpw', -value=>'*',
-                             -size=>15, -maxlength=>50),
-          ' ', T('(blank to remove password)'), '<br>',
+                             -size=>20, -maxlength=>50),
+          ' ', T('(blank to remove password)'), '</span><br>',
           T('(Administrator passwords are used for special maintenance.)');
   }
   print "<hr class=wikilinepref><h4>$recentName:</h4>";
-  print T('Default days to display:'), ' ',
+  print '<span class="span_prefinfo"><label class="formlabel">'.T('Default days to display:'), '</label>',
         &GetFormText('rcdays', $RcDefault, 4, 9);
-  print "<br>", &GetFormCheck('rcnewtop', $RecentTop,
+  print "</span><br>", &GetFormCheck('rcnewtop', $RecentTop,
                               T('Most recent changes on top'));
   print "<br>", &GetFormCheck('rcall', 0,
                               T('Show all changes (not just most recent)'));
   %labels = (0=>T('Hide minor edits'), 1=>T('Show minor edits'),
              2=>T('Show only minor edits'));
-  print '<br>', T('Minor edit display:'), ' ';
+  print '<br><span class="span_prefinfo"><label class="formlabel">', T('Minor edit display:'), '</label>';
   print $q->popup_menu(-name=>'p_rcshowedit',
                        -values=>[0,1,2], -labels=>\%labels,
                        -default=>&GetParam("rcshowedit", $ShowEdits));
-  print "<br>", &GetFormCheck('rcchangehist', 1,
+  print "</span><br>", &GetFormCheck('rcchangehist', 1,
                               T('Use "changes" as link to history'));
   if ($UseDiff) {
     print '<hr class="wikilinepref"><h4>', T('Differences:'), "</h4>\n";
@@ -5075,17 +5075,17 @@ sub DoEditPrefs {
     print " (", &GetFormCheck('norcdiff', 1,
                                 Ts('No differences on %s', $recentName)), ")";
     %labels = (1=>T('Major'), 2=>T('Minor'), 3=>T('Author'));
-    print '<br>', T('Default difference type:'), ' ';
+    print '<br><span class="span_prefinfo"><label class="formlabel">', T('Default difference type:'), '</label>';
     print $q->popup_menu(-name=>'p_defaultdiff',
                          -values=>[1,2,3], -labels=>\%labels,
                          -default=>&GetParam("defaultdiff", 1));
   }
-  print '<hr class="wikilinepref"><h4>', T('Misc:'), "</h4>\n";
+  print '</span><hr class="wikilinepref"><h4>', T('Misc:'), "</h4>\n";
   # Note: TZ offset is added by TimeToText, so pre-subtract to cancel.
   print T('Server time:'), ' ', &TimeToText($Now-$TimeZoneOffset);
-  print '<br>', T('Time Zone offset (hours):'), ' ',
+  print '<br><span class="span_prefinfo"><label class="formlabel">', T('Time Zone offset (hours):'), '</label>',
         &GetFormText('tzoffset', 0, 4, 9);
-  print '<br>',
+  print '</span><br>',
         T('Edit area:'). T('rows:'), ' ', &GetFormText('editrows', 20, 4, 4),
         ' ', T('columns:'), ' ', &GetFormText('editcols', 65, 4, 4);
 
@@ -5093,16 +5093,16 @@ sub DoEditPrefs {
                               T('Show link bar on top'));
   print '<br>', &GetFormCheck('linkrandom', 0,
                               T('Add "Random Page" link to link bar'));
-  print '<br>' . T('StyleSheet URL:') . ' ',
+  print '<br><span class="span_prefinfo"><label class="formlabel">' . T('StyleSheet URL:') . '</label>',
         &GetFormText('stylesheet', "", 30, 150);
 
   %labels = ("en"=>T('English'), "cn"=>T('Simplified Chinese'));
-  print '<br>', T('Language:'), ' ';
+  print '</span><br><span class="span_prefinfo"><label class="formlabel">', T('Language:'), '</label>';
   print $q->popup_menu(-name=>'p_lang',
                          -values=>["en","cn"], -labels=>\%labels,
                          -default=>&GetParam("lang", 1));
 
-  print '<hr class="wikilinepref">Fields marked with an asterisk (*) are required.<br/>'.
+  print '</span><hr class="wikilinepref">Fields marked with an asterisk (*) are required.<br/>'.
     $q->submit(-name=>'Save', -value=>T('Submit')), "\n";
   print '</div>';
   print '<hr class="wikilinefooter">';
@@ -5392,10 +5392,10 @@ sub EnterLoginForm {
   print &GetFormStart();
   print &GetHiddenValue('enter_login', 1), "\n";
   print &GetHiddenValue('refer_url', $refurl), "\n" if($refurl=~/^http/i);
-  print '<br>', T('User Name:'), ' ',
+  print '<br><label class="formlabel">', T('User Name:'), '</label>',
         $q->textfield(-name=>'p_username', -value=>'',
                       -size=>15, -maxlength=>50);
-  print '<br>', T('Password:'), ' ',
+  print '<br><label class="formlabel">', T('Password:'), '</label>',
         $q->password_field(-name=>'p_password', -value=>'',
                            -size=>15, -maxlength=>50);
   print '<br>', $q->submit(-name=>'Login', -value=>T('Login')), "\n";
