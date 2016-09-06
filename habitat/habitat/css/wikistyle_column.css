@@ -383,7 +383,7 @@ ul.titletab {
         color: #666666;
 } 
 ul.titletab a{
-   color: Lightgreen;
+   color: #c8e0c8;
 }
 ul.titletab a:hover{
    color: green;
@@ -473,4 +473,12 @@ tt{
 }
 #logoimg{
 	z-index:2;
+}
+span.span_prefinfo label.formlabel{
+	display: inline-block;
+	width: 12em;
+}
+label.formlabel{
+	display: inline-block;
+	width: 6em;
 }
