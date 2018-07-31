@@ -101,12 +101,16 @@ div.wikitext, div.wikirc, div.wikipref,div.wikieditform, div.wikiinfo {
 div.wikiinfo,div.wikimsg{
 	/*background-color:#99CCFF;*/
 }
-.wikitoc{
+.wikitext > .wikitoc{
 	float:right;
 	background-color: #e9faff;
 	border: 1px solid lightgreen;
 	padding: 10px;
         margin-left: 10px;
+}
+.wikitoc{
+        -webkit-margin-before: 0;
+        -webkit-margin-after: 0;
 }
 .wikitoc dd{
 	-webkit-margin-start: 10px;
