@@ -862,8 +862,9 @@ sub BrowsePage {
   # Raw mode: just untranslated wiki text
   if (&GetParam('raw', 0) || &GetParam('format', '') eq 'json') {
      &BuildRuleStack($id);
-     if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
-       && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
+     my $pp=ReadPagePermissions($id,\%Permissions);
+     if( (defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'})
+       || (($pp ne '') && &UserPermission() < $pp) ){
                 return "";
      }
      print &GetHttpHeader('text/plain',$Pages{$id}->{'expire'});
@@ -1504,8 +1505,9 @@ sub DoHistory {
   
   &BuildRuleStack($id);
   print &GetHeader('', Ts('History of %s', $id), '');
-  if((defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
-     && &UserPermission() < ReadPagePermissions($id,\%Permissions)) || 
+  my $pp=ReadPagePermissions($id,\%Permissions);
+  if( (defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'})
+       || (($pp ne '') && &UserPermission() < $pp) ||
       (&UserPermission()!=100 && $Pages{$id}->{'writeonly'}==1) ){
         print "<div class=wikiinfo>no permission</div>\n";
 	print &GetCommonFooter();
@@ -1923,12 +1925,12 @@ sub GetHeader {
   }
   $result .= '<div class="wikiheader">';
 
-  if ($oldId ne '') {
-    $result .= $q->h5('(' . Ts('redirected from %s',
-                               &GetEditLink($oldId, $oldId)) . ')');
-  }
   if (&GetParam("toplinkbar", 1)) {
     $result .= &GetGotoBar($id);
+  }
+  if ($oldId ne '') {
+    $result .= $q->h5('(' . Ts('» %s',
+                               &GetEditLink($oldId, $oldId)) . ')');
   }
   $result .= '</div>';
   $result .= '<div class=wikititle><ul class=titletab>';
@@ -2293,8 +2295,9 @@ sub WikiToHTML {
 
   &RestorePageHash($id);
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'}
-    && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
+  my $pp=ReadPagePermissions($id,\%Permissions);
+  if( (defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'})
+       || (($pp ne '') && &UserPermission() < $pp) ){
 		$UseCache=0;
 		return "";
   }
@@ -4852,8 +4855,9 @@ name=\"myform\">";
   $noeditrule=&GetParam("noeditrule","");
   if($noeditrule eq "") {
     my $u=&UserPermission();
-    if(defined($Pages{$id}->{'clearance'}) && $u < $Pages{$id}->{'clearance'}
-        && $u < ReadPagePermissions($id,\%Permissions) ){
+    my $pp=ReadPagePermissions($id,\%Permissions);
+    if( (defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'})
+       || (($pp ne '') && &UserPermission() < $pp) ){
                 $UseCache=0;
                 return "";
     }
@@ -5930,8 +5934,9 @@ sub DoPost {
   # called routines can die, leaving locks.)
 
   &BuildRuleStack($id); # added 05/13/06 by fangq
-  if(defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'} 
-     && &UserPermission() < ReadPagePermissions($id,\%Permissions)){
+  my $pp=ReadPagePermissions($id,\%Permissions);
+  if( (defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'})
+       || (($pp ne '') && &UserPermission() < $pp) ){
 	    $UseCache=0;
 	    PrintMsg(T("no permission"),T("Error"),1);
   }
