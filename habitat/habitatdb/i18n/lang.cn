@@ -1,7 +1,7 @@
 # == Language =======================================================
 # Habitat Translation for Simplified Chinese (cn)
 # http://wenq.org/habitat/
-# Qianqian Fang <fangq at nmr.mgh.harvard.edu>
+# Qianqian Fang <q.fang at neu.edu>
 
 $RCName      = "最近更新"; # Name of changes page (change space to _)
 #$FooterNote  = "Habitat提供动力";
@@ -22,7 +22,7 @@ Habitat使用perl语言编写，以sqlite本地数据库作为后端，并包含
 Habitat是一个wiki引擎，也同时是一个内容管理系统(CMS)。用户可以
 使用Habitat来快速建立和维护个人网站，或者为社区提供协作式创作平台。
 
-Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在
+Habitat是由[http://github.com/fangq 房骞骞]在
 [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]的基础上
 为开源中文字体项目[http://wenq.org 文泉驿]开发并优化的。
 新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
@@ -227,9 +227,9 @@ $BuildinPages{"Habitat/Download"}=<<HABITAT_DOWNLOAD;
 的文件下载列表。<b>如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
 自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。</b>
 
-您还可以使用SVN来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
-  svn co https://huc.svn.sourceforge.net/svnroot/huc/trunk/habitat habitat
-如果您使用的是Windows，您需要安装 [http://tortoisesvn.net/downloads TortoiseSVN]
+您还可以使用Git来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
+  git clone https://github.com/fangq/habitat.git
+如果您使用的是Windows，您需要安装 [https://tortoisegit.org/download/ TortoiseGit]
 来执行上面的命令。
 
 Habitat有四种运行模式：标准模式，扩展模式，精简模式，最小模式。
@@ -291,7 +291,7 @@ $BuildinPages{"atom/menu/HabitatMenu"}="* 关于Habitat
 ** [http://wenq.org/habitat/index.cgi?Dev/Bugs 报告Bug]
 ** [http://wenq.org/habitat/index.cgi?Dev/Translations 翻译和本地化]
 ** [http://wenq.org/habitat/index.cgi?Dev/Plugins 贡献插件]
-** [http://huc.svn.sourceforge.net/viewvc/huc/trunk/habitat/ 浏览代码SVN]
+** [http://github.com/fangq/habitat 浏览代码Github]
 ** ----------
 ** [http://wenq.org/habitat/index.cgi?Dev/Maillist 邮件列表]
 ** [http://wenq.org/habitat/index.cgi?Dev/Donation 捐款支持]
