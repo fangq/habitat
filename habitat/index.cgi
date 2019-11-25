@@ -2,7 +2,7 @@
 #
 # Habitat - A Portable Content Management System
 #
-# by Qianqian Fang <fangq at nmr.mgh.harvard.edu>
+# by Qianqian Fang <q.fang at neu.edu>
 #
 # key features:
 #   1. object-oriented wiki text data structures

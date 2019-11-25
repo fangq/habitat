@@ -1,7 +1,7 @@
 # == Language =======================================================
 # Habitat Translation for English (en)
 # http://wenq.org/habitat/
-# Qianqian Fang <fangq at nmr.mgh.harvard.edu>
+# Qianqian Fang <q.fang at neu.edu>
 
 # English translation is build-in
 
@@ -29,7 +29,7 @@ particularly useful when multiple users jointly develop
 documentations or resources in a collaborative project.
 
 Habitat was derived from [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]
-by [http://nmr.mgh.harvard.edu/~fangq/ Qianqian Fang],
+by [http://github.com/fangq/ Qianqian Fang],
 who had also founded the collaborative font development project -
 [http://wenq.org/en/ WenQuanYi]. Habitat is a result of over a decade
 continuous improvement of the WenQuanYi Wiki.
@@ -86,10 +86,10 @@ the deb package. It will set up everything for you
 and you can find Habitat in the "Accessories" menu.
 
 If you want to try out the latest code, you can 
-access it from our SVN. On Unix/Linux/Mac OS, you can use the 
-following svn command:
-  svn checkout http://svn.code.sf.net/p/huc/code/trunk/habitat habitat
-On Windows, you might want to install [http://tortoisesvn.net/downloads TortoiseSVN]
+access it from our Github repository at https://github.com/fangq/habitat .
+On Unix/Linux/Mac OS, you can use the following git command:
+  git clone https://github.com/fangq/habitat.git
+On Windows, you might want to install [https://tortoisegit.org/download/ TortoiseGit]
 to run the above command.
 
 You may run Habitat in 4 modes: "Standard", "Extended", 
@@ -312,7 +312,7 @@ $BuildinPages{"atom/menu/HabitatMenu"}="* About Habitat
 ** [http://wenq.org/habitat/index.cgi?Dev/Bugs Report Bugs]
 ** [http://wenq.org/habitat/index.cgi?Dev/Translations Translations]
 ** [http://wenq.org/habitat/index.cgi?Dev/Plugins Contribute Plugins]
-** [http://huc.svn.sourceforge.net/viewvc/huc/trunk/habitat/ Browse Source SVN]
+** [http://github.com/fangq/github Browse Source Code]
 ** ----------
 ** [http://wenq.org/habitat/index.cgi?Dev/Maillist Mailing Lists]
 ** [http://wenq.org/habitat/index.cgi?Dev/Donation Support Habitat]
