@@ -588,7 +588,7 @@ sub InitRequest {
   }
   $MainPage = "."; # For subpages only, the name of the top-level page
   $OpenPageName = ""; # Currently open page
-  $FullUrl = $q->url(-absolute=>1);
+  $FullUrl = $q->url(-full=>1);
 
   &CreateDir($DataDir); # Create directory if it doesn't exist
   if (!-d $DataDir) {
@@ -1388,7 +1388,7 @@ sub GetRcRss {
   my ($rssHeader, $headList, $items);
 
   # Normally get URL from script, but allow override
-  $FullUrl = $q->url(-absolute=>1) if ($FullUrl eq "");
+  $FullUrl = $q->url(-full=>1) if ($FullUrl eq "");
   $QuotedFullUrl = &QuoteHtml($FullUrl);
   $SiteDescription = &QuoteHtml($SiteDescription);
 
@@ -2183,7 +2183,7 @@ sub GetRedirectPage {
     $url=$newid;
   }else{
     # Normally get URL from script, but allow override.
-    $FullUrl = $q->url(-absolute=>1) if ($FullUrl eq "");
+    $FullUrl = $q->url(-full=>1) if ($FullUrl eq "");
     $url = $FullUrl . &ScriptLinkChar() . &UrlEncode($newid);
   }
   $nameLink = "<a href=\"$url\">$name</a>";
@@ -5609,7 +5609,7 @@ sub SetPreRegFlag{
   $UserData{'param'}=sprintf("R%08X%08X", int(rand(0x10000000)),int(rand(0x10000000)));
 }
 sub SendRegMail{
-      my $homeurl=$q->url(-absolute=>1).&ScriptLinkChar()."action=activate\&uid=$UserID\&regid=".$UserData{'param'}."\&regtime=$Now";
+      my $homeurl=$q->url(-full=>1).&ScriptLinkChar()."action=activate\&uid=$UserID\&regid=".$UserData{'param'}."\&regtime=$Now";
       my $message=<<"END_ACTIVATION_MSG";
 Thank you for registering $SiteName.
 Click the following link to activate your account:
@@ -6240,7 +6240,7 @@ sub EmailNotify {
         return if (!-f $EmailFile); # No notifications yet
         $address=&ReadWatchList();
     }
-    my $home_url = $q->url(-absolute=>1);
+    my $home_url = $q->url(-full=>1);
     my $page_url = $home_url ."?". &UrlEncode("$id");
     my $editors_summary = $q->param("summary");
     if (($editors_summary eq "*") or ($editors_summary eq "")){
