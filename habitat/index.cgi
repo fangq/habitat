@@ -948,7 +948,7 @@ sub BrowsePage {
   $Text=\%{$Pages{$id}->{'text'}};
 
   if(&GetParam('diff', '') eq '') {
-     $fullHtml .= '<div class=wikitext>';
+     $fullHtml .= '<div class="wikitext">';
   }
   $kfid=&GetParam("keyfield", "");
   $kid=&GetParam("keyblock", "");
@@ -974,7 +974,7 @@ sub BrowsePage {
   $fullHtml .= '</div>';
   if (($id eq $RCName) || (T($RCName) eq $id) || (T($id) eq $RCName)) {
     print $fullHtml;
-    print '<div class=wikirc>';
+    print '<div class="wikirc">';
     &DoRc(1);
     print '</div>';
     print &GetFooterText($id, $goodRevision);
@@ -1509,7 +1509,7 @@ sub DoHistory {
   if( (defined($Pages{$id}->{'clearance'}) && &UserPermission() < $Pages{$id}->{'clearance'})
        || (($pp ne '') && &UserPermission() < $pp) ||
       (&UserPermission()!=100 && $Pages{$id}->{'writeonly'}==1) ){
-        print "<div class=wikiinfo>no permission</div>\n";
+        print "<div class=\"wikiinfo\">no permission</div>\n";
 	print &GetCommonFooter();
 	return;
   }
@@ -1520,7 +1520,7 @@ sub DoHistory {
   $canEdit = &UserCanEdit($id) if ($HistoryEdit);
   if ($UseDiff) {
     print <<EOF ;
-      <div class=wikieditform>
+      <div class="wikieditform">
       <form action='$ScriptName' METHOD='GET'>
           <input type='hidden' name='action' value='browse'/>
           <input type='hidden' name='diff' value='1'/>
@@ -1563,7 +1563,7 @@ EOF
   }
   if ($UseDiff) {
     my $label = T('Compare');
-    print "<tr><td align='center'><input type='submit' "
+    print "<tr><td><input type='submit' "
           . "value='$label'/>&nbsp;&nbsp;</td></tr>" if $html ne "";
     print "</table></form>\n";
     print &GetDiffHTML(&GetParam('defaultdiff', 1), $id, '', '', $newText);
@@ -1628,7 +1628,7 @@ sub GetHistoryLine {
        my ($c1, $c2);
        $c1 = 'checked="checked"' if 1 == $row && $i==$allver-1;
        $c2 = 'checked="checked"' if 0 == $row && $i==$allver-1;
-       $html .= "<tr><td align='center'><input type='radio' "
+       $html .= "<tr><td><input type='radio' "
         	. "name='diffrevision' value='$revid' $c1/> ";
        $html .= "<input type='radio' name='revision' value='$revid' $c2/></td><td>";
      }
@@ -1921,7 +1921,7 @@ sub GetHeader {
 
   if ((!$embed) && ($LogoUrl ne "")) {
     $logoImage = "img src=\"$LogoUrl\" id='logoimg' alt=\"$altText\" border=0";
-    $result .= '<div class=wikilogo>'. &ScriptLink($HomePage, "<$logoImage>") .'</div>';
+    $result .= '<div class="wikilogo">'. &ScriptLink($HomePage, "<$logoImage>") .'</div>';
   }
   $result .= '<div class="wikiheader">';
 
@@ -1933,7 +1933,7 @@ sub GetHeader {
                                &GetEditLink($oldId, $oldId)) . ')');
   }
   $result .= '</div>';
-  $result .= '<div class=wikititle><ul class=titletab>';
+  $result .= '<div class="wikititle"><ul class=titletab>';
   $action = &GetParam("action", "");
   $tab="inactivetab";
   $tab="activetab" if($action eq "browse" ||$action eq "");
@@ -2060,9 +2060,9 @@ sub GetFooterText {
   if (&GetParam('embed', $EmbedWiki)) {
     return $q->end_html;
   }
-  $result = '<div class=wikifooter>';
+  $result = '<div class="wikifooter">';
   if ($$Section{'revision'} > 0) {
-    $result .= '<div class=wikipginfo>';
+    $result .= '<div class="wikipginfo">';
     if ($rev eq '') { # Only for most current rev
       $result .= T('Last edited');
     } else {
@@ -2125,7 +2125,7 @@ sub GetGotoBar {
   my ($id) = @_;
   my ($main, $bartext);
 
-  $bartext = '<ul class=wikiheaderlist><li>';
+  $bartext = '<ul class="wikiheaderlist"><li>';
   $bartext .= &GetPageLinkText($HomePage,T('Home'));
   $bartext .= '</li>';
 
@@ -2559,6 +2559,7 @@ sub CommonMarkup {
   if ($doLines < 2) { # 2 = do line-oriented only
     # The <nowiki> tag stores text with no markup (except quoting HTML)
     s/\&lt;nowiki\&gt;((.|\n)*?)\&lt;\/nowiki\&gt;/&StoreRaw($1)/ige;
+
     # The <pre> tag wraps the stored text with the HTML <pre> tag
     s/\&lt;pre\&gt;((.|\n)*?)\&lt;\/pre\&gt;/&StorePre($1, "pre")/ige;
     s/\&lt;code\&gt;((.|\n)*?)\&lt;\/code\&gt;/&StorePre($1, "code")/ige;
@@ -2630,13 +2631,13 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
     s/\b$ISBNPattern/&StoreISBN($1)/geo;
     if ($ThinLine) {
       if ($OldThinLine) { # Backwards compatible, conflicts with headers
-        s/====+/<hr noshade class=wikiline size=2>/g;
+        s/====+/<hr noshade class="wikiline" size=2>/g;
       } else { # New behavior--no conflict
-        s/------+/<hr noshade class=wikiline size=2>/g;
+        s/------+/<hr noshade class="wikiline" size=2>/g;
       }
-      s/----+/<hr noshade class=wikiline size=1>/g;
+      s/----+/<hr noshade class="wikiline" size=1>/g;
     } else {
-      s/----+/<hr class=wikiline>/g;
+      s/----+/<hr class="wikiline">/g;
     }
   }
   if ($doLines) { # 0 = no line-oriented, 1 or 2 = do line-oriented
@@ -2649,23 +2650,17 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
       s/(^|\n)\s*(\=+)\s+(.+)\s+\=+/&WikiHeading($1, $2, $3)/geo;
     }
     if ($TableMode) {
-      if(m/\|\|_+/)
-      {
+      if(m/\|\|_+/){
         s/((\|\|)+)(\_*)/"<\/td><td". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : " rowspan='".
                 (length($3)). "'") . ">"/ge;
-      }
-      else
-      {
+      }else{
         s/((\|\|)+)/"<\/td><td". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") .">"/ge;
       }
 
-      if(m/\!\!_+/)
-      {
+      if(m/\!\!_+/){
         s/((\!\!)+)(\_*)/"<\/th><th". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : " rowspan='".
                 (length($3)). "'") . ">"/ge;
-      }
-      else
-      {
+      }else{
         s/((\!\!)+)/"<\/th><th". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . ">"/ge;
       }
     }
@@ -2702,32 +2697,32 @@ sub WikiLinesToHtml {
       $depth = length $1;
       $codeAttributes = "class='wikiollevel$depth'";
     }elsif ($TableSyntax &&
-             s/^((\|\|)+)(\_+)(.*)\|\|\s*$/"<tr "
-                       . "align='center'><td". (length($1)>2 ? (" colspan='"
+             s/^((\|\|)+)(\_+)(.*)\|\|\s*$/"<tr>"
+                       . "<td". (length($1)>2 ? (" colspan='"
                        . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : (" rowspan='".length($3))."'" ).">$4<\/td><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
       $depth = 1;
     } elsif ($TableSyntax &&
-             s/^((\|\|)+)(.*)\|\|\s*$/"<tr "
-                   . "align='center'><td". (length($1)>2 ? (" colspan='"
+             s/^((\|\|)+)(.*)\|\|\s*$/"<tr>"
+                   . "<td". (length($1)>2 ? (" colspan='"
                    . (length($1)\/2) ."'") : "") . ">$3<\/td><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
       $TableMode = 1;
       $depth = 1;
     }elsif ($TableSyntax &&
-             s/^((\!\!)+)(\_+)(.*)\!\!\s*$/"<tr "
-                       . "align='center'><th". (length($1)>2 ? (" colspan='"
+             s/^((\!\!)+)(\_+)(.*)\!\!\s*$/"<tr>"
+                       . "<th". (length($1)>2 ? (" colspan='"
                        . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" :" rowspan='".length($3)."'").">$4<\/th><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "border='1'";
       $TableMode = 1;
       $depth = 1;
     } elsif ($TableSyntax &&
-             s/^((\!\!)+)(.*)\!\!\s*$/"<tr "
-                   . "align='center'><th". (length($1)>2 ? (" colspan='"
+             s/^((\!\!)+)(.*)\!\!\s*$/"<tr>"
+                   . "<th". (length($1)>2 ? (" colspan='"
                    . (length($1)\/2)."'") : "") . ">$3<\/th><\/tr>\n"/e) {
       $code = 'table';
       $codeAttributes = "class='wikitable'";
@@ -3226,7 +3221,7 @@ sub WikiHeading {
   $depth = length($depth);
   $depth = 6 if ($depth > 6);
   $text =~ s/^\s*#\s+(.*)/&WikiHeadingNumber($depth,$1).$1/eo; # $' == $POSTMATCH
-  return $pre . "<H$depth>$text</H$depth>\n";
+  return $pre . "<h$depth>$text</h$depth>\n";
 }
 
 # ==== Difference markup and HTML ====
@@ -4825,10 +4820,10 @@ sub DoEdit {
   }
   if ($isConflict) {
     $editRows -= 10 if ($editRows > 19);
-    print "\n<H1>" . T('Edit Conflict!') . "</H1>\n";
+    print "\n<h1>" . T('Edit Conflict!') . "</h1>\n";
     if ($isConflict>1) {
       # The main purpose of a new warning is to display more text and move the save button down from its old location.
-      print "\n<H2>" . T('This change is a conflit.') . "</H2>\n";
+      print "\n<h2>" . T('This change is a conflit.') . "</h2>\n";
     }
     print "<p><strong>",
           T('Someone saved this page after you started editing.'), " ",
@@ -5054,7 +5049,7 @@ sub DoEditPrefs {
           ' ', T('(blank to remove password)'), '</span><br>',
           T('(Administrator passwords are used for special maintenance.)');
   }
-  print "<hr class=wikilinepref><h4>$recentName:</h4>";
+  print "<hr class='wikilinepref'><h4>$recentName:</h4>";
   print '<span class="span_prefinfo"><label class="formlabel">'.T('Default days to display:'), '</label>',
         &GetFormText('rcdays', $RcDefault, 4, 9);
   print "</span><br>", &GetFormCheck('rcnewtop', $RecentTop,
