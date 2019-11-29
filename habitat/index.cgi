@@ -260,7 +260,8 @@ $InlineDiffLimit=50;
 # so they are *not* particularly "safe".
 # Tags that must be in <tag> ... </tag> pairs:
 @HtmlPairs = qw(b i u font big small sub sup h1 h2 h3 h4 h5 h6 cite code
-  em s strike strong tt var div center blockquote ol ul dl table caption);
+  em s strike strong tt var div center blockquote ol ul dl table caption
+  kbd nav header section article aside footer);
 # Single tags (that do not require a closing /tag)
 @HtmlSingle = qw(br p hr li dt dd tr td th);
 @HtmlPairs = (@HtmlPairs, @HtmlSingle);  # All singles can also be pairs
