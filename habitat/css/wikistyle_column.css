@@ -300,11 +300,12 @@ div.wikitext td
 div.wikitext th
 {
 	text-align:left;
-	font-variant: small-caps;
+	/*font-variant: small-caps;*/
 	font-weight:bold;
         border: 1px solid #444444;
 	color: yellow;
 	background-color:#333333;
+	padding: 0 10px 0 10px;
 }
 .wikilatex td th tr table
 {
