@@ -147,8 +147,8 @@ $BuildinPages{"Habitat/Markup"}=<<HABITAT_TEST_PAGE;
 || <tt><nowiki>'''bold'''</nowiki></tt> || '''bold''' ||
 || <tt><nowiki>'''''bold-italic'''''</nowiki></tt> || '''''bold-italic''''' ||
 || <tt><nowiki>&lt;u&gt;underline&lt;/u&gt;</nowiki></tt> || <u>underline</u> ||
-|| <tt><nowiki><tt>monospaced text</tt></nowiki></tt> || <tt>monospace text</tt> ||
-|| <tt><nowiki><pre>preformatted text</pre></nowiki></tt> || <pre>preformatted text</pre> ||
+|| <tt><nowiki>&lt;tt&gt;monospaced text&lt;/tt&gt;</nowiki></tt> || <tt>monospace text</tt> ||
+|| <tt><nowiki>&lt;pre&gt;preformatted text&lt;/pre&gt;</nowiki></tt> || <pre>preformatted text</pre> ||
 || <tt><nowiki>&lt;nowiki&gt;''disable all wiki formats''&lt;/nowiki&gt;</nowiki></tt> || <nowiki>''disable all wiki formats''</nowiki> ||
 
 == # Links ==
