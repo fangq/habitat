@@ -282,7 +282,7 @@ div.fontpreview {
         border-style:solid;
 }
 
-div.wikitext table
+div.wikiwrapper table
 {
         font-size: 10pt;
         border-collapse: collapse;
@@ -291,13 +291,13 @@ div.wikitext table
 	background-color:transparent;
         margin-left: 12px;
 }
-div.wikitext td
+div.wikiwrapper td
 {
 	text-align:left;
 	border: 1px solid #444444;
 	padding:2px;
 }
-div.wikitext th
+div.wikiwrapper th
 {
 	text-align:left;
 	/*font-variant: small-caps;*/
@@ -306,6 +306,7 @@ div.wikitext th
 	color: yellow;
 	background-color:#333333;
 	padding: 0 10px 0 10px;
+	text-transform: capitalize;
 }
 .wikilatex td th tr table
 {
@@ -373,6 +374,7 @@ span.rcbitmap{
 table.wikitable tr td {
 	border:1px solid;
         border-collapse: collapse;
+	vertical-align: top;
 }
 span.wikicaptcha{
         color:red;
@@ -490,3 +492,7 @@ label.formlabel{
 	display: inline-block;
 	width: 6em;
 }
+div.wikipreview {
+	width: 100%;
+}
+

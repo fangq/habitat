@@ -4835,6 +4835,18 @@ sub DoEdit {
     print T('Last save time:'), ' ', &TimeToText($oldTime),
           " (", T('Current time is:'), ' ', &TimeToText($Now), ")<br>\n";
   }
+  if ($preview) {
+    print "<div class='wikipreview'>\n<h2>", T('Preview'), "</h2>\n";
+    if ($isConflict) {
+      print "<b>",
+             T('NOTE: This preview shows the revision of the other author.'),
+            "</b><hr>\n";
+    }
+    $MainPage = $id;
+    $MainPage =~ s|/.*||; # Only the main page name (remove subpage)
+    print &WikiToHTML($id,$oldText) . '<hr class="wikilinefooter">';
+    print "<h2>", T('Preview only, not yet saved'), "</h2>\n</div>\n";
+  }
 #  if($id =~ m/_9pt$/ || $id =~ m/_10pt$/ || $id =~ m/_11pt$/ || $id =~ m/_12pt$/){
        print "<form method=\"post\" action=\"$ScriptName\" enctype=\"application/x-www-form-urlencoded\" 
 name=\"myform\">";
@@ -4922,18 +4934,6 @@ name=\"myform\">";
           "</strong><p>",
           &GetTextArea('newtext', $newText, $editRows, $editCols),
           "<p>\n";
-  }
-  if ($preview) {
-    print "<h2>", T('Preview'), "</h2>\n";
-    if ($isConflict) {
-      print "<b>",
-             T('NOTE: This preview shows the revision of the other author.'),
-            "</b><hr>\n";
-    }
-    $MainPage = $id;
-    $MainPage =~ s|/.*||; # Only the main page name (remove subpage)
-    print &WikiToHTML($id,$oldText) . '<hr class="wikilinefooter">';
-    print "<h2>", T('Preview only, not yet saved'), "</h2>\n";
   }
   print $q->end_form;
   print "\n</div>\n";
