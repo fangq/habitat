@@ -5560,9 +5560,6 @@ sub SaveUserDataDB {
   }
   $passhash=ReadDBItems($userdb,'pass',"\n",'',"name='".$UserData{'username'}."'");
   $encpass=$UserData{'password'};
-  if(($encpass ne $passhash) && $isnewuser!=1){
-	die(T('ERROR: wrong password or username!'));
-  }
   $adminhash="";
   if($UserData{'adminpw'} ne "") {
 	$adminhash=$UserData{'adminpw'};
