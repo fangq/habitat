@@ -2646,6 +2646,7 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
     # pattern.
     s/('*)'''(.*?)'''/$1<strong>$2<\/strong>/g;
     s/''(.*?)''/<em>$1<\/em>/g;
+    s/`(.*?)`/<code>$1<\/code>/g;
     if ($UseHeadings) {
 #      s/(^|\n)\s*(\=+)\s+([^\n]+)\s+\=+/&WikiHeading($1, $2, $3)/geo;
       s/(^|\n)\s*(\=+)\s+(.+)\s+\=+/&WikiHeading($1, $2, $3)/geo;
