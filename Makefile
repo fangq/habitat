@@ -22,5 +22,7 @@ i18n:
 		msgfmt -o $$lang/$(PKGNAME).mo $$lang/$(PKGNAME).po;\
 	   fi;\
 	done
+pretty:
+	perltidy -b -bext='/' -l=100 habitat/index.cgi habitat/habitatdb/config habitat/habitatdb/i18n/* utils/*
 clean:
 	-rm -rf debian rpmroot pkg.info $(PKGNAME)-$(VERSION).deb $(PKGNAME)-$(VERSION)*.rpm
