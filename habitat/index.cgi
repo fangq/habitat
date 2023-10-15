@@ -76,7 +76,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UseSubpage $UseCache $RawHtml $SimpleLinks $NonEnglish $LogoLeft
   $KeepDays $HtmlTags $HtmlLinks $UseDiffLog $KeepMajor $KeepAuthor
   $FreeUpper $EmailNotify $SendMail $EmailFrom $FastGlob $EmbedWiki
-  $ScriptTZ $BracketText $UseAmPm $UseConfig $UseIndex $UseLookup
+  $ScriptTZ $BracketText $UseAmPm $UseConfig $UseLookup
   $RedirType $AdminPass $EditPass $UseHeadings $NetworkFile $BracketWiki
   $FreeLinks $WikiLinks $AdminDelete $FreeLinkPattern $RCName $RunCGI
   $ShowEdits $ThinLine $LinkPattern $InterLinkPattern $InterSitePattern
@@ -108,7 +108,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
-  $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix $UseDBI $UsePerlDiff
+  $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
   %ExtViewer %ExtEditor $UseActivation %ExportPage);
 
 # == Configuration =====================================================
@@ -196,7 +196,6 @@ $NonEnglish   = 0;                             # 1 = extra link chars,   0 = onl
 $ThinLine     = 0;                             # 1 = fancy <hr> tags,    0 = classic wiki <hr>
 $BracketText  = 1;                             # 1 = allow [URL text],   0 = no link descriptions
 $UseAmPm      = 1;                             # 1 = use am/pm in times, 0 = use 24-hour times
-$UseIndex     = 0;                             # 1 = use index file,     0 = slow/reliable method
 $UseHeadings  = 1;                             # 1 = allow = h1 text =,  0 = no header formatting
 $NetworkFile  = 1;                             # 1 = allow remote file:, 0 = no file:// links
 $BracketWiki  = 0;                             # 1 = [WikiLnk txt] link, 0 = no local descriptions
@@ -236,9 +235,7 @@ $MathColor     = "yellow";
 $UseCaptcha    = 1;                                # flag to enable captcha
 $CaptchaKey = pack( "H16", "0928AD813FED0277" );   # you must change this or redefine in config file
 $DiscussSuffix   = '..discuss';
-$UseDBI          = 1;
 $DBName          = "";
-$UsePerlDiff     = 1;
 $UseActivation   = 0;
 $UseDetailedLog  = 0;
 $PageItemCount   = 20;
@@ -294,12 +291,13 @@ if ($RepInterMap) {
 
 # The "main" program, called at the end of this script file.
 sub DoWikiRequest {
-    if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ ) {    # running a local wiki
+    if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ )
+    {    # running a local wiki
         $DataDir = $ENV{'PWD'} . "/$DataDir" if ( $DataDir =~ /^[^\/]/ );
     }
     if ( $UseConfig && ( -f $ConfigFile ) ) {
         $ConfigError = '';
-        if ( !do $ConfigFile ) {                         # Some error occurred
+        if ( !do $ConfigFile ) {    # Some error occurred
             $ConfigError = $@;
             if ( $ConfigError eq '' ) {
 
@@ -311,7 +309,8 @@ sub DoWikiRequest {
                 $ConfigError = T('Unknown Error (no error text)');
             }
         }
-        if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ ) {    # running a local wiki
+        if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ )
+        {    # running a local wiki
             $LogoUrl    = "/$LogoUrl"    if ( $LogoUrl    =~ /^[^\/]/ );
             $StyleSheet = "/$StyleSheet" if ( $StyleSheet =~ /^[^\/]/ );
             $FavIcon    = "/$FavIcon"    if ( $FavIcon    =~ /^[^\/]/ );
@@ -607,7 +606,6 @@ sub InitRequest {
     $OpenPageName = "";                      # Currently open page
     $FullUrl      = $q->url( -full => 1 );
 
-    &CreateDir($DataDir);                    # Create directory if it doesn't exist
     if ( !-d $DataDir ) {
         &ReportError( Ts( 'Could not create %s', $DataDir ) . ": $!" );
         return 0;
@@ -3405,61 +3403,17 @@ sub GetDiff {
     my ( $old, $new, $lock ) = @_;
     my ( $diff_out, $oldName, $newName, $key );
 
-    if ($UsePerlDiff) {
-        return diff( \$old, \$new, { STYLE => 'OldStyle' } );
-    } else {
-        &CreateDir($TempDir);
-        $key     = int( rand(1000000000) );
-        $oldName = "$TempDir/${key}_old_diff";
-        $newName = "$TempDir/${key}_new_diff";
-        if ($lock) {
-            &RequestDiffLock() or return "";
-            $oldName .= "_locked";
-            $newName .= "_locked";
-        }
-        &WriteStringToFile( $oldName, $old );
-        &WriteStringToFile( $newName, $new );
-        $diff_out = `diff $oldName $newName`;
-        &ReleaseDiffLock() if ($lock);
-        $diff_out =~ s/\\ No newline.*\n//g;    # Get rid of common complaint.
-
-        unlink( $oldName, $newName );
-
-        # No need to unlink temp files--next diff will just overwrite.
-    }
-    return $diff_out;
+    return diff( \$old, \$new, { STYLE => 'OldStyle' } );
 }
 
 sub PatchText {
     my ( $base, $patch, $lock ) = @_;
     my ( $patch_out, $oldName, $newName, $key );
 
-    if ($UsePerlDiff) {
-        if ( $patch =~ /^\@\@/ ) {
-            return patch( $base, $patch, { STYLE => 'Unified' } );
-        }
-        return patch( $base, $patch, { STYLE => 'OldStyle' } );
-    } else {
-        &CreateDir($TempDir);
-        $key     = int( rand(1000000000) );
-        $oldName = "$TempDir/${key}_old_patch";
-        $newName = "$TempDir/${key}_new_patch";
-        if ($lock) {
-            &RequestDiffLock() or return "";
-            $oldName .= "_locked";
-            $newName .= "_locked";
-        }
-        &WriteStringToFile( $oldName, $base );
-        &WriteStringToFile( $newName, $patch );
-        $patch_out = `patch $oldName -i $newName`;
-        $patch_out = &ReadFileOrDie($oldName);
-        &ReleaseDiffLock() if ($lock);
-
-        unlink( $oldName, $newName );
-
-        # No need to unlink temp files--next diff will just overwrite.
+    if ( $patch =~ /^\@\@/ ) {
+        return patch( $base, $patch, { STYLE => 'Unified' } );
     }
-    return $patch_out;
+    return patch( $base, $patch, { STYLE => 'OldStyle' } );
 }
 
 sub DiffToHTML {
@@ -3469,7 +3423,7 @@ sub DiffToHTML {
     $tChanged = T('Changed:');
     $tRemoved = T('Removed:');
     $tAdded   = T('Added:');
-    if ( $UsePerlDiff && $html =~ /(^|\n)@@/ ) {
+    if ( $html =~ /(^|\n)@@/ ) {
         $html =~ s/(\-\d+)(,(\d+))*/$tRemoved $1 $2/g;
         $html =~ s/(\+\d+)(,(\d+))*/$tAdded $1 $2/g;
         $html =~ s/(^|\n)@@ (.*) @@/$1 <br><strong>$2<\/strong><br>/g;
@@ -3677,42 +3631,6 @@ sub OpenPageDB {
     $OpenPageName = $id;
 }
 
-sub OpenPage {
-    my ($id) = @_;
-    my ( $fname, $data, $Page, $Text, $Section );
-
-    $Page    = \%{ $Pages{$id}->{'page'} };
-    $Section = \%{ $Pages{$id}->{'section'} };
-    $Text    = \%{ $Pages{$id}->{'text'} };
-
-    if ( $OpenPageName eq $id ) {
-        return;
-    }
-    %$Section = ();
-    %$Text    = ();
-    $fname    = &GetPageFile($id);
-
-    if ( -f $fname ) {
-        $data = &ReadFileOrDie($fname);
-
-        %$Page = split( /$FS1/, $data, -1 );
-        if ( $$Page{'version'} != 3 ) {
-            &OpenNewPage($id);
-            $NewText = $data;
-            &OpenNewText( $id, 'default' );
-
-            #	$$Page{$id}=join($FS2, %$Section);
-        }
-    } else {
-        &OpenNewPage($id);
-    }
-
-    if ( $$Page{'version'} != 3 ) {
-        &UpdatePageVersion();
-    }
-    $OpenPageName = $id;
-}
-
 sub OpenSection {
     my ( $id, $name ) = @_;
     my ( $Page, $Section );
@@ -3836,19 +3754,6 @@ sub SavePageDB {
     # need to print log
 }
 
-# Always call SavePage within a lock.
-sub SavePage {
-    my ($Page);
-
-    $Page = \%{ $Pages{$OpenPageName}->{'page'} };
-    my $file = &GetPageFile($OpenPageName);
-
-    $$Page{'revision'} += 1;    # Number of edited times
-    $$Page{'ts'} = $Now;        # Updated every edit
-    &CreatePageDir( $PageDir, $OpenPageName );
-    &WriteStringToFile( $file, join( $FS1, %$Page ) );
-}
-
 sub SaveSection {
     my ( $name, $data ) = @_;
     my ( $Section, $Page );
@@ -3887,102 +3792,8 @@ sub UpdatePageVersion {
     &ReportError( T('Bad page version (or corrupt page).') );
 }
 
-sub KeepFileName {
-    return $KeepDir . "/" . &GetPageDirectory($OpenPageName) . "/$OpenPageName.kp";
-}
-
-sub SaveKeepSection {
-    my $file = &KeepFileName();
-    my $data;
-
-    return
-      if ( $Pages{$OpenPageName}->{'section'}->{'revision'} < 1 );    # Don't keep "empty" revision
-    $Pages{$OpenPageName}->{'section'}->{'keepts'} = $Now;
-    $data = $FS1 . join( $FS2, %{ $Pages{$OpenPageName}->{'section'} } );
-    &CreatePageDir( $KeepDir, $OpenPageName );
-    &AppendStringToFileLimited( $file, $data, $KeepSize );
-}
-
-sub ExpireKeepFile {
-    my ( $fname,     $data,    @kplist, %tempSection, $expirets );
-    my ( $anyExpire, $anyKeep, $expire, %keepFlag,    $sectName, $sectRev );
-    my ( $oldMajor,  $oldAuthor );
-
-    $fname = &KeepFileName();
-    return if ( !( -f $fname ) );
-    $data   = &ReadFileOrDie($fname);
-    @kplist = split( /$FS1/, $data, -1 );         # -1 keeps trailing null fields
-    return         if ( length(@kplist) < 1 );    # Also empty
-    shift(@kplist) if ( $kplist[0] eq "" );       # First can be empty
-    return         if ( length(@kplist) < 1 );    # Also empty
-    %tempSection = split( /$FS2/, $kplist[0], -1 );
-
-    if ( !defined( $tempSection{'keepts'} ) ) {
-        return;                                   # Bad keep file
-    }
-    $expirets = $Now - ( $KeepDays * 24 * 60 * 60 );
-    return if ( $tempSection{'keepts'} >= $expirets );    # Nothing old enough
-    $anyExpire = 0;
-    $anyKeep   = 0;
-    %keepFlag  = ();
-    $oldMajor  = &GetPageCache('oldmajor');
-    $oldAuthor = &GetPageCache('oldauthor');
-
-    foreach ( reverse @kplist ) {
-        %tempSection = split( /$FS2/, $_, -1 );
-        $sectName    = $tempSection{'name'};
-        $sectRev     = $tempSection{'revision'};
-        $expire      = 0;
-        if ( $sectName eq "text_default" ) {
-            if (   ( $KeepMajor && ( $sectRev == $oldMajor ) )
-                || ( $KeepAuthor && ( $sectRev == $oldAuthor ) ) )
-            {
-                $expire = 0;
-            } elsif ( $tempSection{'keepts'} < $expirets ) {
-                $expire = 1;
-            }
-        } else {
-            if ( $tempSection{'keepts'} < $expirets ) {
-                $expire = 1;
-            }
-        }
-        if ( !$expire ) {
-            $keepFlag{ $sectRev . "," . $sectName } = 1;
-            $anyKeep = 1;
-        } else {
-            $anyExpire = 1;
-        }
-    }
-    if ( !$anyKeep ) {    # Empty, so remove file
-        unlink($fname);
-        return;
-    }
-    return if ( !$anyExpire );    # No sections expired
-    open( OUT, ">$fname" ) or die( Ts( 'cant write %s', $fname ) . ": $!" );
-    foreach (@kplist) {
-        %tempSection = split( /$FS2/, $_, -1 );
-        $sectName    = $tempSection{'name'};
-        $sectRev     = $tempSection{'revision'};
-        if ( $keepFlag{ $sectRev . "," . $sectName } ) {
-            print OUT $FS1, $_;
-        }
-    }
-    close(OUT);
-}
-
-sub OpenKeptList {
-    my ( $fname, $data );
-
-    my @KeptList = ();
-    $fname = &KeepFileName();
-    return if ( !( -f $fname ) );
-    $data     = &ReadFileOrDie($fname);
-    @KeptList = split( /$FS1/, $data, -1 );    # -1 keeps trailing null fields
-    return @KeptList;
-}
-
 sub OpenKeptListDB {
-    my ($nopatch) = @_;                        # Name of section
+    my ($nopatch) = @_;    # Name of section
     my ( $fname, $data, %sections, %texts, $sth, $lim, $offset, $searchcmd, $moretocome );
     my $pagedb = &GetPageDB($OpenPageName);
     my (
@@ -4133,25 +3944,6 @@ sub LoadUserDataDB {
     return "";
 
     # need to print log
-}
-
-sub LoadUserData {
-    my ( $data, $status );
-
-    %UserData = ();
-    ( $status, $data ) = &ReadFile( &UserDataFilename($UserID) );
-    if ( !$status ) {
-        $UserID = 112;    # Could not open file.  Consider warning message?
-        return;
-    }
-    %UserData = split( /$FS1/, $data, -1 );    # -1 keeps trailing null fields
-}
-
-sub UserDataFilename {
-    my ($id) = @_;
-
-    return "" if ( $id < 1 );
-    return $UserDir . "/" . ( $id % 10 ) . "/$id.db";
 }
 
 # ==== Misc. functions ====
@@ -4311,6 +4103,14 @@ sub UserCanUpload {
     return $AllUpload;
 }
 
+sub WriteStringToFile {
+    my ( $file, $string ) = @_;
+
+    open( OUT, ">$file" ) or die( Ts( 'cant write %s', $file ) . ": $!" );
+    print OUT $string;
+    close(OUT);
+}
+
 sub GetLockedPageFile {
     my ($id) = @_;
     return $PageDir . "/" . &GetPageDirectory($id) . "/$id.lck";
@@ -4380,83 +4180,6 @@ sub ReadFile {
     return ( 0, "" );
 }
 
-sub ReadFileOrDie {
-    my ($fileName) = @_;
-    my ( $status, $data );
-
-    ( $status, $data ) = &ReadFile($fileName);
-    if ( !$status ) {
-        die( Ts( 'Can not open %s', $fileName ) . ": $!" );
-    }
-    return $data;
-}
-
-sub WriteStringToFile {
-    my ( $file, $string ) = @_;
-
-    open( OUT, ">$file" ) or die( Ts( 'cant write %s', $file ) . ": $!" );
-    print OUT $string;
-    close(OUT);
-}
-
-sub AppendStringToFile {
-    my ( $file, $string ) = @_;
-
-    open( OUT, ">>$file" ) or die( Ts( 'cant write %s', $file ) . ": $!" );
-    print OUT $string;
-    close(OUT);
-}
-
-sub AppendStringToFileLimited {
-    my ( $file, $string, $limit ) = @_;
-
-    if ( ( $limit < 1 ) || ( ( ( -s $file ) + length($string) ) <= $limit ) ) {
-        &AppendStringToFile( $file, $string );
-    }
-}
-
-sub qmkdir {
-    my ( $path, $mode ) = @_;
-    my (@components) = split( '/', $path );
-    $path = '';
-    if ( @components > $MaxTreeDepth ) { die("maximum tree depth ($MaxTreeDepth) reached!"); }
-    while (@components) {
-        $path .= shift(@components) . '/';
-        ( mkdir( $path, $mode ) || return 0 ) unless ( -d $path );
-    }
-
-    #  return 1;
-}
-
-sub CreateDir {
-    my ($newdir) = @_;
-    qmkdir( $newdir, 0775 ) if ( !( -d $newdir ) );
-}
-
-sub CreatePageDir {
-    my ( $dir, $id ) = @_;
-    my $pgdir = &GetPageDirectory($id);
-    if ( $dir =~ /\/$/ )         { chop($dir); }
-    if ( $id  =~ /(.+)\/(.*)$/ ) { $id = $1; }
-
-    qmkdir( "$dir/$pgdir/$id", 0775 );
-}
-
-sub CreatePageDirA {
-    my ( $dir, $id ) = @_;
-    my $subdir;
-
-    &CreateDir($dir);    # Make sure main page exists
-
-    $subdir = $dir . "/" . &GetPageDirectory($id);
-    &CreateDir($subdir);
-    if ( $id =~ m|([^/]+)/| ) {
-        $subdir = $subdir . "/" . $1;
-        &CreateDir($subdir);
-    }
-    die $dir . " ", $subdir;
-}
-
 sub UpdateHtmlCacheDB {
     my ( $id, $html ) = @_;
     my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
@@ -4470,18 +4193,6 @@ sub UpdateHtmlCacheDB {
     $sth->execute( "$id\[$language\]", $Now, $html );
 
     # need to print log
-}
-
-sub UpdateHtmlCache {
-    my ( $id, $html ) = @_;
-    my $idFile;
-
-    $idFile = &GetHtmlCacheFile($id);
-    &CreatePageDir( $HtmlDir, $id );
-    if ( &RequestCacheLock() ) {
-        &WriteStringToFile( $idFile, $html );
-        &ReleaseCacheLock();
-    }
 }
 
 sub GenerateAllPagesListDB {
@@ -4513,96 +4224,10 @@ sub GenerateAllPagesListDB {
     # need to print log
 }
 
-sub GenerateAllPagesList {
-    my ( @pages, @dirs, $id, $dir, @pageFiles, @subpageFiles, $subId );
-
-    @pages = ();
-    if ($FastGlob) {
-
-# The following was inspired by the FastGlob code by Marc W. Mengel. Thanks to Bob Showalter for pointing out the
-# improvement.
-        opendir( PAGELIST, $PageDir );
-        @dirs = readdir(PAGELIST);
-        closedir(PAGELIST);
-        @dirs = sort(@dirs);
-        foreach $dir (@dirs) {
-            next if ( substr( $dir, 0, 1 ) eq '.' );    # No ., .., or .dirs or files
-            opendir( PAGELIST, "$PageDir/$dir" );
-            @pageFiles = readdir(PAGELIST);
-            closedir(PAGELIST);
-            foreach $id (@pageFiles) {
-                next if ( ( $id eq '.' ) || ( $id eq '..' ) );
-                if ( substr( $id, -3 ) eq '.db' ) {
-
-                    #          if(not ($id =~ m/pt\.db$/))
-                    { push( @pages, substr( $id, 0, -3 ) ); }
-                } elsif ( substr( $id, -4 ) ne '.lck' ) {
-                    opendir( PAGELIST, "$PageDir/$dir/$id" );
-                    @subpageFiles = readdir(PAGELIST);
-                    closedir(PAGELIST);
-                    foreach $subId (@subpageFiles) {
-                        if ( substr( $subId, -3 ) eq '.db' ) {
-                            push( @pages, "$id/" . substr( $subId, 0, -3 ) );
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-
-        # Old slow/compatible method.
-        @dirs = qw(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z other);
-        foreach $dir (@dirs) {
-            if ( -e "$PageDir/$dir" ) {    # Thanks to Tim Holt
-                while (<$PageDir/$dir/*.db $PageDir/$dir/*/*.db>) {
-                    s|^$PageDir/||;
-                    m|^[^/]+/(\S*).db|;
-                    $id = $1;
-                    push( @pages, $id );
-                }
-            }
-        }
-    }
-    return sort( ( @pages, keys(%BuildinPages) ) );
-}
-
 sub AllPagesList {
     my ( $rawIndex, $refresh, $status );
 
-    if ( !$UseIndex ) {
-        return &GenerateAllPagesListDB();
-    }
-    $refresh = &GetParam( "refresh", 0 );
-    if ( $IndexInit && !$refresh ) {
-
-# Note for mod_perl: $IndexInit is reset for each query Eventually consider some timestamp-solution to keep cache?
-        return @IndexList;
-    }
-    if ( ( !$refresh ) && ( -f $IndexFile ) ) {
-        ( $status, $rawIndex ) = &ReadFile($IndexFile);
-        if ($status) {
-            %IndexHash = split( /\s+/, $rawIndex );
-            @IndexList = sort( keys %IndexHash );
-            $IndexInit = 1;
-            return @IndexList;
-        }
-
-        # If open fails just refresh the index
-    }
-    @IndexList = ();
-    %IndexHash = ();
-    @IndexList = &GenerateAllPagesListDB();
-    return @IndexList;
-
-    foreach (@IndexList) {
-        $IndexHash{$_} = 1;
-    }
-    $IndexInit = 1;    # Initialized for this run of the script
-                       # Try to write out the list for future runs
-    &RequestIndexLock() or return @IndexList;
-    &WriteStringToFile( $IndexFile, join( " ", %IndexHash ) );
-    &ReleaseIndexLock();
-    return @IndexList;
+    return &GenerateAllPagesListDB();
 }
 
 sub CalcDay {
@@ -4776,8 +4401,6 @@ sub DoOtherRequest {
             &DoMaintainRc();
         } elsif ( $action eq "convert" ) {
             &DoConvert();
-        } elsif ( $action eq "trimusers" ) {
-            &DoTrimUsers();
         } elsif ( $action eq "watch" ) {
             &DoWatchPage($id);
         } elsif ( $action eq "activate" ) {
@@ -5347,7 +4970,7 @@ sub DoUpdatePrefs {
     } elsif ( length($password) < 8 ) {
         die( T("Password is shorter than 8 char.") );
     } elsif ( $password =~ /[^a-zA-Z0-9_@^\]\[!@\$%^&]/ ) {
-        die( T("Password can only contain basic latin, digits or one of '[]!@$%^&'.") );
+        die( T("Password can only contain basic latin, digits or one of '[]!\@\$%^&'.") );
     } elsif ( $password ne "*" ) {
         print T('Password changed.'), '<br>';
         $UserData{'password'} = crypt( $password, unpack( "H16", $CaptchaKey ) );
@@ -5520,30 +5143,6 @@ sub DoNewLoginDB {
     # &SaveUserDataDB();
 }
 
-# Create a new user file/cookie pair
-sub DoNewLogin {
-
-    # Consider warning if cookie already exists (maybe use "replace=1" parameter)
-    &CreateUserDir();
-    $SetCookie{'id'}      = &GetNewUserId();
-    $SetCookie{'randkey'} = sprintf( "%08X%08X", int( rand(0x10000000) ), int( rand(0x10000000) ) );
-    $SetCookie{'rev'}     = 1;
-    $SetCookie{'lang'}    = $LangID;
-    %UserCookie           = %SetCookie;
-    $UserID               = $SetCookie{'id'};
-
-    # The cookie will be transmitted in the next header
-    %UserData               = %UserCookie;
-    $UserData{'createtime'} = $Now;
-    $UserData{'createip'}   = &RemoteAddr;
-    $UserData{'pagecreate'} = '';
-    $UserData{'pagemodify'} = '';
-    $UserData{'param'}      = '';
-    $UserData{'stylesheet'} = '';
-
-    &SaveUserData();
-}
-
 sub EnterLoginForm {
     my ($refurl) = @_;
     print &GetFormStart();
@@ -5685,28 +5284,6 @@ sub GetNewUserIdDB {
     return $id;
 }
 
-sub GetNewUserId {
-    my ($id);
-
-    $id = $StartUID;
-    while ( -f &UserDataFilename( $id + 1000 ) ) {
-        $id += 1000;
-    }
-    while ( -f &UserDataFilename( $id + 100 ) ) {
-        $id += 100;
-    }
-    while ( -f &UserDataFilename( $id + 10 ) ) {
-        $id += 10;
-    }
-    &RequestLock() or die( T('Could not get user-ID lock') );
-    while ( -f &UserDataFilename($id) ) {
-        $id++;
-    }
-    &WriteStringToFile( &UserDataFilename($id), "lock" );    # reserve the ID
-    &ReleaseLock();
-    return $id;
-}
-
 sub SaveUserDataDB {
     my $userdb = ( split( /\//, $UserDir ) )[-1];
     my (
@@ -5797,29 +5374,6 @@ Your can only use your account after you activate it
 END_ACTIVATION_MSG
     SendEmail( $UserData{'email'}, $EmailFrom, $UserData{'email'}, T("Account activation notice"),
         $message );
-}
-
-# Consider user-level lock?
-sub SaveUserData {
-    my ( $userFile, $data );
-
-    &CreateUserDir();
-    $userFile = &UserDataFilename($UserID);
-    $data     = join( $FS1, %UserData );
-    &WriteStringToFile( $userFile, $data );
-}
-
-sub CreateUserDir {
-    my ( $n, $subdir );
-
-    if ( !( -d "$UserDir/0" ) ) {
-        &CreateDir($UserDir);
-
-        foreach $n ( 0 .. 9 ) {
-            $subdir = "$UserDir/$n";
-            &CreateDir($subdir);
-        }
-    }
 }
 
 sub DoSearch {
@@ -6206,12 +5760,7 @@ sub DoPost {
     }
 
     if ( $id =~ /^(.+)\/\.v[01]$/ ) {
-
-        # need to add DBI mode
-        if ( -f &GetHtmlCacheFile($1) ) {
-            unlink( &GetHtmlCacheFile($1) );
-        }
-        &CleanupCachedFiles( $HtmlDir . "/" . &GetPageDirectory($id) . "/$1" );
+        RemovePageCache($1);
     }
 
     if ( $editmode eq "prepend" ) {
@@ -6290,9 +5839,6 @@ sub DoPost {
         }
 
     }
-    if ( $UseIndex && ( $$Page{'revision'} == 1 ) ) {
-        unlink($IndexFile);    # Regenerate index on next request
-    }
     &ReleaseLock();
     if ( $redirect ne "" ) {
         print &GetRedirectPage( $redirect,
@@ -6313,9 +5859,6 @@ sub UpdateDiffs {
     }
     $oldMajor  = &GetPageCache('oldmajor');
     $oldAuthor = &GetPageCache('oldauthor');
-    if ($UseDiffLog) {
-        &WriteDiff( $id, $editTime, $editDiff );
-    }
     &SetPageCache( 'diff_default_minor', $editDiff );
     if ( $isEdit || !$newAuthor ) {
         &OpenKeptRevisions( $id, 'text_default' );
@@ -6382,20 +5925,10 @@ sub ReadWatchListDB {
     $userlist = ReadDBItems( $watchdb, 'user', "\n", '', "page='$id'" );
     if ( $userlist ne '' ) {
         my @users  = split( /\n/, $userlist );
-        my $sqlcmd = "'" . join( /','/, @users ) . "'";
+        my $sqlcmd = "'" . join( "','", @users ) . "'";
         $addr = ReadDBItems( $userdb, 'email', ',', '', "name IN ($sqlcmd)" );
     }
     return $addr;
-}
-
-sub ReadWatchList {
-    my $address;
-    open( EMAIL, $EmailFile )
-      or die "Can't open $EmailFile: $!\n";
-    $address = join ",", <EMAIL>;
-    $address =~ s/\n//g;
-    close(EMAIL);
-    return $address;
 }
 
 ## Email folks who want to know a note that a page has been modified. - JimM.
@@ -6506,14 +6039,13 @@ sub UnlinkHtmlCache {
 
 sub NewPageCacheClear {
     my ($id) = @_;
-    my $name;
+    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
 
-    return if ( !$UseCache );
-    $id =~ s|.+/|/|;                       # If subpage, search for just the subpage
-                                           # The following code used to search the body for the $id
-    foreach $name ( &AllPagesList() ) {    # Remove all to be safe
-        &UnlinkHtmlCache($name);
+    if ( $dbh eq "" || $htmldb eq "" ) {
+        die( T('ERROR: database uninitialized!') );
     }
+    my $sth = $dbh->prepare("delete from $htmldb");
+    $sth->execute();
 }
 
 # Note: all diff and recent-list operations should be done within locks.
@@ -6545,174 +6077,6 @@ sub WriteRcLogDB {
     );
     $sth->execute( $editTime, $id, $summary, $isEdit, $rhost, "0", $UserID, $name, $revision,
         $isadmin );
-}
-
-# Note: all diff and recent-list operations should be done within locks.
-sub WriteRcLog {
-    my ( $id, $summary, $isEdit, $editTime, $revision, $name, $rhost, $isadmin ) = @_;
-    my ( $extraTemp, %extra );
-
-    %extra             = ();
-    $extra{'id'}       = $UserID   if ( $UserID > 0 );
-    $extra{'name'}     = $name     if ( $name ne "" );
-    $extra{'revision'} = $revision if ( $revision ne "" );
-    $extra{'admin'}    = $isadmin  if ( $isadmin ne "" );
-    $extraTemp         = join( $FS2, %extra );
-
-    # The two fields at the end of a line are kind and extension-hash
-    my $rc_line = join( $FS3, $editTime, $id, $summary, $isEdit, $rhost, "0", $extraTemp );
-    if ( !open( OUT, ">>$RcFile" ) ) {
-        die( Ts( '%s log error:', $RCName ) . " $!" );
-    }
-    print OUT $rc_line . "\n";
-    close(OUT);
-}
-
-sub WriteDiff {
-    my ( $id, $editTime, $diffString ) = @_;
-
-    open( OUT, ">>$DataDir/diff_log" ) or die( T('can not write diff_log') );
-    print OUT "------\n" . $id . "|" . $editTime . "\n";
-    print OUT $diffString;
-    close(OUT);
-}
-
-# Actions are vetoable if someone edits the page before the keep expiry time. For example, page deletion. If no one
-# edits the page by the time the keep expiry time elapses, then no one has vetoed the last action, and the action is
-# accepted. See http://www.usemod.com/cgi-bin/mb.pl?PageDeletion
-sub ProcessVetos {
-    my ( $expirets, $Text );
-    $Text     = \%{ $Pages{$OpenPageName}->{'text'} };
-    $expirets = $Now - ( $KeepDays * 24 * 60 * 60 );
-    return ( 0, T('(done)') ) unless $Pages{$OpenPageName}->{'page'}->{'ts'} < $expirets;
-    if ( $DeletedPage && $$Text{'text'} =~ /^\s*$DeletedPage\W*?(\n|$)/o ) {
-        &DeletePage( $OpenPageName, 1, 1 );
-        return ( 1, T('(deleted)') );
-    }
-    if ( $ReplaceFile && $$Text{'text'} =~ /^\s*$ReplaceFile\:\s*(\S+)/o ) {
-        my $fname = $1;
-
-        # Only replace an allowed, existing file.
-        if ( ( grep { $_ eq $fname } @ReplaceableFiles ) && -e $fname ) {
-            if ( $$Text{'text'} =~ /.*<pre>.*?\n(.*?)\s*<\/pre>/ims ) {
-                my $string = $1;
-                $string =~ s/\r\n/\n/gms;
-                open( OUT, ">$fname" ) or return 0;
-                print OUT $string;
-                close OUT;
-                return ( 0, T('(replaced)') );
-            }
-        }
-    }
-    return ( 0, T('(done)') );
-}
-
-sub DoMaintain {
-    my ( $name, $fname, $data, $message, $status );
-    print &GetHeader( '', T('Maintenance on all pages'), '' );
-    print '<div class="wikiinfo">';
-    $fname = "$DataDir/maintain";
-    if ( !&UserIsAdmin() ) {
-        if ( ( -f $fname ) && ( ( -M $fname ) < 0.5 ) ) {
-            print T('Maintenance not done.'), ' ';
-            print T('(Maintenance can only be done once every 12 hours.)');
-            print ' ', T('Remove the "maintain" file or wait.');
-            print "</div>";
-            print &GetCommonFooter();
-            return;
-        }
-    }
-    &RequestLock() or die( T('Could not get maintain-lock') );
-    foreach $name ( &AllPagesList() ) {
-        &OpenDefaultPage($name);
-        ( $status, $message ) = &ProcessVetos();
-        &ExpireKeepFile() unless $status;
-        print ".... " if ( $name =~ m|/| );
-        print &GetPageLink($name);
-        print " $message<br>\n";
-    }
-    &WriteStringToFile( $fname, Ts( 'Maintenance done at %s', &TimeToText($Now) ) );
-    &ReleaseLock();
-
-    # Do any rename/deletion commands (Must be outside lock because it will grab its own lock)
-    $fname = "$DataDir/editlinks";
-    if ( -f $fname ) {
-        $data = &ReadFileOrDie($fname);
-        print '<hr>', T('Processing rename/delete commands:'), "<br>\n";
-        &UpdateLinksList( $data, 1, 1 );    # Always update RC and links
-        unlink("$fname.old");
-        rename( $fname, "$fname.old" );
-    }
-    if ($MaintTrimRc) {
-        &RequestLock() or die( T('Could not get lock for RC maintenance') );
-        $status = &TrimRc();                # Consider error messages?
-        &ReleaseLock();
-    }
-    print "</div></div>";
-    print &GetCommonFooter();
-}
-
-# Must be called within a lock. Thanks to Alex Schroeder for original code
-sub TrimRc {
-    my ( @rc, @temp, $starttime, $days, $status, $data, $i, $ts );
-
-    # Determine the number of days to go back
-    $days = 0;
-    foreach (@RcDays) {
-        $days = $_ if $_ > $days;
-    }
-    $starttime = $Now - $days * 24 * 60 * 60;
-    return 1 if ( !-f $RcFile );    # No work if no file exists
-    ( $status, $data ) = &ReadFile($RcFile);
-    if ( !$status ) {
-        print '<p><strong>'
-          . Ts( 'Could not open %s log file', $RCName )
-          . ":</strong> $RcFile<p>"
-          . T('Error was')
-          . ":\n<pre>$!</"
-          . "pre>\n" . '<p>';
-        return 0;
-    }
-
-    # Move the old stuff from rc to temp
-    @rc = split( /\n/, $data );
-    for ( $i = 0 ; $i < @rc ; $i++ ) {
-        ($ts) = split( /$FS3/, $rc[$i] );
-        last if ( $ts >= $starttime );
-    }
-    return 1 if ( $i < 1 );    # No lines to move from new to old
-    @temp = splice( @rc, 0, $i );
-
-    # Write new files and backups
-    if ( !open( OUT, ">>$RcOldFile" ) ) {
-        print '<p><strong>'
-          . Ts( 'Could not open %s log file', $RCName )
-          . ":</strong> $RcOldFile<p>"
-          . T('Error was')
-          . ":\n<pre>$!</"
-          . "pre>\n" . '<p>';
-        return 0;
-    }
-    print OUT join( "\n", @temp ) . "\n";
-    close(OUT);
-    &WriteStringToFile( $RcFile . '.old', $data );
-    $data = join( "\n", @rc );
-    $data .= "\n" if ( $data ne '' );    # If no entries, don't add blank line
-    &WriteStringToFile( $RcFile, $data );
-    return 1;
-}
-
-sub DoMaintainRc {
-    print &GetHeader( '', T('Maintaining RC log'), '' );
-    return if ( !&UserIsAdminOrError() );
-    &RequestLock() or die( T('Could not get lock for RC maintenance') );
-    if ( &TrimRc() ) {
-        print '<br>' . T('RC maintenance done.') . '<br>';
-    } else {
-        print '<br>' . T('RC maintenance not done.') . '<br>';
-    }
-    &ReleaseLock();
-    print &GetCommonFooter();
 }
 
 sub UserIsEditorOrError {
@@ -6993,7 +6357,6 @@ sub UpdateLinksList {
         &BuildLinkIndex();
     }
     &RequestLock() or die T('UpdateLinksList could not get main lock');
-    unlink($IndexFile) if ($UseIndex);
     foreach ( split( /\n/, $commandList ) ) {
         s/\s+$//g;
         next if ( !(/^[=!|]/) );    # Only valid commands.
@@ -7008,8 +6371,7 @@ sub UpdateLinksList {
             &RenameTextLinks( $1, $2 );
         }
     }
-    &NewPageCacheClear(".");    # Clear cache (needs testing?)
-    unlink($IndexFile) if ($UseIndex);
+    &NewPageCacheClear();
     &ReleaseLock();
 }
 
@@ -7066,47 +6428,6 @@ sub DoUpdateLinks {
     print "</div>";
 
     print &GetCommonFooter();
-}
-
-sub EditRecentChanges {
-    my ( $action, $old, $new ) = @_;
-
-    &EditRecentChangesFile( $RcFile,    $action, $old, $new, 1 );
-    &EditRecentChangesFile( $RcOldFile, $action, $old, $new, 0 );
-}
-
-sub EditRecentChangesFile {
-    my ( $fname,  $action,   $old,       $new,    $printError ) = @_;
-    my ( $status, $fileData, $errorText, $rcline, @rclist );
-    my ( $outrc,  $ts,       $page,      $junk );
-
-    ( $status, $fileData ) = &ReadFile($fname);
-    if ( !$status ) {
-
-        # Save error text if needed.
-        $errorText = "<p><strong>Could not open $RCName log file:"
-          . "</strong> $fname<p>Error was:\n<pre>$!</pre>\n";
-        print $errorText if ($printError);
-        return;
-    }
-    $outrc  = "";
-    @rclist = split( /\n/, $fileData );
-    foreach $rcline (@rclist) {
-        ( $ts, $page, $junk ) = split( /$FS3/, $rcline );
-        if ( $page eq $old ) {
-            if ( $action == 1 ) {    # Delete
-                ;                    # Do nothing (don't add line to new RC)
-            } elsif ( $action == 2 ) {
-                $junk = $rcline;
-                $junk =~ s/^(\d+$FS3)$old($FS3)/"$1$new$2"/ge;
-                $outrc .= $junk . "\n";
-            }
-        } else {
-            $outrc .= $rcline . "\n";
-        }
-    }
-    &WriteStringToFile( $fname . ".old", $fileData );    # Backup copy
-    &WriteStringToFile( $fname,          $outrc );
 }
 
 sub DeletePageRevisionFrom {
@@ -7250,10 +6571,10 @@ sub RenameKeepText {
     return if ( !( -f $fname ) );
     ( $status, $data ) = &ReadFile($fname);
     return if ( !$status );
-    @kplist = split( /$FS1/, $data, -1 );         # -1 keeps trailing null fields
-    return         if ( length(@kplist) < 1 );    # Also empty
-    shift(@kplist) if ( $kplist[0] eq "" );       # First can be empty
-    return         if ( length(@kplist) < 1 );    # Also empty
+    @kplist = split( /$FS1/, $data, -1 );      # -1 keeps trailing null fields
+    return         if ( @kplist == 0 );        # Also empty
+    shift(@kplist) if ( $kplist[0] eq "" );    # First can be empty
+    return         if ( @kplist == 0 );        # Also empty
     %tempSection = split( /$FS2/, $kplist[0], -1 );
 
     if ( !defined( $tempSection{'keepts'} ) ) {
@@ -7343,10 +6664,6 @@ sub RenameTextLinks {
             }
 
             # Add other text-sections (categories) here
-        }
-        if ($changed) {
-            $file = &GetPageFile($page);
-            &WriteStringToFile( $file, join( $FS1, %$Page ) );
         }
         &RenameKeepText( $page, $old, $new );
     }
@@ -7623,160 +6940,6 @@ sub SaveUpload {
     print &GetCommonFooter();
 }
 
-sub ConvertFsFile {
-    my ( $oldFS, $newFS, $fname ) = @_;
-    my ( $oldData, $newData, $status );
-
-    return if ( !-f $fname );    # Convert only existing regular files
-    ( $status, $oldData ) = &ReadFile($fname);
-    if ( !$status ) {
-        print '<br><strong>'
-          . Ts( 'Could not open file %s', $fname )
-          . ':</strong>'
-          . T('Error was')
-          . ":\n<pre>$!</pre>\n" . '<br>';
-        return;
-    }
-    $newData = $oldData;
-    $newData =~ s/$oldFS(\d)/$newFS . $1/ge;
-    return if ( $oldData eq $newData );    # Do not write if the same
-    &WriteStringToFile( $fname, $newData );
-
-    # print $fname . '<br>'; # progress report
-}
-
-# Converts up to 3 dirs deep (like page/A/Apple/subpage.db) Note that top level directory (page/keep/user) contains
-# only dirs
-sub ConvertFsDir {
-    my ( $oldFS, $newFS, $topDir ) = @_;
-    my ( @dirs, @files, @subFiles, $dir, $file, $subFile, $fname, $subFname );
-
-    opendir( DIRLIST, $topDir );
-    @dirs = readdir(DIRLIST);
-    closedir(DIRLIST);
-    @dirs = sort(@dirs);
-    foreach $dir (@dirs) {
-        next if ( substr( $dir, 0, 1 ) eq '.' );    # No ., .., or .dirs
-        next if ( !-d "$topDir/$dir" );             # Top level directories only
-        next if ( -f "$topDir/$dir.cvt" );          # Skip if already converted
-        opendir( DIRLIST, "$topDir/$dir" );
-        @files = readdir(DIRLIST);
-        closedir(DIRLIST);
-        foreach $file (@files) {
-            next if ( ( $file eq '.' ) || ( $file eq '..' ) );
-            $fname = "$topDir/$dir/$file";
-            if ( -f $fname ) {
-
-                #       print $fname . '<br>'; # progress
-                &ConvertFsFile( $oldFS, $newFS, $fname );
-            } elsif ( -d $fname ) {
-                opendir( DIRLIST, $fname );
-                @subFiles = readdir(DIRLIST);
-                closedir(DIRLIST);
-                foreach $subFile (@subFiles) {
-                    next if ( ( $subFile eq '.' ) || ( $subFile eq '..' ) );
-                    $subFname = "$fname/$subFile";
-                    if ( -f $subFname ) {
-
-                        #           print $subFname . '<br>'; # progress
-                        &ConvertFsFile( $oldFS, $newFS, $subFname );
-                    }
-                }
-            }
-        }
-        &WriteStringToFile( "$topDir/$dir.cvt", 'converted' );
-    }
-}
-
-sub ConvertFsCleanup {
-    my ($topDir) = @_;
-    my ( @dirs, $dir );
-
-    opendir( DIRLIST, $topDir );
-    @dirs = readdir(DIRLIST);
-    closedir(DIRLIST);
-    foreach $dir (@dirs) {
-        next if ( substr( $dir, 0, 1 ) eq '.' );    # No ., .., or .dirs
-        next if ( !-f "$topDir/$dir" );             # Remove only files...
-        next unless ( $dir =~ m/\.cvt$/ );          # ...that end with .cvt
-        unlink "$topDir/$dir";
-    }
-}
-
-sub DoConvert {
-    my $oldFS = "\xb3";
-    my $newFS = "\x1e\xff\xfe\x1e";
-
-    print &GetHeader( '', T('Convert wiki DB'), '' );
-    return if ( !&UserIsAdminOrError() );
-    if ( $FS ne $newFS ) {
-        print Ts( 'You must change the %s option before converting the wiki DB.', '$NewFS' )
-          . '<br>';
-        return;
-    }
-    &WriteStringToFile( "$DataDir/noedit", 'editing locked.' );
-    print T('Wiki DB locked for conversion.') . '<br>';
-    print T('Converting Wiki DB...') . '<br>';
-    &ConvertFsFile( $oldFS, $newFS, "$DataDir/rclog" );
-    &ConvertFsFile( $oldFS, $newFS, "$DataDir/rclog.old" );
-    &ConvertFsFile( $oldFS, $newFS, "$DataDir/oldrclog" );
-    &ConvertFsFile( $oldFS, $newFS, "$DataDir/oldrclog.old" );
-    &ConvertFsDir( $oldFS, $newFS, $PageDir );
-    &ConvertFsDir( $oldFS, $newFS, $KeepDir );
-    &ConvertFsDir( $oldFS, $newFS, $UserDir );
-    &ConvertFsCleanup($PageDir);
-    &ConvertFsCleanup($KeepDir);
-    &ConvertFsCleanup($UserDir);
-    print T('Finished converting wiki DB.') . '<br>';
-    print Ts( 'Remove file %s to unlock wiki for editing.', "$DataDir/noedit" ) . '<br>';
-    print &GetCommonFooter();
-}
-
-# Remove user-id files if no useful preferences set
-sub DoTrimUsers {
-    my ( %Data, $status, $data, $maxID, $id, $removed, $keep );
-    my ( @dirs, @files, $dir, $file, $item );
-
-    print &GetHeader( '', T('Trim wiki users'), '' );
-    return if ( !&UserIsAdminOrError() );
-    $removed = 0;
-    $maxID   = 1001;
-    opendir( DIRLIST, $UserDir );
-    @dirs = readdir(DIRLIST);
-    closedir(DIRLIST);
-    foreach $dir (@dirs) {
-        next if ( substr( $dir, 0, 1 ) eq '.' );    # No ., .., or .dirs
-        next if ( !-d "$UserDir/$dir" );            # Top level directories only
-        opendir( DIRLIST, "$UserDir/$dir" );
-        @files = readdir(DIRLIST);
-        closedir(DIRLIST);
-        foreach $file (@files) {
-            if ( $file =~ m/(\d+).db/ ) {           # Only numeric ID files
-                $id    = $1;
-                $maxID = $id if ( $id > $maxID );
-                %Data  = ();
-                ( $status, $data ) = &ReadFile("$UserDir/$dir/$file");
-                if ($status) {
-                    %Data = split( /$FS1/, $data, -1 );    # -1 keeps trailing null fields
-                    $keep = 0;
-                    foreach $item (qw(username password adminpw stylesheet)) {
-                        $keep = 1 if ( defined( $Data{$item} ) && ( $Data{$item} ne '' ) );
-                    }
-                    if ( !$keep ) {
-                        unlink "$UserDir/$dir/$file";
-
-                        #           print "$UserDir/$dir/$file" . '<br>'; # progress
-                        $removed += 1;
-                    }
-                }
-            }
-        }
-    }
-    print Ts( 'Removed %s files.',                    $removed ) . '<br>';
-    print Ts( 'Recommended $StartUID setting is %s.', $maxID + 100 ) . '<br>';
-    print &GetCommonFooter();
-}
-
 sub UrlEncode {
     my $str = shift;
     return '' unless $str;
@@ -7808,7 +6971,7 @@ sub ReadRawWikiPage {
     my %localSection;
     my %localText;
 
-    if ( $force eq '' ) {
+    if ( !defined($force) || $force eq '' ) {
         if ( defined( $TextCache{$id} ) ) {
             return $TextCache{$id};
         } elsif ( defined( $Pages{$id}->{'text'}->{'text'} ) ) {
@@ -7873,21 +7036,14 @@ sub BuildNameSpaceRules {
     &ReadNameSpaceRules( \%NameSpaceE1 );
 }
 
-sub CleanupCachedFiles {
-    my $dir = shift;
-    local *DIR;
-
-    opendir DIR, $dir or return;
-    while ( $_ = readdir DIR ) {
-        next if /^\.{1,2}$/;
-        my $path = "$dir/$_";
-        if (/\.htm$/) {
-            unlink $path if -f $path;
-        }
-        CleanupCachedFiles($path) if -d $path;
+sub RemovePageCache {
+    my ( $id, $lang ) = @_;
+    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
+    if ( $dbh eq "" || $htmldb eq "" ) {
+        die( T('ERROR: database uninitialized!') );
     }
-    closedir DIR;
-    rmdir $dir or print "error - $!";
+    $lang = '%' if ( $lang eq '' );
+    DeleteDBItems( $htmldb, "id='$id\[$lang\]'" );
 }
 
 sub PrintCaptcha {
