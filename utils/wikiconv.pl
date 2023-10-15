@@ -15,8 +15,7 @@ use vars qw($DataDir $KeepDir $PageDir $RcFile %Pages
 
 if ( @ARGV >= 1 ) {
     $DataDir = $ARGV[0];    # Main wiki directory
-}
-else {
+} else {
     $DataDir = "./wiki2db";    # Main wiki directory
 }
 $PageDir     = "$DataDir/page";     # Stores page data
@@ -32,8 +31,7 @@ $UsePerlDiff = 1;
 
 if ($NewFS) {
     $FS = "\x1e\xff\xfe\x1e";    # An unlikely sequence for any charset
-}
-else {
+} else {
     $FS = "\x1e";                # The FS character is a superscript "3"
 }
 $FS1 = $FS . "1";                # The FS values are used to separate fields
@@ -93,8 +91,7 @@ sub GetPageDirectory {
     {
         if ( $UCS2Str =~ /^([0-9A-F][0-9A-F])([0-9A-F][0-9A-F])/ ) {
             return "other/vec/$2";
-        }
-        else {
+        } else {
             @letters = unpack( "C*", $1 );
             $subdir  = sprintf( "%02X", $letters[1] );
             return "other/vec/$subdir";
@@ -116,15 +113,14 @@ sub BuildUCScodeNew {
             $UCS2Num = $ucsbuf;
             $UCS2Str = sprintf( "%X", $UCS2Num );
         }
-    }
-    elsif ( $pgid =~ /^\(draft\)(.*)_([89101234]*)p[tx]/ || $pgid =~ /^(.*)_([89101234]*)p[tx]/ ) {
+    } elsif ( $pgid =~ /^\(draft\)(.*)_([89101234]*)p[tx]/ || $pgid =~ /^(.*)_([89101234]*)p[tx]/ )
+    {
         my @ucsbuf = unpack( "U0U*", $1 );
         if ( @ucsbuf == 1 ) {
             $UCS2Num = $ucsbuf[0];
             $UCS2Str = sprintf( "%X", $UCS2Num );
         }
-    }
-    elsif ($pgid =~ /^([\x80-\xff][\x80-\xff][\x80-\xff])$/
+    } elsif ( $pgid =~ /^([\x80-\xff][\x80-\xff][\x80-\xff])$/
         || $pgid =~ /^([\x80-\xff][\x80-\xff][\x80-\xff]+)_VLOG$/
         || $pgid =~ /^([\x80-\xff][\x80-\xff][\x80-\xff]+).WQYS$/
         || $pgid =~ /^\(draft\)([\x80-\xff][\x80-\xff][\x80-\xff]+).WQYS$/ )
@@ -176,8 +172,7 @@ sub OpenSection {
 
     if ( !defined( $$Page{$name} ) ) {
         &OpenNewSection( $id, $name, "" );
-    }
-    else {
+    } else {
         %$Section = split( /$FS2/, $$Page{$name}, -1 );
     }
 }
@@ -192,8 +187,7 @@ sub OpenText {
 
     if ( !defined( $$Page{"text_$name"} ) ) {
         &OpenNewText( $id, $name );
-    }
-    else {
+    } else {
         &OpenSection( $id, "text_$name" );
         %$Text = split( /$FS3/, $$Section{'data'}, -1 );
     }
@@ -248,8 +242,7 @@ sub OpenNewText {
     $$Text{'isnew'} = 1;
     if ( $NewText ne '' ) {
         $$Text{'text'} = T($NewText);
-    }
-    else {
+    } else {
         $$Text{'text'} = T('Describe the new page here.') . "\n";
     }
     $$Text{'text'} .= "\n" if ( substr( $$Text{'text'}, -1, 1 ) ne "\n" );
@@ -341,8 +334,7 @@ sub BuildWikiTree {
             }
             $treetext .= "$lname\n";
             $fcount++;
-        }
-        elsif ( -d $fname ) {
+        } elsif ( -d $fname ) {
             if ( -f "$fname\.db" ) {
                 if (   $topDir =~ /\/other\/[0-9A-F][0-9A-F]$/
                     && $lname =~ /^[0-9A-F][0-9A-F]\/(.*)/ )
@@ -350,8 +342,7 @@ sub BuildWikiTree {
                     $lname = $1;
                 }
                 $treetext .= "$lname\n" . &BuildWikiTree( $fname, $baseDir );
-            }
-            else {
+            } else {
                 $treetext .= &BuildWikiTree( $fname, $baseDir );
             }
         }
@@ -467,8 +458,7 @@ sub DumpSQL {
                 if ( $data{'minor'} == 1 || length($dif) < length($oldtext) * 0.25 ) {
                     if ( $diffpatch eq '' ) {
                         $diffpatch .= $oldtext . "$FS4$revstr$dif";
-                    }
-                    else {
+                    } else {
                         $diffpatch .= "$FS4$revstr$dif";
                     }
                     push( @currrev, $revision );

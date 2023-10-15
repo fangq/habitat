@@ -342,8 +342,7 @@ sub InitLinkPatterns {
     # Field separators are used in the URL-style patterns below.
     if ($NewFS) {
         $FS = "\x1e\xff\xfe\x1e";    # An unlikely sequence for any charset
-    }
-    else {
+    } else {
         $FS = "\x1e";                # The FS character is a superscript "3"
     }
     $FS1 = $FS . "1";                # The FS values are used to separate fields
@@ -362,8 +361,7 @@ sub InitLinkPatterns {
         $LowerLetter .= "\xdf-\xff";
         if ($NewFS) {
             $AnyLetter .= "\x80-\xff";
-        }
-        else {
+        } else {
             $AnyLetter .= "\xc0-\xff";
         }
     }
@@ -387,8 +385,7 @@ sub InitLinkPatterns {
         $LinkPattern = "((?:(?:$LpA)?\\/$LpB)|$LpA)";
 
  # Strict pattern: both sides must be the main LinkPattern $LinkPattern = "((?:(?:$LpA)?\\/)?$LpA)";
-    }
-    else {
+    } else {
         $LinkPattern = "($LpA)";
     }
     $QDelim              = '(?:"")?';    # Optional quote delimiter (not in output)
@@ -409,8 +406,7 @@ sub InitLinkPatterns {
             #      } else {
             #        $AnyLetter = "[-,.()' _0-9A-Za-z\xc0-\xff]";
             #      }
-        }
-        else {
+        } else {
             $AnyLetter = "[-,.()' _0-9A-Za-z]";
         }
     }
@@ -439,20 +435,19 @@ sub InitLinkPatterns {
 }
 
 sub InitWikiEnv {
-        if ( $DBName ne '' ) {
-            $dbh = DBI->connect( $DBName, $DBUser, $DBPass, \%DBErr ) or die($DBI::errstr);
-            $dbh->func(
-                'regexp', 2,
-                sub {
-                    my ( $regex, $string ) = @_;
-                    return $string =~ /$regex/;
-                },
-                'create_function'
-            );
-        }
-        else {
-            $ConfigError .= "database $DBName does not exist";
-        }
+    if ( $DBName ne '' ) {
+        $dbh = DBI->connect( $DBName, $DBUser, $DBPass, \%DBErr ) or die($DBI::errstr);
+        $dbh->func(
+            'regexp', 2,
+            sub {
+                my ( $regex, $string ) = @_;
+                return $string =~ /$regex/;
+            },
+            'create_function'
+        );
+    } else {
+        $ConfigError .= "database $DBName does not exist";
+    }
     %Pages      = ( 'page' => (), 'text' => (), 'section' => (), 'embed' => () );
     $WikiCipher = new Crypt::DES($CaptchaKey) if $UseCaptcha;
 }
@@ -509,21 +504,21 @@ sub DoCacheBrowse {
     if ( $language eq '' ) {
         $language = $LangID;
     }
-        my $htmldb    = ( split( /\//, $HtmlDir ) )[-1];
-        my $pagelogdb = ( split( /\//, $PageLog ) )[-1];
+    my $htmldb    = ( split( /\//, $HtmlDir ) )[-1];
+    my $pagelogdb = ( split( /\//, $PageLog ) )[-1];
 
-        if ( $dbh eq "" || $htmldb eq "" ) {
-            die( T('ERROR: database uninitialized!') );
+    if ( $dbh eq "" || $htmldb eq "" ) {
+        die( T('ERROR: database uninitialized!') );
+    }
+    $text = ReadDBItems( $htmldb, 'text', '', '', "id='$query\[$language\]'" );
+    if ( $text ne '' ) {
+        print $text;
+        if ( $pagelogdb ne "" ) {
+            UpdatePageLogDB( $pagelogdb, $query );
         }
-        $text = ReadDBItems( $htmldb, 'text', '', '', "id='$query\[$language\]'" );
-        if ( $text ne '' ) {
-            print $text;
-            if ( $pagelogdb ne "" ) {
-                UpdatePageLogDB( $pagelogdb, $query );
-            }
-            AddUserLogDB( -1, "Cr", $query );
-            return 1;
-        }
+        AddUserLogDB( -1, "Cr", $query );
+        return 1;
+    }
     return 0;
 }
 
@@ -593,8 +588,7 @@ sub InitRequest {
     $CGI::POST_MAX = $MaxPost;
     if ($PermUseUpload) {
         $CGI::DISABLE_UPLOADS = 0;    # allow uploads
-    }
-    else {
+    } else {
         $CGI::DISABLE_UPLOADS = 1;    # no uploads
     }
     $q = new CGI;
@@ -636,9 +630,8 @@ sub InitCookie {
 
     if ( $UserID < 200 ) {
         $UserID = 111;
-    }
-    else {
-            &LoadUserDataDB($UserID);
+    } else {
+        &LoadUserDataDB($UserID);
     }
     if ( $UserID > 199 ) {
         if (   ( $UserData{'id'} != $UserCookie{'id'} )
@@ -672,8 +665,7 @@ sub GetPageDB {
     my $pref = ReadPagePermissions( $id, \%DBPrefix );
     if ( $pref ne "" ) {
         return $pref;
-    }
-    else {
+    } else {
         return ( split( /\//, $PageDir ) )[-1];
     }
 }
@@ -681,14 +673,14 @@ sub GetPageDB {
 sub PageExists {
     my ($id) = @_;
     return 1 if ( defined $BuildinPages{$id} );
-        my $pagedb = &GetPageDB($id);
-        if ( $dbh eq "" || $pagedb eq "" ) {
-            die( T('ERROR: database uninitialized!') );
-        }
-        my $data = ReadDBItems( $pagedb, 'id', '', '', "id='$id'" );
-        if ( $data ne "" ) {
-            return 1;
-        }
+    my $pagedb = &GetPageDB($id);
+    if ( $dbh eq "" || $pagedb eq "" ) {
+        die( T('ERROR: database uninitialized!') );
+    }
+    my $data = ReadDBItems( $pagedb, 'id', '', '', "id='$id'" );
+    if ( $data ne "" ) {
+        return 1;
+    }
     return 0;
 }
 
@@ -730,16 +722,13 @@ sub DoBrowseRequest {
         }
         &BrowsePage($id) if &ValidIdOrDie($id);
         return 1;
-    }
-    elsif ( $action eq 'rc' ) {
+    } elsif ( $action eq 'rc' ) {
         &BrowsePage($RCName);
         return 1;
-    }
-    elsif ( $action eq 'random' ) {
+    } elsif ( $action eq 'random' ) {
         &DoRandom();
         return 1;
-    }
-    elsif ( $action eq 'history' ) {
+    } elsif ( $action eq 'history' ) {
         &DoHistory($id) if &ValidIdOrDie($id);
         return 1;
     }
@@ -764,7 +753,7 @@ sub BuildRuleStack {
 
     $levelcount = ( $toptree =~ tr/\/// ) + 1;
 
-    %{$Pages{$id}} = ( 'preview' => (), 'postview' => (), 'preedit' => (), 'postedit' => () );
+    %{ $Pages{$id} } = ( 'preview' => (), 'postview' => (), 'preedit' => (), 'postedit' => () );
     $Pages{$id}->{'rules'} = 1;
 
     for ( $i = $levelcount ; $i < @dirs ; $i++ ) {
@@ -804,7 +793,7 @@ sub OpenDefaultPage {
     if ( defined( $Pages{$id}->{'text'}->{'text'} ) ) {
         return;
     }
-        &OpenPageDB($id);
+    &OpenPageDB($id);
 
     ( $Pages{$id}->{'text'}->{'text'}, $inlinerev ) =
       &PatchPage( $Pages{$id}->{'text'}->{'text'} );
@@ -854,7 +843,7 @@ sub BrowsePage {
             return;
         }
     }
-    if ($UserID >= 1000 ) {
+    if ( $UserID >= 1000 ) {
         AddUserLogDB( $UserID, 'Br', $id );
     }
     &OpenDefaultPage($id);
@@ -873,8 +862,7 @@ sub BrowsePage {
         $openKept = 1;
         if ( !defined( $KeptRevisions{$revision} ) ) {
             $goodRevision = '';
-        }
-        else {
+        } else {
             &OpenKeptRevision( $id, $revision, $inlinerev );
         }
     }
@@ -903,8 +891,7 @@ sub BrowsePage {
         print &GetHttpHeader( 'text/plain', $Pages{$id}->{'expire'} );
         if ( &GetParam( 'raw', 0 ) ) {
             print $$Text{'text'};
-        }
-        else {
+        } else {
             print JSONFormat( $id, $$Text{'text'}, &GetParam( 'jsoncallback', '' ) );
         }
         return;
@@ -936,8 +923,7 @@ sub BrowsePage {
         if ( ($FreeLinks) && ( $$Text{'text'} =~ /\#REDIRECT\s+\[\[.+\]\]/ ) ) {
             ($id) = ( $$Text{'text'} =~ /\#REDIRECT\s+\[\[(.+)\]\]/ );
             $id = &FreeToNormal($id);
-        }
-        else {
+        } else {
             ($id) = ( $$Text{'text'} =~ /\#REDIRECT\s+(\S+)/ );
         }
         if ( &ValidId($id) eq '' ) {
@@ -945,8 +931,7 @@ sub BrowsePage {
             # Consider revision in rebrowse?
             &ReBrowsePage( $id, $oldId, 0 );
             return;
-        }
-        else {    # Not a valid target, so continue as normal page
+        } else {    # Not a valid target, so continue as normal page
             $id    = $oldId;
             $oldId = '';
         }
@@ -958,8 +943,7 @@ sub BrowsePage {
         if ( ( $revision eq $$Page{'revision'} ) || ( $goodRevision ne '' ) ) {
             $fullHtml .=
               '<div class="wikiinfo">' . Ts( 'Showing revision %s', $fullrev ) . "</div>";
-        }
-        else {
+        } else {
             $fullHtml .=
                 '<div class="wikiinfo">'
               . Ts( 'Revision %s not available', $revision ) . ' ('
@@ -1010,8 +994,7 @@ sub BrowsePage {
     }
     if ( not( $id =~ /\/\.[^\/]+$/ ) ) {
         $pagehtml = &WikiToHTML( $id, $$Text{'text'} );
-    }
-    else {
+    } else {
         $pagehtml = "<textarea cols=100 rows=25 readonly=1>" . $$Text{'text'} . "</textarea>";
     }
     if ( &GetParam( 'diff', '' ) eq '' ) {
@@ -1046,7 +1029,7 @@ sub BrowsePage {
         $saveHtml =~ s/.*<\!DOCTYPE/<!DOCTYPE/gs;
         &WriteStringToFile( $exportfile, $saveHtml );
     }
-        &UpdateHtmlCacheDB( $id, $fullHtml ) if ( $UseCache && ( $oldId eq '' ) );
+    &UpdateHtmlCacheDB( $id, $fullHtml ) if ( $UseCache && ( $oldId eq '' ) );
 }
 
 sub ReBrowsePage {
@@ -1054,8 +1037,7 @@ sub ReBrowsePage {
 
     if ( $oldId ne "" ) {    # Target of #REDIRECT (loop breaking)
         print &GetRedirectPage( "action=browse&id=$id&oldid=$oldId", $id, $isEdit );
-    }
-    else {
+    } else {
         print &GetRedirectPage( $id, $id, $isEdit );
     }
 }
@@ -1082,8 +1064,7 @@ sub ReadRCLogDB {
     if ( $offset > 0 ) {
         $searchcmd =
 "select * from $rclogdb where time>$stime and time<$offset order by time desc limit 0,$lim";
-    }
-    else {
+    } else {
         $searchcmd = "select * from $rclogdb where time>$stime order by time desc limit 0,$lim";
     }
     $sth     = $dbh->selectall_arrayref($searchcmd);
@@ -1110,8 +1091,7 @@ sub ReadRCLogDB {
     }
     if ( $mintime > 0 ) {
         return ( "Internal:Offset:$mintime$moretocome", reverse(@fullrc) );
-    }
-    else {
+    } else {
         return reverse(@fullrc);
     }
 }
@@ -1125,8 +1105,7 @@ sub DoRc {
 
     if ( 0 == $rcType ) {
         $showHTML = 0;
-    }
-    else {
+    } else {
         $showHTML = 1;
     }
     if ( &GetParam( "from", 0 ) ) {
@@ -1134,8 +1113,7 @@ sub DoRc {
         if ($showHTML) {
             print "<h2>" . Ts( 'Updates since %s', &TimeToText($starttime) ) . "</h2>\n";
         }
-    }
-    else {
+    } else {
         $daysago = &GetParam( "days",   0 );
         $daysago = &GetParam( "rcdays", 0 ) if ( $daysago == 0 );
         if ($daysago) {
@@ -1153,8 +1131,7 @@ sub DoRc {
     if ( $starttime == 0 ) {
         if ( 0 == $rcType ) {
             $starttime = $Now - ( ( 24 * 60 * 60 ) * $RssDays );
-        }
-        else {
+        } else {
             $starttime = $Now - ( ( 24 * 60 * 60 ) * $RcDefault );
         }
         if ($showHTML) {
@@ -1167,55 +1144,54 @@ sub DoRc {
     }
 
     # Read rclog data (and oldrclog data if needed)
-        @fullrc = &ReadRCLogDB($starttime);
-        if ( @fullrc > 0 && $fullrc[0] =~ /^Internal:Offset:([0-9]+)([+]*)/ ) {
-            $offs       = $1;
-            $moretocome = $2;
-            shift(@fullrc);
-        }
-        $lastTs = 0;
-        if ( @fullrc > 0 ) {    # Only false if no lines in file
-            ($lastTs) = split( /$FS3/, $fullrc[$#fullrc] );
-        }
-        $lastTs++ if ( ( $Now - $lastTs ) > 5 );    # Skip last unless very recent
+    @fullrc = &ReadRCLogDB($starttime);
+    if ( @fullrc > 0 && $fullrc[0] =~ /^Internal:Offset:([0-9]+)([+]*)/ ) {
+        $offs       = $1;
+        $moretocome = $2;
+        shift(@fullrc);
+    }
+    $lastTs = 0;
+    if ( @fullrc > 0 ) {    # Only false if no lines in file
+        ($lastTs) = split( /$FS3/, $fullrc[$#fullrc] );
+    }
+    $lastTs++ if ( ( $Now - $lastTs ) > 5 );    # Skip last unless very recent
 
-        if ( 0 == $rcType ) {
-            print &GetRcRss(@fullrc);
-        }
-        else {
-            if ($showHTML) {
-                foreach $i (@RcDays) {
-                    print " | " if $showbar;
-                    $showbar = 1;
-                    print &ScriptLink( "action=rc&days=$i",
-                        Ts( '%s day' . ( ( $i != 1 ) ? 's' : '' ), $i ) );
-
-                    # Note: must have two translations (for "day" and "days")
-                    # Following comment line is for translation helper script
-                    # Ts('%s days', '');
-                }
-                print "<br>"
-                  . &ScriptLink( "action=rc&from=$lastTs", T('List new changes starting from') );
-                print " " . &TimeToText($lastTs) . "<br>\n";
-            }
-            print &GetRcHtml(@fullrc);
-            if ( $offs ne '' ) {
-                my $url;
-                print "<div class='wikipager'>";
-                if ( $moretocome ne '' ) {
-                    if ( $offs >= $RCHistoryLimit ) {
-                        print "&nbsp;&nbsp;";
-                    }
-                    $url = "action=rc&days=$daysago&offset=" . $offs;
-                    print &ScriptLink( $url, Ts( 'Next %s', $RCHistoryLimit ) . "&raquo;" );
-                }
-                print "</div>";
-            }
-        }
+    if ( 0 == $rcType ) {
+        print &GetRcRss(@fullrc);
+    } else {
         if ($showHTML) {
-            print '<p>' . Ts( 'Page generated %s', &TimeToText($Now) ), "<br>\n";
+            foreach $i (@RcDays) {
+                print " | " if $showbar;
+                $showbar = 1;
+                print &ScriptLink( "action=rc&days=$i",
+                    Ts( '%s day' . ( ( $i != 1 ) ? 's' : '' ), $i ) );
+
+                # Note: must have two translations (for "day" and "days")
+                # Following comment line is for translation helper script
+                # Ts('%s days', '');
+            }
+            print "<br>"
+              . &ScriptLink( "action=rc&from=$lastTs", T('List new changes starting from') );
+            print " " . &TimeToText($lastTs) . "<br>\n";
         }
-        return;
+        print &GetRcHtml(@fullrc);
+        if ( $offs ne '' ) {
+            my $url;
+            print "<div class='wikipager'>";
+            if ( $moretocome ne '' ) {
+                if ( $offs >= $RCHistoryLimit ) {
+                    print "&nbsp;&nbsp;";
+                }
+                $url = "action=rc&days=$daysago&offset=" . $offs;
+                print &ScriptLink( $url, Ts( 'Next %s', $RCHistoryLimit ) . "&raquo;" );
+            }
+            print "</div>";
+        }
+    }
+    if ($showHTML) {
+        print '<p>' . Ts( 'Page generated %s', &TimeToText($Now) ), "<br>\n";
+    }
+    return;
 }
 
 sub GetRc {
@@ -1239,8 +1215,7 @@ sub GetRc {
             ( $ts, $pagename, $summary, $isEdit, $host ) = split( /$FS3/, $rcline );
             if ( $showedit == 0 ) {    # 0 = No edits
                 push( @temprc, $rcline ) if ( $isEdit != 1 );
-            }
-            else {                     # 2 = Only edits
+            } else {                   # 2 = Only edits
                 push( @temprc, $rcline ) if ($isEdit);
             }
         }
@@ -1302,8 +1277,7 @@ sub GetRc {
             );
             $headList .= $headItem;
             $result   .= $item . $extra{'admin'};
-        }
-        else {                   # HTML
+        } else {                 # HTML
             $result .=
               &GetHtmlRcLine( $pagename, $ts, $host, $extra{'name'},
                 $extra{'id'}, $summary, $isEdit,   $pagecount{$pagename}, $extra{'revision'},
@@ -1338,8 +1312,7 @@ sub GetHtmlRcLine {
     $host = &QuoteHtml($host);
     if ( defined($userName) && defined($userID) ) {
         $author = &GetAuthorLink( $host, $userName, $userID );
-    }
-    else {
+    } else {
         $author = &GetAuthorLink( $host, "", 0 );
     }
     $sum = "";
@@ -1355,8 +1328,7 @@ sub GetHtmlRcLine {
         $count = "($pagecount ";
         if ($rcchangehist) {
             $count .= &GetHistoryLink( $pagename, $tChanges );
-        }
-        else {
+        } else {
             $count .= $tChanges;
         }
         $count .= ") ";
@@ -1444,8 +1416,7 @@ sub GetRssRcLine {
     if ($userName) {
         $author     = &QuoteHtml($userName);
         $authorLink = "link=\"$QuotedFullUrl?$author\"";
-    }
-    else {
+    } else {
         $author = $host;
     }
     $status     = ( 1 == $revision ) ? 'new'   : 'updated';
@@ -1524,7 +1495,7 @@ sub DoHistory {
 EOF
     }
     $html = "";
-        $html = &GetHistoryLine( $id, $Pages{$id}->{'page'}->{'text_default'}, $canEdit, $row++ );
+    $html = &GetHistoryLine( $id, $Pages{$id}->{'page'}->{'text_default'}, $canEdit, $row++ );
     &OpenKeptRevisions( $id, 'text_default', 1 );
 
     foreach ( reverse sort { $a <=> $b } keys %KeptRevisions ) {
@@ -1597,8 +1568,7 @@ sub GetHistoryLine {
     $summary = $revtext{'summary'};
     if ( ( defined( $sect{'host'} ) ) && ( $sect{'host'} ne '' ) ) {
         $host = $sect{'host'};
-    }
-    else {
+    } else {
         $host = $sect{'ip'};
     }
     $user     = $sect{'username'};
@@ -1633,8 +1603,7 @@ sub GetHistoryLine {
             if ($canEdit) {
                 $html .= &GetEditLink( $id, T('(edit)') ) . ' ';
             }
-        }
-        else {
+        } else {
             $html .= &GetOldPageLink( 'browse', $id, $revid, Ts( 'Revision %s', $revid ) ) . ' ';
             if ($canEdit) {
                 $html .= &GetOldPageLink( 'edit', $id, $revid, T('(edit)') ) . ' ';
@@ -1750,7 +1719,7 @@ sub GetPageOrEditAnchoredLink {
         $id = &FreeToNormal($id);
     }
     $exists = 0;
-    if ( PageExists($id) ) {         # Page file exists
+    if ( PageExists($id) ) {    # Page file exists
         $exists = 1;
     }
     if ($exists) {
@@ -1765,8 +1734,7 @@ sub GetPageOrEditAnchoredLink {
     }
     if ($EditNameLink) {
         return &GetEditLink( $id, $name );
-    }
-    else {
+    } else {
         return $name . &GetEditLink( $id, '?' );
     }
 }
@@ -1851,8 +1819,7 @@ sub GetAuthorLink {
           &ScriptLinkTitle( $userName, $userNameShow,
             Ts( 'ID %s', $uid ) . ' ' . Ts( 'from %s', $host ),
             'wikiauthorlink' );
-    }
-    else {
+    } else {
         $html = $host;
     }
     return $html;
@@ -1956,8 +1923,7 @@ sub GetHeader {
         $result .= "</li><li class='inactivetab'>";
         if ( not( $id =~ m|$DiscussSuffix$| ) ) {
             $result .= &GetCommentLink( $id, T('Discuss'), "icon-comments", T('Discuss') );
-        }
-        else {
+        } else {
             $result .= &GetBrowseLink( substr( $id, 0, length($id) - length($DiscussSuffix) ),
                 T('Return'), "icon-undo", T('Return') );
         }
@@ -2090,8 +2056,7 @@ sub GetFooterText {
         $result .= '<div class="wikipginfo">';
         if ( $rev eq '' ) {    # Only for most current rev
             $result .= T('Last edited');
-        }
-        else {
+        } else {
             $result .= T('Edited');
         }
         $result .= ' ' . &TimeToText( $$Section{ts} );
@@ -2176,8 +2141,7 @@ sub GetGotoBar {
           . &ScriptLinkChar()
           . "action=login\">"
           . T('Login') . '</a>' . '</li>';
-    }
-    else {
+    } else {
         $bartext .= "<li>" . &GetPrefsLink() . '</li>';
         $bartext .=
             "<li><a href=\"$ScriptName"
@@ -2206,8 +2170,7 @@ sub GetSearchForm {
     );
     if ($SearchButton) {
         $result .= $q->submit( 'dosearch', T('Go!') );
-    }
-    else {
+    } else {
         $result .= &GetHiddenValue( "dosearch", 1 );
     }
     $result .= $q->end_form;
@@ -2222,8 +2185,8 @@ sub GetRedirectPage {
 
     if ( $newid =~ /^http[s:]+\/\// ) {
         $url = $newid;
-    }
-    else {
+    } else {
+
         # Normally get URL from script, but allow override.
         $FullUrl = $q->url( -full => 1 ) if ( $FullUrl eq "" );
         $url     = $FullUrl . &ScriptLinkChar() . &UrlEncode($newid);
@@ -2234,12 +2197,10 @@ sub GetRedirectPage {
              # NOTE: do NOT use -method (does not work with old CGI.pm versions) Thanks to Daniel Neri for fixing this
              # problem.
             $html = $q->redirect( -uri => $url );
-        }
-        elsif ( $RedirType == 4 ) {
+        } elsif ( $RedirType == 4 ) {
             $html .= "Content-Type: text/html\n\n<html><head>"
               . "<meta HTTP-EQUIV='Refresh' CONTENT='0; URL=$url'></head></html>\n";
-        }
-        else {    # Minimal header
+        } else {    # Minimal header
             $html = "Status: 302 Moved\n";
             $html .= "Location: $url\n";
             if ( defined( $SetCookie{'id'} ) ) {
@@ -2261,13 +2222,11 @@ window.location = '$url'
         }
         $html .= "\n" . Ts( 'Your browser should go to the %s page.', $newid );
         $html .= ' ' . Ts( 'If it does not, click %s to continue.', $nameLink );
-    }
-    else {
+    } else {
         if ($isEdit) {
             $html = &GetHeader( '', T('Thanks for editing...'), '' );
             $html .= Ts( 'Thank you for editing %s.', $nameLink );
-        }
-        else {
+        } else {
             $html = &GetHeader( '', T('Link to another page...'), '' );
         }
         $html .= "\n<p>";
@@ -2319,13 +2278,12 @@ sub ApplyRegExp {
 sub getnextnum {
     my ($id) = @_;
     $id =~ s/\/$//g;
-        my @matchitem = split( /\n/,
-            ReadDBItems( GetPageDB($id), 'id', "\n", '', "id REGEXP \"^$id\/[0-9]+\" group by id" )
-        );
-        for ( my $i = 0 ; $i < @matchitem ; $i++ ) {
-            $matchitem[$i] =~ s/^$id\///;
-        }
-        return sprintf( "%04d", ( sort(@matchitem) )[-1] + 1 ) if ( @matchitem >= 0 );
+    my @matchitem = split( /\n/,
+        ReadDBItems( GetPageDB($id), 'id', "\n", '', "id REGEXP \"^$id\/[0-9]+\" group by id" ) );
+    for ( my $i = 0 ; $i < @matchitem ; $i++ ) {
+        $matchitem[$i] =~ s/^$id\///;
+    }
+    return sprintf( "%04d", ( sort(@matchitem) )[-1] + 1 ) if ( @matchitem >= 0 );
 }
 
 sub WikiToHTML {
@@ -2395,8 +2353,7 @@ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiP
         $pageText =~ s/\&lt;code\&gt;((.|\n)*?)\&lt;\/code\&gt;/&StorePre($1, "code")/ige;
         $pageText =~ s/((.|\n)+?\n)\s*\n/&ParseParagraph($1)/geo;
         $pageText =~ s/(.*)<\/p>(.+)$/$1.&ParseParagraph($2)/seo;
-    }
-    else {
+    } else {
         $pageText = &CommonMarkup( $pageText, 1, 0 );    # Multi-line markup
         $pageText = &WikiLinesToHtml($pageText);         # Line-oriented markup
     }
@@ -2431,18 +2388,18 @@ sub GetLocalTree {
     my ( $id, $namepat, $format ) = @_;
     my ( $toptree, $topnode );
     if ( !( defined $LocalTree ) && $IsPrintTree ) {
-            my @matchitem = split(
-                /\n/,
-                ReadDBItems(
-                    GetPageDB($id), 'id', "\n", '', "id REGEXP \"$id\/$namepat\" group by id"
-                )
-            );
-            foreach my $subitem (@matchitem) {
-                my $oo      = $format;
-                my $xmltext = ReadRawWikiPage($subitem);
-                $oo =~ s/%([0-9a-zA-Z_]+)%/&GetXMLFields($1,$xmltext,$subitem,$subitem)/goe;
-                $LocalTree .= $oo;    #"<li class=\"wikitreefile\">$oo</li>\n";
-            }
+        my @matchitem = split(
+            /\n/,
+            ReadDBItems(
+                GetPageDB($id), 'id', "\n", '', "id REGEXP \"$id\/$namepat\" group by id"
+            )
+        );
+        foreach my $subitem (@matchitem) {
+            my $oo      = $format;
+            my $xmltext = ReadRawWikiPage($subitem);
+            $oo =~ s/%([0-9a-zA-Z_]+)%/&GetXMLFields($1,$xmltext,$subitem,$subitem)/goe;
+            $LocalTree .= $oo;    #"<li class=\"wikitreefile\">$oo</li>\n";
+        }
 
         if ( $toptree ne '' ) {
             $LocalTree =
@@ -2493,18 +2450,15 @@ sub EmbedWikiPage {
         if ( $uri eq "" ) {
             if ( $text eq '' ) {
                 $res = &WikiToHTML( $id, ReadRawWikiPage($id) );
-            }
-            else {
+            } else {
                 $res = &WikiToHTML( $id, $text );    # use the rules for $id to format $text
             }
-        }
-        else {
+        } else {
             $res = &WikiToHTML( GetVariable( ReadRawWikiPage($id), $uri ) );
         }
         $res = "<div class='embedpage'>\n" . $res . "\n</div>";
         push( @$PageStack, $id );
-    }
-    else {
+    } else {
         $res = &GetPageOrEditLink( $id, $name );
     }
     return $res;
@@ -2526,13 +2480,11 @@ sub EmbedWikiPageRaw {
     if ( PageExists($id) && @$PageStack <= $MaxEmbedDepth ) {
         if ( $uri eq "" ) {
             $res = &ReadRawWikiPage($id);
-        }
-        else {
+        } else {
             $res = &GetVariable( &ReadRawWikiPage($id) );
         }
         push( @$PageStack, $id );
-    }
-    else {
+    } else {
         $res = &GetPageOrEditLink( $id, $name );
     }
     return $res;
@@ -2586,8 +2538,7 @@ sub BuildWikiTree {
             if ( $fcount == 50 ) {
                 $treetext .= "<li class=\"wikitreefile\">...</li>\n";
                 next;
-            }
-            elsif ( $fcount > 50 ) {
+            } elsif ( $fcount > 50 ) {
                 next;
             }
             if ( -d "$topDir/$sname" ) { next; }
@@ -2596,24 +2547,21 @@ sub BuildWikiTree {
                     "<li class=\"wikitreefile\"><a href=\"$ScriptName"
                   . &ScriptLinkChar()
                   . "$lname\">$sname</a></li>\n";
-            }
-            else {
+            } else {
                 $oo      = $outpat;
                 $xmltext = ReadRawWikiPage($lname);
                 $oo =~ s/%([0-9a-zA-Z_]+)%/&GetXMLFields($1,$xmltext,$sname,$lname)/goe;
                 $treetext .= "<li class=\"wikitreefile\">$oo</li>\n";
             }
             $fcount++;
-        }
-        elsif ( -d $fname ) {
+        } elsif ( -d $fname ) {
             if ( -f "$fname\.db" ) {
                 $treetext .=
                     "<li class=\"wikitreedir\"><a href=\"$ScriptName"
                   . &ScriptLinkChar()
                   . "$lname\" class=\"wikipagelink\">$sname</a></li>\n"
                   . &BuildWikiTree( $fname, $baseDir );
-            }
-            else {
+            } else {
                 $treetext .=
                     "<li class=\"wikitreedir\"><a href=\"$ScriptName"
                   . &ScriptLinkChar()
@@ -2655,8 +2603,8 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
             foreach $t (@HtmlSingle) {
                 s/\&lt;$t(\s[^<>]+?)?\&gt;/<$t$1>/gi;
             }
-        }
-        else {
+        } else {
+
             # Note that these tags are restricted to a single line
             s/\&lt;b\&gt;(.*?)\&lt;\/b\&gt;/<b>$1<\/b>/gi;
             s/\&lt;i\&gt;(.*?)\&lt;\/i\&gt;/<i>$1<\/i>/gi;
@@ -2709,13 +2657,11 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
         if ($ThinLine) {
             if ($OldThinLine) {    # Backwards compatible, conflicts with headers
                 s/====+/<hr noshade class="wikiline" size=2>/g;
-            }
-            else {                 # New behavior--no conflict
+            } else {               # New behavior--no conflict
                 s/------+/<hr noshade class="wikiline" size=2>/g;
             }
             s/----+/<hr noshade class="wikiline" size=1>/g;
-        }
-        else {
+        } else {
             s/----+/<hr class="wikiline">/g;
         }
     }
@@ -2734,16 +2680,14 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
             if (m/\|\|_+/) {
 s/((\|\|)+)(\_*)/"<\/td><td". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : " rowspan='".
                 (length($3)). "'") . ">"/ge;
-            }
-            else {
+            } else {
 s/((\|\|)+)/"<\/td><td". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") .">"/ge;
             }
 
             if (m/\!\!_+/) {
 s/((\!\!)+)(\_*)/"<\/th><th". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . (length($3)<=1 ? "" : " rowspan='".
                 (length($3)). "'") . ">"/ge;
-            }
-            else {
+            } else {
 s/((\!\!)+)/"<\/th><th". (length($1)>2 ? (" colspan='" . (length($1)\/2) . "'") : "") . ">"/ge;
             }
         }
@@ -2767,23 +2711,19 @@ sub WikiLinesToHtml {
             $code           = "dl";
             $depth          = length $1;
             $codeAttributes = "class='wikiddllevel$depth'";
-        }
-        elsif (s/^(\:+)/<dt><dd>/) {
+        } elsif (s/^(\:+)/<dt><dd>/) {
             $code           = "dl";
             $depth          = length $1;
             $codeAttributes = "class='wikidllevel$depth'";
-        }
-        elsif (s/^(\*+)/<li>/) {
+        } elsif (s/^(\*+)/<li>/) {
             $code           = "ul";
             $depth          = length $1;
             $codeAttributes = "class='wikiullevel$depth'";
-        }
-        elsif (s/^(\#+)/<li>/) {
+        } elsif (s/^(\#+)/<li>/) {
             $code           = "ol";
             $depth          = length $1;
             $codeAttributes = "class='wikiollevel$depth'";
-        }
-        elsif (
+        } elsif (
             $TableSyntax
             && s/^((\|\|)+)(\_+)(.*)\|\|\s*$/"<tr>"
                        . "<td". (length($1)>2 ? (" colspan='"
@@ -2794,8 +2734,7 @@ sub WikiLinesToHtml {
             $codeAttributes = "class='wikitable'";
             $TableMode      = 1;
             $depth          = 1;
-        }
-        elsif (
+        } elsif (
             $TableSyntax
             && s/^((\|\|)+)(.*)\|\|\s*$/"<tr>"
                    . "<td". (length($1)>2 ? (" colspan='"
@@ -2806,8 +2745,7 @@ sub WikiLinesToHtml {
             $codeAttributes = "class='wikitable'";
             $TableMode      = 1;
             $depth          = 1;
-        }
-        elsif (
+        } elsif (
             $TableSyntax
             && s/^((\!\!)+)(\_+)(.*)\!\!\s*$/"<tr>"
                        . "<th". (length($1)>2 ? (" colspan='"
@@ -2818,8 +2756,7 @@ sub WikiLinesToHtml {
             $codeAttributes = "border='1'";
             $TableMode      = 1;
             $depth          = 1;
-        }
-        elsif (
+        } elsif (
             $TableSyntax
             && s/^((\!\!)+)(.*)\!\!\s*$/"<tr>"
                    . "<th". (length($1)>2 ? (" colspan='"
@@ -2830,12 +2767,10 @@ sub WikiLinesToHtml {
             $codeAttributes = "class='wikitable'";
             $TableMode      = 1;
             $depth          = 1;
-        }
-        elsif (/^[ \t].*\S/) {
+        } elsif (/^[ \t].*\S/) {
             $code  = "pre";
             $depth = 1;
-        }
-        else {
+        } else {
             $depth = 0;
         }
         while ( @htmlStack > $depth ) {    # Close tags as needed
@@ -2914,8 +2849,7 @@ sub ApplyRegExpRules {
                     $opt  = $to;
                     $from = $1;
                     $to   = $2;
-                }
-                elsif ( $to =~ /(.*[^\\])\/(.*)/ ) {
+                } elsif ( $to =~ /(.*[^\\])\/(.*)/ ) {
                     $from = $1;
                     $to   = $2;
                 }
@@ -2926,18 +2860,14 @@ sub ApplyRegExpRules {
 
             if ( $from eq "^" || $from eq "\$" ) {
                 $text =~ s/$from/$to/;
-            }
-            elsif ( $to =~ /\\([0-9])/ ) {
+            } elsif ( $to =~ /\\([0-9])/ ) {
                 $text =~ s/$from/$to/geo;
-            }
-            elsif ( $from eq ".*" ) {
+            } elsif ( $from eq ".*" ) {
                 $text = $to;
-            }
-            else {
+            } else {
                 if ( $opt eq "m" ) {
                     $text =~ s/$from/$to/mg;
-                }
-                elsif ( $opt eq "g" || $opt eq "" ) {
+                } elsif ( $opt eq "g" || $opt eq "" ) {
                     $text =~ s/$from/$to/g;
                 }
             }
@@ -3025,16 +2955,14 @@ sub StoreBracketInterPage {
     $url = &GetSiteUrl($site);
     if ( $text ne "" ) {
         return "[$id $text]" if ( $url eq "" );
-    }
-    else {
+    } else {
         return "[$id]" if ( $url eq "" );
         $text = &GetBracketUrlIndex($id);
     }
     $url .= UrlEncode($remotePage);
     if ( $BracketImg && $useImage && &ImageAllowed($text) ) {
         $text = "<img src='$text'>";
-    }
-    else {
+    } else {
         $text = "$text";
     }
     return &StoreRaw("<a href='$url' class='wikiinterpage'>$text</a>");
@@ -3159,8 +3087,7 @@ sub StoreBracketUrl {
     }
     if ( $BracketImg && $useImage && &ImageAllowed($text) ) {
         $text = "<img src=\"$text\" class=\"wikilinkimg\">";
-    }
-    else {
+    } else {
         $text = "$text";
     }
     if ( $url =~ /^http:(#.*)/ ) {
@@ -3223,8 +3150,7 @@ sub UploadLink {
 
     if ( &ImageAllowed($url) ) {
         $html .= '<img src="' . $url . '" alt="upload:' . $filename . '" class="wikiuploadimg">';
-    }
-    else {
+    } else {
         $html .= 'upload:' . $filename;
     }
     $html .= '</a>';
@@ -3283,8 +3209,7 @@ sub SplitUrlPunct {
     if ($NewFS) {
         ($punct) = ( $url =~ /([^a-zA-Z0-9\/\x80-\xff]+)$/ );
         $url =~ s/([^a-zA-Z0-9\/\xc0-\xff]+)$//;
-    }
-    else {
+    } else {
         ($punct) = ( $url =~ /([^a-zA-Z0-9\/\xc0-\xff]+)$/ );
         $url =~ s/([^a-zA-Z0-9\/\xc0-\xff]+)$//;
     }
@@ -3369,13 +3294,11 @@ sub GetDiffHTML {
         $priorName = T('major');
         $cacheName = 'major';
         $useMajor  = 0;
-    }
-    elsif ( $diffType == 2 ) {
+    } elsif ( $diffType == 2 ) {
         $priorName = T('minor');
         $cacheName = 'minor';
         $useMinor  = 0;
-    }
-    elsif ( $diffType == 3 ) {
+    } elsif ( $diffType == 3 ) {
         $priorName = T('author');
         $cacheName = 'author';
         $useAuthor = 0;
@@ -3387,8 +3310,7 @@ sub GetDiffHTML {
         if ( $diffText eq "" ) {
             $diffText = T('(The revisions are identical or unavailable.)');
         }
-    }
-    else {
+    } else {
         $diffText = &GetCacheDiff($cacheName);
     }
     $useMajor  = 0 if ( $useMajor  && ( $diffText eq &GetCacheDiff("major") ) );
@@ -3428,8 +3350,7 @@ sub GetDiffHTML {
           . "</b>\n"
           . "$links<br>"
           . &DiffToHTML($diffText);
-    }
-    else {
+    } else {
         if (
             ( $diffType != 2 )
             && (   ( !defined( &GetPageCache("old$cacheName") ) )
@@ -3439,8 +3360,7 @@ sub GetDiffHTML {
             $html = '<b>'
               . Ts( 'No diff available--this is the first %s revision.', $priorName )
               . "</b>\n$links";
-        }
-        else {
+        } else {
             $html = '<b>'
               . Ts( 'Difference (from prior %s revision)', $priorName )
               . "</b>\n$links<br>"
@@ -3487,8 +3407,7 @@ sub GetDiff {
 
     if ($UsePerlDiff) {
         return diff( \$old, \$new, { STYLE => 'OldStyle' } );
-    }
-    else {
+    } else {
         &CreateDir($TempDir);
         $key     = int( rand(1000000000) );
         $oldName = "$TempDir/${key}_old_diff";
@@ -3520,8 +3439,7 @@ sub PatchText {
             return patch( $base, $patch, { STYLE => 'Unified' } );
         }
         return patch( $base, $patch, { STYLE => 'OldStyle' } );
-    }
-    else {
+    } else {
         &CreateDir($TempDir);
         $key     = int( rand(1000000000) );
         $oldName = "$TempDir/${key}_old_patch";
@@ -3557,8 +3475,7 @@ sub DiffToHTML {
         $html =~ s/(^|\n)@@ (.*) @@/$1 <br><strong>$2<\/strong><br>/g;
         $html =~ s/\n((\-.*\n)+)/&ColorDiff("$1", 0)/ge;
         $html =~ s/\n((\+.*\n)+)/&ColorDiff("$1", 1)/ge;
-    }
-    else {
+    } else {
         $html =~ s/\n--+//g;
 
         # Note: Need spaces before <br> to be different from diff section.
@@ -3593,8 +3510,7 @@ sub ColorDiff {
 
     if ($type) {
         $classHtml = ' class="wikidiffnew"';
-    }
-    else {
+    } else {
         $classHtml = ' class="wikidiffold"';
     }
     return "\n<table width=\"95\%\"$classHtml><tr><td>\n" . $diff . "</td></tr></table>\n";
@@ -3646,8 +3562,7 @@ sub OpenNewText {
     $$Text{'isnew'} = 1;
     if ( $NewText ne '' ) {
         $$Text{'text'} = T($NewText);
-    }
-    else {
+    } else {
         $$Text{'text'} = T('Describe the new page here.') . "\n";
     }
     $$Text{'text'} .= "\n" if ( substr( $$Text{'text'}, -1, 1 ) ne "\n" );
@@ -3678,8 +3593,7 @@ sub ReadLatestPageDB {
     }
     if ( $rev eq "" ) {
         $sth = $dbh->selectall_arrayref("select max(revision),* from $pagedb where id='$id'");
-    }
-    else {
+    } else {
         $sth = $dbh->selectall_arrayref(
             "select revision,* from $pagedb where id='$id' and revision=$rev limit 1");
     }
@@ -3690,8 +3604,7 @@ sub ReadLatestPageDB {
         ) = @{ $sth->[0] };
         if ( $pgid eq "" || $revision eq "" ) {
             return @res;
-        }
-        else {
+        } else {
             @res = (
                 $maxversion, $pgid, $version, $author, $revision, $tupdate,   $tcreate,
                 $ip,         $host, $summary, $text,   $minor,    $newauthor, $data
@@ -3730,8 +3643,7 @@ sub OpenPageDB {
         if ( $pgid eq "" || $revision eq "" ) {
             &OpenNewPage($id);
             &OpenNewText( $id, 'default' );
-        }
-        else {
+        } else {
             $$Page{'name'}     = $pgid;
             $$Page{'version'}  = $version;
             $$Page{'revision'} = $revision;
@@ -3755,8 +3667,7 @@ sub OpenPageDB {
             $$Section{'data'} = join( $FS3, %$Text );
             $$Page{ $$Section{'name'} } = join( $FS2, %$Section );
         }
-    }
-    else {    # open new page
+    } else {    # open new page
         &OpenNewPage($id);
         &OpenNewText( $id, 'default' );
     }
@@ -3792,8 +3703,7 @@ sub OpenPage {
 
             #	$$Page{$id}=join($FS2, %$Section);
         }
-    }
-    else {
+    } else {
         &OpenNewPage($id);
     }
 
@@ -3812,8 +3722,7 @@ sub OpenSection {
 
     if ( !defined( $$Page{$name} ) ) {
         &OpenNewSection( $id, $name, "" );
-    }
-    else {
+    } else {
         %$Section = split( /$FS2/, $$Page{$name}, -1 );
     }
 }
@@ -3828,8 +3737,7 @@ sub OpenText {
 
     if ( !defined( $$Page{"text_$name"} ) ) {
         &OpenNewText( $id, $name );
-    }
-    else {
+    } else {
         &OpenSection( $id, "text_$name" );
         %$Text = split( /$FS3/, $$Section{'data'}, -1 );
     }
@@ -3886,8 +3794,7 @@ sub SavePageDB {
         if ( $$Text{'minor'} != 1 ) {
             $$Page{'revision'} = $version + 1;
         }
-    }
-    else {
+    } else {
         $$Page{'revision'} = 0;
     }
 
@@ -4031,12 +3938,10 @@ sub ExpireKeepFile {
                 || ( $KeepAuthor && ( $sectRev == $oldAuthor ) ) )
             {
                 $expire = 0;
-            }
-            elsif ( $tempSection{'keepts'} < $expirets ) {
+            } elsif ( $tempSection{'keepts'} < $expirets ) {
                 $expire = 1;
             }
-        }
-        else {
+        } else {
             if ( $tempSection{'keepts'} < $expirets ) {
                 $expire = 1;
             }
@@ -4044,8 +3949,7 @@ sub ExpireKeepFile {
         if ( !$expire ) {
             $keepFlag{ $sectRev . "," . $sectName } = 1;
             $anyKeep = 1;
-        }
-        else {
+        } else {
             $anyExpire = 1;
         }
     }
@@ -4111,8 +4015,7 @@ sub OpenKeptListDB {
             %texts = ();
             if ( $nopatch != 1 ) {
                 ( $texts{'text'}, $inlinerev ) = &PatchPage($text);
-            }
-            else {
+            } else {
                 $texts{'text'} = $text;
                 if ( $text =~ /$FS4/ ) {
                     $inlinerev = ( split( /$FS4/, $text ) ) - 1;
@@ -4143,7 +4046,7 @@ sub OpenKeptListDB {
 sub OpenKeptRevisions {
     my ( $id, $name, $nopatch ) = @_;    # Name of section
     my ( $fname, $data, %tempSection, @KeptList, $rev );
-        @KeptList = &OpenKeptListDB($nopatch);
+    @KeptList      = &OpenKeptListDB($nopatch);
     %KeptRevisions = ();
     foreach $rev (@KeptList) {
         next if ( $rev eq '' );
@@ -4173,13 +4076,11 @@ sub LoadUserDataDB {
     }
     if ( $uname eq "" ) {
         $sth = $dbh->selectall_arrayref("select * from $userdb where id=$uid limit 1");
-    }
-    else {
+    } else {
         if ( $uname =~ /\@/ ) {
             $sth =
               $dbh->selectall_arrayref("select * from $userdb where email like '$uname' limit 1");
-        }
-        else {
+        } else {
             $sth =
               $dbh->selectall_arrayref("select * from $userdb where name like '$uname' limit 1");
         }
@@ -4187,12 +4088,10 @@ sub LoadUserDataDB {
     if ( !defined $sth->[0] ) {
         if ( $UserID < 1000 ) {
             return T("ERROR: can not find the specified user");
-        }
-        else {
+        } else {
             return -1;    # new user
         }
-    }
-    else {
+    } else {
         (
             $id,       $name,     $pass,       $randkey,    $group,
             $lang,     $email,    $param,      $createtime, $extradata,
@@ -4208,8 +4107,7 @@ sub LoadUserDataDB {
     if ( $randkey =~ /$FS2/ ) {
         my %rkey = split( /$FS2/, $randkey );
         $UserData{'randkey'} = $rkey{&RemoteAddr};
-    }
-    else {
+    } else {
         $UserData{'randkey'} = $randkey;
     }
     $UserData{'lang'}         = $lang;
@@ -4299,8 +4197,7 @@ sub ValidId {
             return Ts( 'Invalid Page %s (must not end with .lck)', $id );
         }
         return "";
-    }
-    else {
+    } else {
         if ( !( $id =~ /^$LinkPattern$/ ) ) {
             return Ts( 'Invalid Page %s', $id );
         }
@@ -4348,8 +4245,8 @@ sub UserCanEdit {
 
 sub UserIsBanned {
     my ( $host, $ip, $data, $status );
-        $data   = ReadDBItems( "system", 'data', "\n", '', "id='banlist'" );
-        $status = 1;
+    $data   = ReadDBItems( "system", 'data', "\n", '', "id='banlist'" );
+    $status = 1;
     return 0 if ( !$status );    # No file exists, so no ban
     $data =~ s/\r//g;
     $ip   = &RemoteAddr;
@@ -4369,17 +4266,13 @@ sub UserPermission {
     }
     if ( UserIsAdmin() ) {
         $up = 100;
-    }
-    elsif ( UserIsBanned() ) {
+    } elsif ( UserIsBanned() ) {
         $up = -100;
-    }
-    elsif ( UserIsEditor() ) {
+    } elsif ( UserIsEditor() ) {
         $up = 50;
-    }
-    elsif ( $UserID > 1000 && $UserData{'id'} ne '' ) {
+    } elsif ( $UserID > 1000 && $UserData{'id'} ne '' ) {
         $up = 1;
-    }
-    else {
+    } else {
         $up = -1;
     }
     $UserData{'clearance'} = $up;
@@ -4643,8 +4536,7 @@ sub GenerateAllPagesList {
 
                     #          if(not ($id =~ m/pt\.db$/))
                     { push( @pages, substr( $id, 0, -3 ) ); }
-                }
-                elsif ( substr( $id, -4 ) ne '.lck' ) {
+                } elsif ( substr( $id, -4 ) ne '.lck' ) {
                     opendir( PAGELIST, "$PageDir/$dir/$id" );
                     @subpageFiles = readdir(PAGELIST);
                     closedir(PAGELIST);
@@ -4656,8 +4548,8 @@ sub GenerateAllPagesList {
                 }
             }
         }
-    }
-    else {
+    } else {
+
         # Old slow/compatible method.
         @dirs = qw(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z other);
         foreach $dir (@dirs) {
@@ -4678,7 +4570,7 @@ sub AllPagesList {
     my ( $rawIndex, $refresh, $status );
 
     if ( !$UseIndex ) {
-            return &GenerateAllPagesListDB();
+        return &GenerateAllPagesListDB();
     }
     $refresh = &GetParam( "refresh", 0 );
     if ( $IndexInit && !$refresh ) {
@@ -4699,8 +4591,8 @@ sub AllPagesList {
     }
     @IndexList = ();
     %IndexHash = ();
-        @IndexList = &GenerateAllPagesListDB();
-        return @IndexList;
+    @IndexList = &GenerateAllPagesListDB();
+    return @IndexList;
 
     foreach (@IndexList) {
         $IndexHash{$_} = 1;
@@ -4775,8 +4667,7 @@ sub GetParam {
     if ( !defined($result) ) {
         if ( defined( $UserData{$name} ) ) {
             $result = $UserData{$name};
-        }
-        else {
+        } else {
             $result = $default;
         }
     }
@@ -4848,75 +4739,52 @@ sub DoOtherRequest {
         $action = lc($action);
         if ( $action eq "edit" ) {
             &DoEdit( $id, 0, 0, "", 0 ) if &ValidIdOrDie($id);
-        }
-        elsif ( $action eq "unlock" ) {
+        } elsif ( $action eq "unlock" ) {
             &DoUnlock();
-        }
-        elsif ( $action eq "index" ) {
+        } elsif ( $action eq "index" ) {
             &DoIndex();
-        }
-        elsif ( $action eq "links" ) {
+        } elsif ( $action eq "links" ) {
             &DoLinks();
-        }
-        elsif ( $action eq "maintain" ) {
+        } elsif ( $action eq "maintain" ) {
             &DoMaintain();
-        }
-        elsif ( $action eq "pagelock" ) {
+        } elsif ( $action eq "pagelock" ) {
             &DoPageLock();
-        }
-        elsif ( $action eq "editlock" ) {
+        } elsif ( $action eq "editlock" ) {
             &DoEditLock();
-        }
-        elsif ( $action eq "editprefs" ) {
+        } elsif ( $action eq "editprefs" ) {
             &DoEditPrefs();
-        }
-        elsif ( $action eq "editbanned" ) {
+        } elsif ( $action eq "editbanned" ) {
             &DoEditBanned();
-        }
-        elsif ( $action eq "editlinks" ) {
+        } elsif ( $action eq "editlinks" ) {
             &DoEditLinks();
-        }
-        elsif ( $action eq "login" ) {
+        } elsif ( $action eq "login" ) {
             &DoEnterLogin();
-        }
-        elsif ( $action eq "logout" ) {
+        } elsif ( $action eq "logout" ) {
             &DoLogout();
-        }
-        elsif ( $action eq "newlogin" ) {
+        } elsif ( $action eq "newlogin" ) {
             $UserID = 0;
             &DoEditPrefs();    # Also creates new ID
-        }
-        elsif ( $action eq "version" ) {
+        } elsif ( $action eq "version" ) {
             &DoShowVersion();
-        }
-        elsif ( $action eq "rss" ) {
+        } elsif ( $action eq "rss" ) {
             &DoRss();
-        }
-        elsif ( $action eq "delete" ) {
+        } elsif ( $action eq "delete" ) {
             &DoDeletePage($id);
-        }
-        elsif ( $PermUseUpload && ( $action eq "upload" ) ) {
+        } elsif ( $PermUseUpload && ( $action eq "upload" ) ) {
             &DoUpload();
-        }
-        elsif ( $action eq "maintainrc" ) {
+        } elsif ( $action eq "maintainrc" ) {
             &DoMaintainRc();
-        }
-        elsif ( $action eq "convert" ) {
+        } elsif ( $action eq "convert" ) {
             &DoConvert();
-        }
-        elsif ( $action eq "trimusers" ) {
+        } elsif ( $action eq "trimusers" ) {
             &DoTrimUsers();
-        }
-        elsif ( $action eq "watch" ) {
+        } elsif ( $action eq "watch" ) {
             &DoWatchPage($id);
-        }
-        elsif ( $action eq "activate" ) {
+        } elsif ( $action eq "activate" ) {
             &DoActivateUser();
-        }
-        elsif ( $action eq "unwatch" ) {
+        } elsif ( $action eq "unwatch" ) {
             &DoUnWatchPage($id);
-        }
-        else {
+        } else {
             &ReportError( Ts( 'Invalid action parameter %s', $action ) );
         }
         return;
@@ -4945,8 +4813,7 @@ sub DoOtherRequest {
     if ( ( $search ne "" ) || ( &GetParam( "dosearch", "" ) ne "" ) ) {
         &DoSearch($search);
         return;
-    }
-    else {
+    } else {
         $search = &GetParam( "back", "" );
         if ( $search ne "" ) {
             &DoBackLinks($search);
@@ -4980,8 +4847,7 @@ sub DoEdit {
             print T('Editing not allowed: user, ip, or network is blocked.');
             print "<p>";
             print T('Contact the wiki administrator for more information.');
-        }
-        else {
+        } else {
             print Ts( 'Editing not allowed: %s is read-only.', $SiteName );
             if ( $UserID < 1000 ) {
                 &EnterLoginForm( $FullUrl . &ScriptLinkChar() . $ENV{QUERY_STRING} );
@@ -5011,8 +4877,7 @@ sub DoEdit {
             $revision = '';
 
             # Consider better solution like error message?
-        }
-        else {
+        } else {
             &OpenKeptRevision( $id, $revision );
             $header = Ts( 'Editing revision %s of ', $revision ) . $id;
         }
@@ -5111,8 +4976,7 @@ name=\"myform\">";
 
     if ( $noeditrule eq "" ) {
         print &ApplyRegExp( $id, "", \%NameSpaceE0, $Pages{$id}->{'preedit'} );
-    }
-    elsif ( &UserPermission() < 100 ) {
+    } elsif ( &UserPermission() < 100 ) {
         print "<div class='wikiinfo'>" . T('noeditrule mode only allowed for admin.');
         if ( $UserID < 1000 ) {
             &EnterLoginForm( $FullUrl . &ScriptLinkChar() . $ENV{QUERY_STRING} );
@@ -5137,8 +5001,7 @@ name=\"myform\">";
             -checked => 1,
             -label   => T('This change is a minor edit.')
           );
-    }
-    else {
+    } else {
         print "<br>",
           $q->checkbox(
             -name  => 'recent_edit',
@@ -5163,8 +5026,7 @@ name=\"myform\">";
     $userName = &GetParam( "username", "" );
     if ( $userName ne "" ) {
         print Ts( '(Current user name is %s)', &GetPageLink($userName) );
-    }
-    else {
+    } else {
         print Ts( '(Current user name is %s)', T("anonymous") );
     }
     print $q->submit( -name => 'Preview', -id => 'btn_preview', -value => T('Preview') ), "\n";
@@ -5225,8 +5087,7 @@ sub DoActivateUser {
         print &GetHeader( '', T('Activate Account'), '' );
         print '<div class="wikiinfo">' . T("Registration complete") . '</div>';
         print &GetCommonFooter();
-    }
-    else {
+    } else {
         print &GetHeader( '', T('Activate Account'), '' );
         print '<div class="wikiinfo">' . T("Registration key does not match") . '</div>';
         print &GetCommonFooter();
@@ -5237,10 +5098,10 @@ sub DoLogout {
     my $oldid = $UserID;
     $UserID    = 0;
     %SetCookie = ();
-        if ( $oldid >= 1000 ) {
-            AddUserLogDB( $oldid, 'Lo', $UserData{'id'} );
-        }
-        &DoNewLoginDB();
+    if ( $oldid >= 1000 ) {
+        AddUserLogDB( $oldid, 'Lo', $UserData{'id'} );
+    }
+    &DoNewLoginDB();
     &DoEnterLogin();
 }
 
@@ -5250,7 +5111,7 @@ sub DoEditPrefs {
     $recentName = $RCName;
     $recentName =~ s/_/ /g;
 
-        &DoNewLoginDB() if ( $UserID < 400 );
+    &DoNewLoginDB() if ( $UserID < 400 );
     print &GetHeader( '', T('Editing Preferences'), "" );
     print '<div class="wikipref">';
     print &GetFormStart();
@@ -5260,8 +5121,7 @@ sub DoEditPrefs {
     if ( $UserData{'username'} ne '' ) {
         print "<span class='span_username'>" . $UserData{'username'} . "</span> ($UserID)";
         print &GetHiddenValue( 'p_username', $UserData{'username'} ), "\n";
-    }
-    else {
+    } else {
         print &GetFormText( 'username', "", 20, 30 ) . "<strong>*</strong>";
         print T('(IP address will be used if not supplied)');
     }
@@ -5286,8 +5146,7 @@ sub DoEditPrefs {
             -maxlength => 50
           ),
           '</span><br/>';
-    }
-    else {
+    } else {
         print '</span><br><span class="span_prefinfo"><label class="formlabel">'
           . T('User password:')
           . '</label>',
@@ -5396,7 +5255,7 @@ sub DoEditPrefs {
     print $q->end_form;
     print '</div>';
     print &GetMinimumFooter();
-    if ($UserID >= 400 ) {
+    if ( $UserID >= 400 ) {
         AddUserLogDB( $UserID, 'Ep', $UserData{'id'} );
     }
 }
@@ -5439,15 +5298,14 @@ sub DoUpdatePrefs {
     $email     = &GetParam( "p_email",      "" );
 
     if ( $UserID < 1001 ) {
-            &DoNewLoginDB() if ( $UserID < 400 );
+        &DoNewLoginDB() if ( $UserID < 400 );
         if ($UseActivation) {
             undef $SetCookie{'id'};
         }
         if ( $email eq "" ) {
             PrintMsg( T("You have to give an email address"), T("Error"), 1 );
         }
-    }
-    else {    # for existing users, you have to match password before changing anything
+    } else {    # for existing users, you have to match password before changing anything
         if ( $UserData{'password'} ne crypt( $password, $UserData{'password'} ) ) {
             PrintMsg(
                 T("You have to type the correct password in order to change your preferences"),
@@ -5456,8 +5314,7 @@ sub DoUpdatePrefs {
         if ( $newpass ne "" && $password2 ne "" ) {
             if ( $newpass eq $password2 ) {
                 $password = $newpass;
-            }
-            else {
+            } else {
                 PrintMsg( T("Two passwords do not match"), T("Error"), 1 );
             }
         }
@@ -5476,29 +5333,22 @@ sub DoUpdatePrefs {
         #print T('UserName removed.'), '<br>';
         #undef $UserData{'username'};
         die( T('User name can not be empty.') );
-    }
-    elsif ( ( !$FreeLinks ) && ( !( $username =~ /^$LinkPattern$/ ) ) ) {
+    } elsif ( ( !$FreeLinks ) && ( !( $username =~ /^$LinkPattern$/ ) ) ) {
         die Ts( 'Invalid UserName %s: not saved.', $username ), "<br>\n";
-    }
-    elsif ( $FreeLinks && ( !( $username =~ /^$FreeLinkPattern$/ ) ) ) {
+    } elsif ( $FreeLinks && ( !( $username =~ /^$FreeLinkPattern$/ ) ) ) {
         die Ts( 'Invalid UserName %s: not saved.', $username ), "<br>\n";
-    }
-    elsif ( length($username) > 50 ) {    # Too long
+    } elsif ( length($username) > 50 ) {    # Too long
         die T('UserName must be 50 characters or less. (not saved)'), "<br>\n";
-    }
-    else {
+    } else {
         $UserData{'username'} = $username;
     }
     if ( $password eq "" ) {
         die( T("User must set an non-empty password.") );
-    }
-    elsif ( length($password) < 8 ) {
+    } elsif ( length($password) < 8 ) {
         die( T("Password is shorter than 8 char.") );
-    }
-    elsif ( $password =~ /[^a-zA-Z0-9_@^\]\[!@\$%^&]/ ) {
+    } elsif ( $password =~ /[^a-zA-Z0-9_@^\]\[!@\$%^&]/ ) {
         die( T("Password can only contain basic latin, digits or one of '[]!@$%^&'.") );
-    }
-    elsif ( $password ne "*" ) {
+    } elsif ( $password ne "*" ) {
         print T('Password changed.'), '<br>';
         $UserData{'password'} = crypt( $password, unpack( "H16", $CaptchaKey ) );
     }
@@ -5507,17 +5357,14 @@ sub DoUpdatePrefs {
         if ( $password eq "" ) {
             print T('Administrator password removed.'), '<br>';
             undef $UserData{'adminpw'};
-        }
-        elsif ( $password ne "*" ) {
+        } elsif ( $password ne "*" ) {
             print T('Administrator password changed.'), '<br>';
             $UserData{'adminpw'} = crypt( $password, unpack( "H16", $CaptchaKey ) );
             if ( &UserIsAdmin() ) {
                 print T('User has administrative abilities.'), '<br>';
-            }
-            elsif ( &UserIsEditor() ) {
+            } elsif ( &UserIsEditor() ) {
                 print T('User has editor abilities.'), '<br>';
-            }
-            else {
+            } else {
                 print T('User does not have administrative abilities.'), ' ',
                   T('(Password does not match administrative password(s).)'),
                   '<br>';
@@ -5557,8 +5404,7 @@ sub DoUpdatePrefs {
             print T('StyleSheet URL removed.'), '<br>';
         }
         $UserData{'stylesheet'} = '';
-    }
-    else {
+    } else {
         $stylesheet =~ s/[">]//g;    # Remove characters that would cause problems
         $UserData{'stylesheet'} = $stylesheet;
         print T('StyleSheet setting saved.'), '<br>';
@@ -5567,10 +5413,10 @@ sub DoUpdatePrefs {
     if ( $LangID ne "" ) {
         $UserData{'lang'} = $lang;
     }
-        &SaveUserDataDB();
-        if ( $UserID >= 1000 ) {
-            AddUserLogDB( $UserID, 'Sp', '' );
-        }
+    &SaveUserDataDB();
+    if ( $UserID >= 1000 ) {
+        AddUserLogDB( $UserID, 'Sp', '' );
+    }
     print '<b>', T('Preferences saved.'), '</b>';
     print '</div>';
     print &GetCommonFooter();
@@ -5588,8 +5434,7 @@ sub UpdateEmailList {
               or die( Ts( 'Could not read from %s:', $EmailFile ) . " $!\n" );
             @old_emails = <NOTIFY>;
             close(NOTIFY);
-        }
-        else {
+        } else {
             @old_emails = ();
         }
         my $already_in_list = grep /$new_email/, @old_emails;
@@ -5603,8 +5448,7 @@ sub UpdateEmailList {
             #      print NOTIFY $new_email, "\n";
             close(NOTIFY);
             &ReleaseLock();
-        }
-        elsif ( ( not $notify ) and $already_in_list ) {
+        } elsif ( ( not $notify ) and $already_in_list ) {
             &RequestLock() or die( T('Could not get mail lock') );
             if ( !open( NOTIFY, ">$EmailFile" ) ) {
                 &ReleaseLock();
@@ -5748,24 +5592,21 @@ sub DoLogin {
     $admpass  = &GetParam( "p_adminpass", "" );
 
     if ( ( $password ne "" ) && ( $password ne "*" ) ) {
-            if ( $uname ne "" ) {
-                $err = &LoadUserDataDB( -1, $uname );
-            }
-            else {
-                $err = &LoadUserDataDB($uid);
-            }
+        if ( $uname ne "" ) {
+            $err = &LoadUserDataDB( -1, $uname );
+        } else {
+            $err = &LoadUserDataDB($uid);
+        }
         $UserID = $UserData{'id'};
         if ( $UserID > 199 ) {
             if ( $UserData{'param'} =~ /^R/ ) {
                 $err = T("account has not yet been activated");
-            }
-            elsif ( defined( $UserData{'password'} )
+            } elsif ( defined( $UserData{'password'} )
                 && ( $UserData{'password'} eq crypt( $password, $UserData{'password'} ) ) )
             {
                 $success = 1;
                 $SetCookie{'id'} = $UserData{'id'};
-            }
-            else {
+            } else {
                 $err .= T("wrong password");
             }
         }
@@ -5786,8 +5627,7 @@ sub DoLogin {
     if ($success) {
         print Ts( 'Login for user %s complete.', "$uname" );
         AddUserLogDB( $UserID, 'login', $uname );
-    }
-    else {
+    } else {
         print Tss( 'Login for user %1 failed. Error: %2', "$uname", $err );
         AddUserLogDB( $UserID, 'login', '-F' );
     }
@@ -5838,8 +5678,7 @@ sub GetNewUserIdDB {
         if ( $id eq "" ) {
             $id = 1000;
         }
-    }
-    else {
+    } else {
         $id = 1000;
     }
     $id++;
@@ -5882,8 +5721,7 @@ sub SaveUserDataDB {
     $isnewuser = 0;
     if ( $tmp eq '' ) {
         $isnewuser = 1;
-    }
-    elsif ( $tmp ne $UserID ) {
+    } elsif ( $tmp ne $UserID ) {
         die( Ts( 'ERROR: user name %s has already been taken!', $UserData{'username'} ) );
     }
     $tmp = ReadDBItems( $userdb, 'id', "\n", '', "email='" . $UserData{'email'} . "'" );
@@ -6001,7 +5839,7 @@ sub DoWatchPage {
     my $watchdb = ( split( /\//, $EmailFile ) )[-1];
     my $user    = $UserData{'username'};
 
-    if (not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
+    if ( not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
         if ( ReadDBItems( $watchdb, 'user', ',', '', "page='$id' and user='$user'" ) eq '' ) {
             &WriteDBItems( $watchdb, 'page,user', 0, ( $id, $user ) );
             AddUserLogDB( $UserID, 'watch', $id );
@@ -6018,7 +5856,7 @@ sub DoUnWatchPage {
     my $watchdb = ( split( /\//, $EmailFile ) )[-1];
     my $user    = $UserData{'username'};
 
-    if ($dbh && not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
+    if ( $dbh && not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
         my $sth = $dbh->do("delete from $watchdb where page='$id' and user='$user'");
         $dbh->commit;
     }
@@ -6105,16 +5943,13 @@ sub PrintLinkList {
             if ( $page =~ /\:/ ) {    # URL or InterWiki form
                 if ( $page =~ /$UrlPattern/ ) {
                     ( $link, $extra ) = &UrlLink( $page, 0 );    # No images
-                }
-                else {
+                } else {
                     ( $link, $extra ) = &InterPageLink( $page, 0 );    # No images
                 }
-            }
-            else {
+            } else {
                 if ( $pgExists{$page} ) {
                     $link = &GetPageLink($page);
-                }
-                else {
+                } else {
                     $link = $page;
                     if ($editlink) {
                         $link .= &GetEditLink( $page, "?" );
@@ -6201,15 +6036,13 @@ sub GetPageLinks {
     if ($interlink) {
         $text =~ s/''+/ /g;    # Quotes can adjacent to inter-site links
         $text =~ s/$InterLinkPattern/push(@links, &StripUrlPunct($1)), ' '/ge;
-    }
-    else {
+    } else {
         $text =~ s/$InterLinkPattern/ /g;
     }
     if ($urllink) {
         $text =~ s/''+/ /g;    # Quotes can adjacent to URLs
         $text =~ s/$UrlPattern/push(@links, &StripUrlPunct($1)), ' '/ge;
-    }
-    else {
+    } else {
         $text =~ s/$UrlPattern/ /g;
     }
     if ($pagelink) {
@@ -6303,8 +6136,7 @@ sub DoPost {
 
     if ($LockCrash) {
         &RequestLock() or die( T('Could not get editing lock') );
-    }
-    else {
+    } else {
         if ( !&RequestLock() ) {
             &ForceReleaseLock('main');
         }
@@ -6336,8 +6168,7 @@ sub DoPost {
     }
     if ( ( $UserID > 399 ) || ( $$Section{'id'} > 399 ) ) {
         $newAuthor = ( $UserID ne $$Section{'id'} );    # known user(s)
-    }
-    else {
+    } else {
         $newAuthor = ( $$Section{'ip'} ne $authorAddr );    # hostname fallback
     }
     $newAuthor = 1 if ( $oldrev == 0 );                     # New page
@@ -6347,8 +6178,7 @@ sub DoPost {
         &ReleaseLock();
         if ( $oldconflict > 0 ) {    # Conflict again...
             &DoEdit( $id, 2, $pgtime, $string, $preview );
-        }
-        else {
+        } else {
             &DoEdit( $id, 1, $pgtime, $string, $preview );
         }
         return;
@@ -6388,13 +6218,11 @@ sub DoPost {
         if ( not( $$Text{'text'} eq $NewText . "\n" ) ) {
             $string = $string . $$Text{'text'};
         }
-    }
-    elsif ( $editmode eq "append" ) {
+    } elsif ( $editmode eq "append" ) {
         if ( not( $$Text{'text'} eq $NewText . "\n" ) ) {
             $string = $$Text{'text'} . $string;
         }
-    }
-    elsif ( $editmode eq "replace" || $editmode eq "ireplace" ) {
+    } elsif ( $editmode eq "replace" || $editmode eq "ireplace" ) {
         my $kf = &GetParam( "keyfield", "" );
         my $kb = &GetParam( "keyblock", "" );
         my $kv = &GetParam( "keyval",   "" );
@@ -6408,8 +6236,7 @@ sub DoPost {
                     if ( $editmode eq "replace" ) {
                         delete $vv[$i];
                         $string .= join( "", @vv );
-                    }
-                    else {
+                    } else {
                         $string =~ s/^\s*//s;
                         $string =~ s/\s*$//s;
                         $vv[$i] = $string;
@@ -6432,8 +6259,7 @@ sub DoPost {
                 $string               = $rawdata . $FS4 . $revstr . $diffstr;
                 $$Section{'revision'} = $oldrev;
                 $isEdit               = 1;
-            }
-            else {
+            } else {
                 $isEdit = 0;
             }
         }
@@ -6447,21 +6273,21 @@ sub DoPost {
     $pgmode = $Pages{$id}->{'clearance'};
     if ( !defined($pgmode) ) { $pgmode = 0; }
 
-        &SavePageDB($id);
-        &WriteRcLogDB( $id, $summary, $isEdit, $editTime, $$Section{'revision'},
-            $user, $$Section{'host'}, $pgmode );
-        AddUserLogDB( $UserID, 'Wr', $id ) if ( $UserID >= 1000 );
+    &SavePageDB($id);
+    &WriteRcLogDB( $id, $summary, $isEdit, $editTime, $$Section{'revision'},
+        $user, $$Section{'host'}, $pgmode );
+    AddUserLogDB( $UserID, 'Wr', $id ) if ( $UserID >= 1000 );
 
     if ($UseCache) {
-            my $htmldb   = ( split( /\//, $HtmlDir ) )[-1];
-            my $language = &GetParam( "lang", $LangID );
-            if ( $dbh eq "" || $htmldb eq "" ) {
-                die( T('ERROR: database uninitialized!') );
-            }
-            DeleteDBItems( $htmldb, "id='$id\[$language\]'" );
-            if ( $isdynapg ne '' ) {
-                DeleteDBItems( $htmldb, "id='$isdynapg\[$language\]'" );
-            }
+        my $htmldb   = ( split( /\//, $HtmlDir ) )[-1];
+        my $language = &GetParam( "lang", $LangID );
+        if ( $dbh eq "" || $htmldb eq "" ) {
+            die( T('ERROR: database uninitialized!') );
+        }
+        DeleteDBItems( $htmldb, "id='$id\[$language\]'" );
+        if ( $isdynapg ne '' ) {
+            DeleteDBItems( $htmldb, "id='$isdynapg\[$language\]'" );
+        }
 
     }
     if ( $UseIndex && ( $$Page{'revision'} == 1 ) ) {
@@ -6471,8 +6297,7 @@ sub DoPost {
     if ( $redirect ne "" ) {
         print &GetRedirectPage( $redirect,
             T("if your browser does not support redirect, please click this link"), 0 );
-    }
-    else {
+    } else {
         &ReBrowsePage( $id, "", 1 );
     }
 }
@@ -6483,8 +6308,7 @@ sub UpdateDiffs {
 
     if ( not defined($diffstr) ) {
         $editDiff = &GetDiff( $old, $new, 0 );    # 0 = already in lock
-    }
-    else {
+    } else {
         $editDiff = $diffstr;
     }
     $oldMajor  = &GetPageCache('oldmajor');
@@ -6498,17 +6322,14 @@ sub UpdateDiffs {
     }
     if ( !$isEdit ) {
         &SetPageCache( 'diff_default_major', "1" );
-    }
-    else {
+    } else {
         &SetPageCache( 'diff_default_major', &GetKeptDiff( $new, $oldMajor, 0 ) );
     }
     if ($newAuthor) {
         &SetPageCache( 'diff_default_author', "1" );
-    }
-    elsif ( $oldMajor == $oldAuthor ) {
+    } elsif ( $oldMajor == $oldAuthor ) {
         &SetPageCache( 'diff_default_author', "2" );
-    }
-    else {
+    } else {
         &SetPageCache( 'diff_default_author', &GetKeptDiff( $new, $oldAuthor, 0 ) );
     }
 }
@@ -6587,15 +6408,14 @@ sub EmailNotify {
             $user = " by $user";
         }
         my $address;
-            $address = &ReadWatchListDB($id);
+        $address = &ReadWatchListDB($id);
 
         my $home_url        = $q->url( -full => 1 );
         my $page_url        = $home_url . "?" . &UrlEncode("$id");
         my $editors_summary = $q->param("summary");
         if ( ( $editors_summary eq "*" ) or ( $editors_summary eq "" ) ) {
             $editors_summary = "";
-        }
-        else {
+        } else {
             $editors_summary = "\n Summary: $editors_summary";
         }
         my $content = <<"END_MAIL_CONTENT";
@@ -6628,52 +6448,50 @@ sub SearchTitleAndBody {
 
     $offset = GetParam( 'offset', 0 );
 
-        $pagedb   = ( split( /\//, $PageDir ) )[-1];
-        @keywords = split( /&&/, $string );
-        foreach my $searchstr (@keywords) {
-            if ( $searchstr =~ /^\s*([a-z0-9]+)\s*=\s*(.*)\s*/ ) {
-                if ( $1 eq "author" || $1 eq "text" || $1 eq "summary" ) {
-                    $cmd{ $1 . "=" } = $2;
-                }
+    $pagedb   = ( split( /\//, $PageDir ) )[-1];
+    @keywords = split( /&&/, $string );
+    foreach my $searchstr (@keywords) {
+        if ( $searchstr =~ /^\s*([a-z0-9]+)\s*=\s*(.*)\s*/ ) {
+            if ( $1 eq "author" || $1 eq "text" || $1 eq "summary" ) {
+                $cmd{ $1 . "=" } = $2;
             }
-            elsif ( $searchstr =~ /^\s*([a-z0-9]+)\s*=~\s*(.*)\s*/ ) {
-                if ( $1 eq "author" || $1 eq "text" || $1 eq "summary" ) {
-                    $cmd{ $1 . " LIKE " } = "%$2%";
-                }
+        } elsif ( $searchstr =~ /^\s*([a-z0-9]+)\s*=~\s*(.*)\s*/ ) {
+            if ( $1 eq "author" || $1 eq "text" || $1 eq "summary" ) {
+                $cmd{ $1 . " LIKE " } = "%$2%";
             }
-            else {
-                $cmd{"text LIKE "} = "%$searchstr%";
-            }
+        } else {
+            $cmd{"text LIKE "} = "%$searchstr%";
         }
-        $searchcmd = "";
-        foreach my $key ( keys %cmd ) {
-            if ( length($searchcmd) ) { $searchcmd .= " AND "; }
-            $searchcmd .= "$key '" . $cmd{$key} . "' ";
+    }
+    $searchcmd = "";
+    foreach my $key ( keys %cmd ) {
+        if ( length($searchcmd) ) { $searchcmd .= " AND "; }
+        $searchcmd .= "$key '" . $cmd{$key} . "' ";
+    }
+    if ( $searchcmd eq "" ) { return (); }
+    $searchcmd = "select id from $pagedb where $searchcmd group by id limit $lim";
+    if ( $offset ne '' && $offset > 0 ) {
+        $searchcmd .= " offset $offset";
+    }
+    $sth = $dbh->selectall_arrayref($searchcmd);
+    if ( defined $sth->[0] ) {
+        foreach my $rec ( @{$sth} ) {
+            my ($pgid) = @$rec;
+            push( @found, $pgid );
         }
-        if ( $searchcmd eq "" ) { return (); }
-        $searchcmd = "select id from $pagedb where $searchcmd group by id limit $lim";
-        if ( $offset ne '' && $offset > 0 ) {
-            $searchcmd .= " offset $offset";
+        if ( @{$sth} == $lim ) {
+            pop(@found);
+            return ( "Internal:Offset:$offset+", @found );
         }
-        $sth = $dbh->selectall_arrayref($searchcmd);
-        if ( defined $sth->[0] ) {
-            foreach my $rec ( @{$sth} ) {
-                my ($pgid) = @$rec;
-                push( @found, $pgid );
-            }
-            if ( @{$sth} == $lim ) {
-                pop(@found);
-                return ( "Internal:Offset:$offset+", @found );
-            }
-        }
-        return ( "Internal:Offset:$offset", @found );
+    }
+    return ( "Internal:Offset:$offset", @found );
 
 }
 
 sub SearchBody {
     my ($string) = @_;
     my ( $name, @found );
-        return &SearchTitleAndBody($string);
+    return &SearchTitleAndBody($string);
 }
 
 sub UnlinkHtmlCache {
@@ -6890,8 +6708,7 @@ sub DoMaintainRc {
     &RequestLock() or die( T('Could not get lock for RC maintenance') );
     if ( &TrimRc() ) {
         print '<br>' . T('RC maintenance done.') . '<br>';
-    }
-    else {
+    } else {
         print '<br>' . T('RC maintenance not done.') . '<br>';
     }
     &ReleaseLock();
@@ -6925,11 +6742,10 @@ sub DoEditLock {
     return if ( !&UserIsAdminOrError() );
     $fname = "$DataDir/noedit";
     if ( &GetParam( "set", 1 ) ) {
-            &WriteDBItems( "system", 'id,data,time', 1, ( "lockstate", "1", $Now ) );
+        &WriteDBItems( "system", 'id,data,time', 1, ( "lockstate", "1", $Now ) );
         print '<div class="wikiinfo">', T('Edit lock created.'), '</div>';
-    }
-    else {
-            &WriteDBItems( "system", 'id,data,time', 1, ( "lockstate", "0", $Now ) );
+    } else {
+        &WriteDBItems( "system", 'id,data,time', 1, ( "lockstate", "0", $Now ) );
         print '<div class="wikiinfo">', T('Edit lock removed.'), '</div>';
     }
     print &GetCommonFooter();
@@ -6948,25 +6764,23 @@ sub DoPageLock {
         return;
     }
     return if ( !&ValidIdOrDie($id) );    # Consider nicer error?
-        $lockdb = ( split( /\//, $LockDir ) )[-1];
-        $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id='$id'" );
+    $lockdb = ( split( /\//, $LockDir ) )[-1];
+    $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id='$id'" );
     if ( &GetParam( "set", 1 ) ) {
-            if ( not $tag =~ /L/ ) {
-                $tag .= "L";
-                WriteDBItems( $lockdb, 'id,tag', 1, ( $id, $tag ) );
-            }
-    }
-    else {
-            if ( $tag =~ /L/ ) {
-                $tag =~ s/L//g;
-                WriteDBItems( $lockdb, 'id,tag', 1, ( $id, $tag ) );
-            }
+        if ( not $tag =~ /L/ ) {
+            $tag .= "L";
+            WriteDBItems( $lockdb, 'id,tag', 1, ( $id, $tag ) );
+        }
+    } else {
+        if ( $tag =~ /L/ ) {
+            $tag =~ s/L//g;
+            WriteDBItems( $lockdb, 'id,tag', 1, ( $id, $tag ) );
+        }
     }
     print '<div class="wikiinfo">';
     if ( &GetParam( "set", 1 ) ) {
         print Ts( 'Lock for %s created.', $id );
-    }
-    else {
+    } else {
         print Ts( 'Lock for %s removed.', $id );
     }
     print '</div>';
@@ -7044,8 +6858,7 @@ sub DeleteDBItems {
 
         #$sth=$dbh->do("delete from $dbname;");
         #this will empty everything, it is dangerous, so skip
-    }
-    else {
+    } else {
         $sth = $dbh->do("delete from $dbname where $conditions;");
         $dbh->commit;
     }
@@ -7064,8 +6877,7 @@ sub ReadDBItems {
     $fields = "*" if ( $fields eq "" );
     if ( $conditions eq "" ) {
         $sth = $dbh->selectall_arrayref("select $fields from $dbname;");
-    }
-    else {
+    } else {
         $sth = $dbh->selectall_arrayref("select $fields from $dbname where $conditions;");
     }
     if ( defined $sth->[0] ) {
@@ -7083,8 +6895,8 @@ sub DoEditBanned {
 
     print &GetHeader( "", T("Editing Banned list"), "" );
     return if ( !&UserIsAdminOrError() );
-        $banList = ReadDBItems( "system", 'data', "\n", '', "id='banlist'" );
-        $status  = 1;
+    $banList = ReadDBItems( "system", 'data', "\n", '', "id='banlist'" );
+    $status  = 1;
 
     $banList = "" if ( !$status );
     print &GetFormStart();
@@ -7121,14 +6933,12 @@ sub DoUpdateBanned {
     if ( $newList eq "" ) {
         print "<p>Empty banned list or error.";
         print "<p>Resubmit with at least one space character to remove.";
-    }
-    elsif ( $newList =~ /^\s*$/s ) {
-            WriteDBItems( "system", 'id,data,time', 1, ( "banlist", "", $Now ) );
+    } elsif ( $newList =~ /^\s*$/s ) {
+        WriteDBItems( "system", 'id,data,time', 1, ( "banlist", "", $Now ) );
 
         print "<p>Removed banned list";
-    }
-    else {
-            WriteDBItems( "system", 'id,data,time', 1, ( "banlist", $newList, $Now ) );
+    } else {
+        WriteDBItems( "system", 'id,data,time', 1, ( "banlist", $newList, $Now ) );
         print "<p>Updated banned list";
     }
     print "</div>\n";
@@ -7140,8 +6950,7 @@ sub DoEditLinks {
     print &GetHeader( "", "Editing Links", "" );
     if ($AdminDelete) {
         return if ( !&UserIsAdminOrError() );
-    }
-    else {
+    } else {
         return if ( !&UserIsEditorOrError() );
     }
     print '<div class="wikitext">';
@@ -7191,14 +7000,11 @@ sub UpdateLinksList {
         print T("Processing") . " $_<br>\n";
         if (/^\!([^,]+)\s*$/) {
             &DeletePage( $1, $doRC, $doText );
-        }
-        elsif (/^\!(.+),([0-9.]+)/) {
+        } elsif (/^\!(.+),([0-9.]+)/) {
             &DeletePage( $1, $doRC, $doText, $2 );
-        }
-        elsif (/^\=(?:\[\[)?([^]=]+)(?:\]\])?\=(?:\[\[)?([^]=]+)(?:\]\])?/) {
+        } elsif (/^\=(?:\[\[)?([^]=]+)(?:\]\])?\=(?:\[\[)?([^]=]+)(?:\]\])?/) {
             &RenamePage( $1, $2, $doRC, $doText );
-        }
-        elsif (/^\|(?:\[\[)?([^]|]+)(?:\]\])?\|(?:\[\[)?([^]|]+)(?:\]\])?/) {
+        } elsif (/^\|(?:\[\[)?([^]|]+)(?:\]\])?\|(?:\[\[)?([^]|]+)(?:\]\])?/) {
             &RenameTextLinks( $1, $2 );
         }
     }
@@ -7228,8 +7034,7 @@ sub BuildLinkIndexPage {
             if ( !$seen{$link} ) {
                 $LinkIndex{$link} .= " " . $page;
             }
-        }
-        else {
+        } else {
             $LinkIndex{$link} .= " " . $page;
         }
         $seen{$link} = 1;
@@ -7242,8 +7047,7 @@ sub DoUpdateLinks {
     print &GetHeader( "", T('Updating Links'), "" );
     if ($AdminDelete) {
         return if ( !&UserIsAdminOrError() );
-    }
-    else {
+    } else {
         return if ( !&UserIsEditorOrError() );
     }
     $commandList = &GetParam( "commandlist", "" );
@@ -7255,8 +7059,7 @@ sub DoUpdateLinks {
     print '<div class="wikitext">';
     if ( $commandList eq "" ) {
         print "<p>Empty command list or error.";
-    }
-    else {
+    } else {
         &UpdateLinksList( $commandList, $doRC, $doText );
         print "<p>Finished command list.";
     }
@@ -7293,14 +7096,12 @@ sub EditRecentChangesFile {
         if ( $page eq $old ) {
             if ( $action == 1 ) {    # Delete
                 ;                    # Do nothing (don't add line to new RC)
-            }
-            elsif ( $action == 2 ) {
+            } elsif ( $action == 2 ) {
                 $junk = $rcline;
                 $junk =~ s/^(\d+$FS3)$old($FS3)/"$1$new$2"/ge;
                 $outrc .= $junk . "\n";
             }
-        }
-        else {
+        } else {
             $outrc .= $rcline . "\n";
         }
     }
@@ -7342,35 +7143,33 @@ sub DeletePage {
         print "Delete-Page: page $page is invalid, error is: $status<br>\n";
         return;
     }
-        my $pagedb  = &GetPageDB($page);
-        my $rclogdb = ( split( /\//, $RcFile ) )[-1];
-        my $htmldb  = ( split( /\//, $HtmlDir ) )[-1];
+    my $pagedb  = &GetPageDB($page);
+    my $rclogdb = ( split( /\//, $RcFile ) )[-1];
+    my $htmldb  = ( split( /\//, $HtmlDir ) )[-1];
 
-        if ( $dbh eq "" || $pagedb eq "" || $rclogdb eq "" ) {
-            die( T('ERROR: database uninitialized!') );
+    if ( $dbh eq "" || $pagedb eq "" || $rclogdb eq "" ) {
+        die( T('ERROR: database uninitialized!') );
+    }
+    if ( $rev ne "" && $rev >= 0 ) {
+        if ( $rev =~ /^([0-9]+)\.([0-9]+)/ && $2 > 0 ) {
+            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page' and revision=$1" );
+            $res = &DeletePageRevisionFrom( $page, $1, $2 );
+            $res = &DeleteDBItems( $rclogdb, "id='$page' and revision=$rev" ) if ($doRC);
+        } else {
+            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page' and revision=$rev" );
+            $res = &DeleteDBItems( $pagedb,  "id='$page' and revision=$rev" );
+            $res = &DeleteDBItems( $rclogdb, "id='$page' and revision=$rev" ) if ($doRC);
         }
-        if ( $rev ne "" && $rev >= 0 ) {
-            if ( $rev =~ /^([0-9]+)\.([0-9]+)/ && $2 > 0 ) {
-                $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page' and revision=$1" );
-                $res = &DeletePageRevisionFrom( $page, $1, $2 );
-                $res = &DeleteDBItems( $rclogdb, "id='$page' and revision=$rev" ) if ($doRC);
-            }
-            else {
-                $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page' and revision=$rev" );
-                $res = &DeleteDBItems( $pagedb,  "id='$page' and revision=$rev" );
-                $res = &DeleteDBItems( $rclogdb, "id='$page' and revision=$rev" ) if ($doRC);
-            }
-        }
-        else {
-            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page'" );
-            $res = &DeleteDBItems( $pagedb,  "id='$page'" );
-            $res = &DeleteDBItems( $rclogdb, "id='$page'" ) if ($doRC);
-        }
-        $res = &DeleteDBItems( $htmldb, "id LIKE '$page\[%\]'" );
-        &WriteRcLogDB( $page, GetParam( "summary", "" ),
-            2, $Now, 0, $UserData{'username'}, $UserData{'email'}, 0 );
-        AddUserLogDB( $UserID, 'De', $page ) if ( $UserID >= 1000 );
-        return $res;
+    } else {
+        $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page'" );
+        $res = &DeleteDBItems( $pagedb,  "id='$page'" );
+        $res = &DeleteDBItems( $rclogdb, "id='$page'" ) if ($doRC);
+    }
+    $res = &DeleteDBItems( $htmldb, "id LIKE '$page\[%\]'" );
+    &WriteRcLogDB( $page, GetParam( "summary", "" ),
+        2, $Now, 0, $UserData{'username'}, $UserData{'email'}, 0 );
+    AddUserLogDB( $UserID, 'De', $page ) if ( $UserID >= 1000 );
+    return $res;
 
 }
 
@@ -7416,8 +7215,7 @@ sub SubFreeLink {
     $link =~ s/\s+$//;
     if ( ( $link eq $old ) || ( &FreeToNormal($old) eq &FreeToNormal($link) ) ) {
         $link = $new;
-    }
-    else {
+    } else {
         $link = $oldlink;    # Preserve spaces if no match
     }
     $link = "[[$link";
@@ -7484,8 +7282,7 @@ sub RenameKeepText {
             $Pages{$page}->{'text'}->{'text'} = $newText;
             $tempSection{'data'}              = join( $FS3, %{ $Pages{$page}->{'text'} } );
             print OUT $FS1, join( $FS2, %tempSection );
-        }
-        else {
+        } else {
             print OUT $FS1, $_;
         }
     }
@@ -7519,7 +7316,7 @@ sub RenameTextLinks {
     foreach $page (@pageList) {
         $changed = 0;
 
-            &OpenPageDB($page);
+        &OpenPageDB($page);
         $Page    = \%{ $Pages{$page}->{'page'} };
         $Section = \%{ $Pages{$page}->{'section'} };
         $Text    = \%{ $Pages{$page}->{'text'} };
@@ -7536,8 +7333,7 @@ sub RenameTextLinks {
                     $$Page{$section}  = join( $FS2, %$Section );
                     $changed          = 1;
                 }
-            }
-            elsif ( $section =~ /^cache_diff/ ) {
+            } elsif ( $section =~ /^cache_diff/ ) {
                 $oldText = $$Page{$section};
                 $newText = &SubstituteTextLinks( $old, $new, $oldText );
                 if ( $oldText ne $newText ) {
@@ -7580,26 +7376,26 @@ sub RenamePage {
         print "Rename: old page $old does not exist--nothing done.<br>\n";
         return;
     }
-        my ( $tbname, $sth );
-        if ( $dbh eq "" ) {
-            die( T('ERROR: database uninitialized!') );
-        }
-        $tbname = &GetPageDB($old);
-        $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
-        $sth->execute();
+    my ( $tbname, $sth );
+    if ( $dbh eq "" ) {
+        die( T('ERROR: database uninitialized!') );
+    }
+    $tbname = &GetPageDB($old);
+    $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
+    $sth->execute();
 
-        $tbname = ( split( /\//, $RcFile ) )[-1];
-        $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
-        $sth->execute();
+    $tbname = ( split( /\//, $RcFile ) )[-1];
+    $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
+    $sth->execute();
 
-        $tbname = ( split( /\//, $HtmlDir ) )[-1];
-        $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
-        $sth->execute();
+    $tbname = ( split( /\//, $HtmlDir ) )[-1];
+    $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
+    $sth->execute();
 
-        $tbname = ( split( /\//, $EmailFile ) )[-1];
-        $sth    = $dbh->prepare("update $tbname set page='$new' where page='$old'");
-        $sth->execute();
-        return;
+    $tbname = ( split( /\//, $EmailFile ) )[-1];
+    $sth    = $dbh->prepare("update $tbname set page='$new' where page='$old'");
+    $sth->execute();
+    return;
 }
 
 sub DoShowVersion {
@@ -7629,16 +7425,15 @@ sub GetPageWatchLink {
     }
     if ($status) {
         return &ScriptLink( "action=watch&id=$id", $name );
-    }
-    else {
+    } else {
         return &ScriptLink( "action=unwatch&id=$id", $name );
     }
 }
 
 sub GetLockState {
     my ($lockstate);
-        $lockstate = ReadDBItems( "system", 'data', '', '', "id='lockstate'" );
-        $lockstate = 0 if ( $lockstate != 1 );
+    $lockstate = ReadDBItems( "system", 'data', '', '', "id='lockstate'" );
+    $lockstate = 0 if ( $lockstate != 1 );
 
     return $lockstate;
 }
@@ -7646,11 +7441,11 @@ sub GetLockState {
 sub IsPageLocked {
     my ($id) = @_;
     my ( $lockdb, $tag );
-        $lockdb = ( split( /\//, $LockDir ) )[-1];
-        $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id='$id'" );
-        if ( $tag =~ /L/ ) {
-            return 1;
-        }
+    $lockdb = ( split( /\//, $LockDir ) )[-1];
+    $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id='$id'" );
+    if ( $tag =~ /L/ ) {
+        return 1;
+    }
 
     return 0;
 }
@@ -7663,8 +7458,7 @@ sub GetAdminBar {
       '<!--CACHE--><div class="wikiadminbar">' . T('Administration') . '<ul class=adminlist>';
     if ( IsPageLocked($id) ) {
         $result .= '<li>' . &GetPageLockLink( $id, 0, T('Unlock page') ) . '</li>';
-    }
-    else {
+    } else {
         $result .= '<li>' . &GetPageLockLink( $id, 1, T('Lock page') ) . '</li>';
     }
     $result .= '<li>' . &GetDeleteLink( $id, T('Delete this page'), 0 );
@@ -7674,8 +7468,7 @@ sub GetAdminBar {
     $result .= '<li>' . &ScriptLink( "action=editlinks", T("Edit/Rename pages") );
     if ( &GetLockState == 1 ) {
         $result .= '<li>' . &ScriptLink( "action=editlock&set=0", T("Unlock site") );
-    }
-    else {
+    } else {
         $result .= '<li>' . &ScriptLink( "action=editlock&set=1", T("Lock site") );
     }
     $result .= '</ul></div><!--/CACHE-->';
@@ -7687,7 +7480,7 @@ sub IsPageWatched {
     my ( $watchdb, $tag );
     my $user = $UserData{'username'};
 
-    if ( $UserID > 1000) {
+    if ( $UserID > 1000 ) {
         $watchdb = ( split( /\//, $EmailFile ) )[-1];
         $tag     = ReadDBItems( $watchdb, 'user', '', '', "page='$id' and user='$user'" );
         if ( $tag ne '' ) {
@@ -7704,8 +7497,7 @@ sub GetUserBar {
     $result = '<div class="wikiuserbar">' . T('User toolbar') . '<ul class="userlist">';
     if ( not IsPageWatched($id) ) {
         $result .= '<li>' . &GetPageWatchLink( $id, 1, T('Watch page') ) . '</li>';
-    }
-    else {
+    } else {
         $result .= '<li>' . &GetPageWatchLink( $id, 0, T('Unwatch page') ) . '</li>';
     }
     $result .= '</ul></div>';
@@ -7756,12 +7548,11 @@ sub DoDeletePage {
     print '<div class="wikitext">';
     if ( $id eq $HomePage ) {
         print Ts( '%s can not be deleted.', $HomePage );
-    }
-    else {
+    } else {
         if ( IsPageLocked($id) ) {
             print Ts( '%s can not be deleted because it is locked.', $id );
-        }
-        else {
+        } else {
+
             # Must lock because of RC-editing
             &RequestLock() or die( T('Could not get editing lock') );
             DeletePage( $id, 1, 1, $rev );
@@ -7878,8 +7669,7 @@ sub ConvertFsDir {
 
                 #       print $fname . '<br>'; # progress
                 &ConvertFsFile( $oldFS, $newFS, $fname );
-            }
-            elsif ( -d $fname ) {
+            } elsif ( -d $fname ) {
                 opendir( DIRLIST, $fname );
                 @subFiles = readdir(DIRLIST);
                 closedir(DIRLIST);
@@ -8021,28 +7811,27 @@ sub ReadRawWikiPage {
     if ( $force eq '' ) {
         if ( defined( $TextCache{$id} ) ) {
             return $TextCache{$id};
-        }
-        elsif ( defined( $Pages{$id}->{'text'}->{'text'} ) ) {
+        } elsif ( defined( $Pages{$id}->{'text'}->{'text'} ) ) {
             return $Pages{$id}->{'text'}->{'text'};
         }
     }
-        my $pagedb = &GetPageDB($id);
-        my ( $sth, $maxversion, $text );
+    my $pagedb = &GetPageDB($id);
+    my ( $sth, $maxversion, $text );
 
-        if ( $dbh eq "" || $pagedb eq "" ) {
-            die( T('ERROR: database uninitialized!') );
+    if ( $dbh eq "" || $pagedb eq "" ) {
+        die( T('ERROR: database uninitialized!') );
+    }
+    $sth = $dbh->selectall_arrayref("select max(revision),text from $pagedb where id='$id';");
+    if ( defined $sth->[0] ) {
+        ( $maxversion, $text ) = @{ $sth->[0] };
+        if ( defined $maxversion && $maxversion ne "" ) {
+            ( $text, $inlinerev ) = &PatchPage($text) if ( $force eq '' );
+            $TextCache{$id} = $text;
+            return $text;
         }
-        $sth = $dbh->selectall_arrayref("select max(revision),text from $pagedb where id='$id';");
-        if ( defined $sth->[0] ) {
-            ( $maxversion, $text ) = @{ $sth->[0] };
-            if ( defined $maxversion && $maxversion ne "" ) {
-                ( $text, $inlinerev ) = &PatchPage($text) if ( $force eq '' );
-                $TextCache{$id} = $text;
-                return $text;
-            }
-        }
-        return "" if ( $BuildinPages{$id} eq '' );
-        return $BuildinPages{$id};
+    }
+    return "" if ( $BuildinPages{$id} eq '' );
+    return $BuildinPages{$id};
 
 }
 
@@ -8071,8 +7860,7 @@ sub ReadNameSpaceRules {
             @ru = <FRULE>;
             close FRULE;
             $$rule{$name} = join( "", @ru );
-        }
-        else {
+        } else {
             $$rule{$name} = "";
         }
     }

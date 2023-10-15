@@ -59,8 +59,7 @@ EEOFRC
 }
 if ( @ARGV >= 1 ) {
     ParseRCLog( $ARGV[0] );
-}
-else {
+} else {
     ParseRCLog('wiki2db/rclog');
 }
 
