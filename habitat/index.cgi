@@ -61,6 +61,7 @@ use DBI;
 use Crypt::DES;
 use Text::Diff;
 use Text::Patch;
+use HTML::Scrubber;
 
 #use diagnostics;
 
@@ -109,7 +110,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
-  %ExtViewer %ExtEditor $UseActivation %ExportPage);
+  %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -2343,7 +2344,7 @@ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiP
     $pageText =~ s/&lt;timenow&gt;/$timestr/gi;
 
     if ($RawHtml) {
-        $pageText =~ s/<html>((.|\n)*?)<\/html>/&StoreRaw($1)/ige;
+        $pageText =~ s/<html>((.|\n)*?)<\/html>/&StoreRaw(&ScrubRawHtml($1))/ige;
     }
     $pageText = &QuoteHtml($pageText);
     $pageText =~ s/\\ *\r?\n/ /g;    # Join lines with backslash at end
@@ -2903,6 +2904,39 @@ sub EvalLocalRules {
         }
     }
     return $text;
+}
+
+sub ScrubRawHtml {
+    my ($html) = @_;
+    if ( !defined $HtmlScrubber ) {
+        $HtmlScrubber = HTML::Scrubber->new( default => [ 0, { '*' => 0 } ], comment => 0, process => 0 );
+        my %attr = (
+            class       => 1, id      => 1, title => 1, alt     => 1, name => 1,
+            width       => 1, height  => 1, align => 1, valign  => 1,
+            border      => 1, colspan => 1, rowspan => 1,
+            cellpadding => 1, cellspacing => 1,
+        );
+        my @plain = qw(b i u em strong s strike code tt kbd var sub sup
+          big small span div p br hr h1 h2 h3 h4 h5 h6
+          ul ol li dl dt dd table thead tbody tfoot tr td th
+          caption blockquote pre cite q mark abbr acronym
+          font center header nav section article aside footer);
+        my @rules = map { ( $_ => \%attr ) } @plain;
+        push @rules, (
+            a => {
+                href   => qr!^(?:https?:|ftp:|mailto:|/|\#)!i,
+                name   => 1, class => 1, id => 1, title => 1,
+                target => qr/^_(blank|self|parent|top)$/i,
+            },
+            img => {
+                src   => qr!^(?:https?:|/|\./|data:image/(?:png|jpe?g|gif|webp);base64,)!i,
+                alt   => 1, class => 1, id => 1, title => 1, name => 1,
+                width => 1, height => 1, border => 1, align => 1,
+            }
+        );
+        $HtmlScrubber->rules( \@rules );
+    }
+    return $HtmlScrubber->scrub($html);
 }
 
 sub QuoteHtml {
