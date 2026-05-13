@@ -300,14 +300,49 @@ if ($RepInterMap) {
     push @ReplaceableFiles, $InterFile;
 }
 
+# Wipe every per-request global that could otherwise leak across
+# requests when the wiki runs under a persistent runtime (PSGI/Plack,
+# Starman, mod_perl). No-op-correct under plain CGI since each fork
+# starts with fresh globals anyway.
+#
+# Globals already reset by InitRequest / InitCookie / InitWikiEnv are
+# NOT duplicated here. This sub catches the rest: render scratch
+# space, caches, header-emitted flags, and language state.
+sub ResetRequestState {
+    %TextCache       = ();
+    $LocalTree       = undef;
+    $TableOfContents = '';
+    @HeadingNumbers  = ();
+    $PrintedHeader   = 0;
+    $IndexInit       = 0;
+    $InterSiteInit   = 0;
+    %InterSite       = ();
+    $TableMode       = 0;
+    @IndexList       = ();
+    $OpenPageName    = '';
+    $ConfigError     = '';
+    $LangError       = '';
+    $MainPage        = '.';
+    %Permissions     = ();
+    %NameSpaceV0     = ();
+    %NameSpaceV1     = ();
+    %NameSpaceE0     = ();
+    %NameSpaceE1     = ();
+    undef $q;
+
+    # Per-page Save*Url* symbol-table aliases created by RestorePageHash
+    # are not enumerated here; each WikiToHTML call re-initializes the
+    # ones it touches before use.
+}
+
 # The "main" program, called at the end of this script file.
 sub DoWikiRequest {
+    ResetRequestState();
     if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ )
     {    # running a local wiki
         $DataDir = $ENV{'PWD'} . "/$DataDir" if ( $DataDir =~ /^[^\/]/ );
     }
     if ( $UseConfig && ( -f $ConfigFile ) ) {
-        $ConfigError = '';
         if ( !do $ConfigFile ) {    # Some error occurred
             $ConfigError = $@;
             if ( $ConfigError eq '' ) {
@@ -341,8 +376,11 @@ sub DoWikiRequest {
     &CleanWikiEnv();
 }
 
+# Keep $dbh alive across requests under a persistent runtime. Under
+# plain CGI the process exits immediately after, so the OS reaps the
+# handle either way. Explicit disconnect is intentionally omitted.
 sub CleanWikiEnv {
-    if ($dbh) { $dbh->disconnect(); }
+    return;
 }
 
 # == Common and cache-browsing code ====================================
@@ -445,20 +483,37 @@ sub InitLinkPatterns {
 }
 
 sub InitWikiEnv {
+    # Connect (or reconnect) lazily. Under PSGI/Starman this runs once per
+    # worker; subsequent requests reuse the same $dbh after a cheap ping.
+    # SQLite ping is a no-op; matters more for Postgres / network DBs.
     if ( $DBName ne '' ) {
-        $dbh = DBI->connect( $DBName, $DBUser, $DBPass, \%DBErr ) or die($DBI::errstr);
-        $dbh->func(
-            'regexp', 2,
-            sub {
-                my ( $regex, $string ) = @_;
-                return $string =~ /$regex/;
-            },
-            'create_function'
-        );
+        my $alive = 0;
+        if ( defined $dbh ) {
+            $alive = eval { $dbh->ping } ? 1 : 0;
+        }
+        if ( !$alive ) {
+            undef $dbh;
+            $dbh = DBI->connect( $DBName, $DBUser, $DBPass, \%DBErr )
+              or die($DBI::errstr);
+
+            # SQLite: register a REGEXP UDF used by getnextnum / GetLocalTree.
+            # Other drivers (e.g. Postgres) ignore this; wrap in eval so it
+            # doesn't break the connection on non-SQLite DBs.
+            eval {
+                $dbh->func(
+                    'regexp', 2,
+                    sub {
+                        my ( $regex, $string ) = @_;
+                        return $string =~ /$regex/;
+                    },
+                    'create_function'
+                );
+            };
+        }
     } else {
         $ConfigError .= "database $DBName does not exist";
     }
-    %Pages      = ( 'page' => (), 'text' => (), 'section' => (), 'embed' => () );
+    %Pages = ( 'page' => (), 'text' => (), 'section' => (), 'embed' => () );
 
     # $WikiCipher / $CaptchaKey retired: captcha is now an HMAC challenge
     # signed by the site secret. $UseCaptcha still gates whether captcha
