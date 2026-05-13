@@ -2112,7 +2112,10 @@ sub GetMinimumFooter {
 }
 
 sub GetFormStart {
-    return $q->start_form( "POST", "$ScriptName", "application/x-www-form-urlencoded" );
+    my $form = $q->start_form( "POST", "$ScriptName", "application/x-www-form-urlencoded" );
+    my $tok  = GenCSRFToken();
+    $form .= qq(<input type="hidden" name="csrf_token" value="$tok" />);
+    return $form;
 }
 
 sub GetGotoBar {
@@ -4978,6 +4981,7 @@ sub GetFormCheck {
 }
 
 sub DoUpdatePrefs {
+    CSRFCheckOrDie();
     my ( $username, $password, $password2, $newpass, $stylesheet, $lang, $email );
 
     # All link bar settings should be updated before printing the header
@@ -5246,6 +5250,7 @@ sub DoEnterLogin {
 }
 
 sub DoLogin {
+    CSRFCheckOrDie();
     my ( $uid, $uname, $password, $admpass, $success, $err );
 
     $success = 0;
@@ -5439,7 +5444,8 @@ sub DoSearch {
 }
 
 sub DoWatchPage {
-    my ($id)    = @_;
+    my ($id) = @_;
+    CSRFCheckOrDie();
     my $watchdb = ( split( /\//, $EmailFile ) )[-1];
     my $user    = $UserData{'username'};
 
@@ -5456,7 +5462,8 @@ sub DoWatchPage {
 }
 
 sub DoUnWatchPage {
-    my ($id)    = @_;
+    my ($id) = @_;
+    CSRFCheckOrDie();
     my $watchdb = ( split( /\//, $EmailFile ) )[-1];
     my $user    = $UserData{'username'};
 
@@ -5670,6 +5677,7 @@ sub GetDynaPageName {
 }
 
 sub DoPost {
+    CSRFCheckOrDie();
     my ( $editDiff, $old, $newAuthor, $pgtime, $oldrev, $preview, $user, $tt );
     my $string      = &GetParam( "text",        undef );
     my $id          = &GetParam( "title",       "" );
@@ -6155,6 +6163,7 @@ sub UserIsAdminOrError {
 sub DoEditLock {
     my ($fname);
 
+    CSRFCheckOrDie();
     print &GetHeader( '', T('Set or Remove global edit lock'), '' );
     return if ( !&UserIsAdminOrError() );
     $fname = "$DataDir/noedit";
@@ -6171,6 +6180,7 @@ sub DoEditLock {
 sub DoPageLock {
     my ( $fname, $id, $tag, $lockdb );
 
+    CSRFCheckOrDie();
     print &GetHeader( '', T('Set or Remove page edit lock'), '' );
 
     # Consider allowing page lock/unlock at editor level?
@@ -6347,6 +6357,7 @@ sub DoEditBanned {
 sub DoUpdateBanned {
     my ( $newList, $fname );
 
+    CSRFCheckOrDie();
     print &GetHeader( "", T("Updating Banned list"), "" );
     return if ( !&UserIsAdminOrError() );
     $fname   = "$DataDir/banlist";
@@ -6464,6 +6475,7 @@ sub BuildLinkIndexPage {
 sub DoUpdateLinks {
     my ( $commandList, $doRC, $doText );
 
+    CSRFCheckOrDie();
     print &GetHeader( "", T('Updating Links'), "" );
     if ($AdminDelete) {
         return if ( !&UserIsAdminOrError() );
@@ -6781,23 +6793,23 @@ $Rev::     $ Last Commit:$Date::                     $ by $Author:: fangq$
 # Admin bar contributed by ElMoro (with some changes)
 sub GetPageLockLink {
     my ( $id, $status, $name ) = @_;
-
+    my $tok = GenCSRFToken();
     if ($FreeLinks) {
         $id = &FreeToNormal($id);
     }
-    return &ScriptLink( "action=pagelock&set=$status&id=$id", $name );
+    return &ScriptLink( "action=pagelock&set=$status&id=$id&csrf_token=$tok", $name );
 }
 
 sub GetPageWatchLink {
     my ( $id, $status, $name ) = @_;
-
+    my $tok = GenCSRFToken();
     if ($FreeLinks) {
         $id = &FreeToNormal($id);
     }
     if ($status) {
-        return &ScriptLink( "action=watch&id=$id", $name );
+        return &ScriptLink( "action=watch&id=$id&csrf_token=$tok", $name );
     } else {
-        return &ScriptLink( "action=unwatch&id=$id", $name );
+        return &ScriptLink( "action=unwatch&id=$id&csrf_token=$tok", $name );
     }
 }
 
@@ -6837,10 +6849,11 @@ sub GetAdminBar {
     ## Maintenance is not really ready
     #$result .= '<li>'. &ScriptLink("action=maintain", T("Run Maintenance"));
     $result .= '<li>' . &ScriptLink( "action=editlinks", T("Edit/Rename pages") );
+    my $tok = GenCSRFToken();
     if ( &GetLockState == 1 ) {
-        $result .= '<li>' . &ScriptLink( "action=editlock&set=0", T("Unlock site") );
+        $result .= '<li>' . &ScriptLink( "action=editlock&set=0&csrf_token=$tok", T("Unlock site") );
     } else {
-        $result .= '<li>' . &ScriptLink( "action=editlock&set=1", T("Lock site") );
+        $result .= '<li>' . &ScriptLink( "action=editlock&set=1&csrf_token=$tok", T("Lock site") );
     }
     $result .= '</ul></div><!--/CACHE-->';
     return $result;
@@ -6915,6 +6928,7 @@ sub DoDeletePage {
         print &GetCommonFooter();
         return;
     }
+    CSRFCheckOrDie();
     print &GetHeader( '', Ts( 'Delete %s', $id ), '' );
     print '<div class="wikitext">';
     if ( $id eq $HomePage ) {
@@ -6947,6 +6961,8 @@ sub DoUpload {
     print '</p><br>';
     print '<form method="post" action="' . $ScriptName . '" enctype="multipart/form-data">';
     print '<input type="hidden" name="upload" value="1" />';
+    my $tok = GenCSRFToken();
+    print qq(<input type="hidden" name="csrf_token" value="$tok" />);
     print
 'File to Upload: <input type="file" name="file"><br><br><input type="checkbox" name="dothumb" value="on" />Create thumbnail<br>';
     print '<input type="submit" name="Submit" value="Upload">';
@@ -6957,6 +6973,7 @@ sub DoUpload {
 sub SaveUpload {
     my ( $filename, $printFilename, $uploadFilehandle );
 
+    CSRFCheckOrDie();
     print &GetHeader( '', T('Upload Finished'), '' );
     if ( !$AllUpload ) {
         return if ( &UserPermission() < $PermUseUpload );
@@ -7323,6 +7340,42 @@ sub IsRequestSecure {
         }
     }
     return 0;
+}
+
+# CSRF token format: "<expires>|<sig>" where
+#   sig = HMAC-SHA256-hex("csrf|<uid>|<expires>", site_secret)
+# The token binds to the current $UserID and expires after 24h.
+sub GenCSRFToken {
+    my $exp = $Now + 86400;
+    my $uid = defined($UserID) ? $UserID : 0;
+    my $sig = Hmac("csrf|$uid|$exp");
+    return "$exp|$sig";
+}
+
+sub VerifyCSRFToken {
+    my ($tok) = @_;
+    return 0 if ( !defined($tok) || ref($tok) );
+    return 0 unless ( $tok =~ /\A(\d+)\|([0-9a-f]+)\z/ );
+    my ( $exp, $sig ) = ( $1, $2 );
+    return 0 if ( $exp < $Now );
+    my $uid = defined($UserID) ? $UserID : 0;
+    return ConstantEq( $sig, Hmac("csrf|$uid|$exp") ) ? 1 : 0;
+}
+
+# Verify the inbound csrf_token form/query parameter; on failure print
+# a 403-style error page and die. Call near the top of every handler
+# that mutates server state. POST-only callers may also want to assert
+# REQUEST_METHOD eq 'POST'.
+sub CSRFCheckOrDie {
+    return if ( VerifyCSRFToken( &GetParam( 'csrf_token', '' ) ) );
+    print $q->header( -status => '403 Forbidden' );
+    print "<h2>", T('CSRF token missing or invalid'), "</h2>";
+    print "<p>",
+      T(
+        'The form you submitted is missing a valid CSRF token. Reload the page and try again.'
+      ),
+      "</p>";
+    die("CSRF check failed for action: " . ( &GetParam( 'action', '?' ) ) );
 }
 
 # Builds a CGI.pm cookie hashref with the right attributes for the
