@@ -4153,28 +4153,26 @@ sub UserPermission {
 }
 
 sub UserIsAdmin {
-    my ( @pwlist, $userPassword );
-
+    my ($stored);
     return 0 if ( $AdminPass eq "" );
-    $userPassword = &GetParam( "adminpw", "" );
-    return 0 if ( $userPassword eq "" );
-    foreach ( split( /\s+/, $AdminPass ) ) {
-        next     if ( $_ eq "" );
-        return 1 if ( crypt( $_, $userPassword ) eq $userPassword );
+    $stored = &GetParam( "adminpw", "" );
+    return 0 if ( $stored eq "" );
+    foreach my $token ( split( /\s+/, $AdminPass ) ) {
+        next if ( $token eq "" );
+        return 1 if ( VerifyPassword( $token, $stored ) );
     }
     return 0;
 }
 
 sub UserIsEditor {
-    my ( @pwlist, $userPassword );
-
-    return 1 if ( &UserIsAdmin() );                # Admin includes editor
+    my ($stored);
+    return 1 if ( &UserIsAdmin() );    # Admin includes editor
     return 0 if ( $EditPass eq "" );
-    $userPassword = &GetParam( "adminpw", "" );    # Used for both
-    return 0 if ( $userPassword eq "" );
-    foreach ( split( /\s+/, $EditPass ) ) {
-        next     if ( $_ eq "" );
-        return 1 if ( crypt( $_, $userPassword ) eq $userPassword );
+    $stored = &GetParam( "adminpw", "" );
+    return 0 if ( $stored eq "" );
+    foreach my $token ( split( /\s+/, $EditPass ) ) {
+        next if ( $token eq "" );
+        return 1 if ( VerifyPassword( $token, $stored ) );
     }
     return 0;
 }
@@ -5065,7 +5063,7 @@ sub DoUpdatePrefs {
             undef $UserData{'adminpw'};
         } elsif ( $password ne "*" ) {
             print T('Administrator password changed.'), '<br>';
-            $UserData{'adminpw'} = crypt( $password, unpack( "H16", $CaptchaKey ) );
+            $UserData{'adminpw'} = HashPassword($password);
             if ( &UserIsAdmin() ) {
                 print T('User has administrative abilities.'), '<br>';
             } elsif ( &UserIsEditor() ) {
