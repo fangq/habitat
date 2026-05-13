@@ -62,6 +62,7 @@ use Crypt::DES;
 use Text::Diff;
 use Text::Patch;
 use HTML::Scrubber;
+use JSON::PP;
 
 #use diagnostics;
 
@@ -2880,27 +2881,50 @@ sub ApplyRegExpRules {
     return $text;
 }
 
+sub _ExpandBackrefs {
+    my ( $tpl, $caps ) = @_;
+    $tpl =~ s{\\(\d)|\$(\d)}{ defined $caps->[ ( $1 || $2 ) - 1 ] ? $caps->[ ( $1 || $2 ) - 1 ] : '' }ge;
+    return $tpl;
+}
+
+# $rules is a JSON array of {from, to, opt} objects, applied in order.
+#   from : regex source (no /.../ delimiters)
+#   to   : replacement string; \1..\9 or $1..$9 expand to capture groups
+#   opt  : any of "gimsx"; "g" controls global replace (defaults on)
+# An empty/undef $rules is a no-op. Parse errors and per-rule regex
+# compilation errors are reported inline; we never eval user-supplied
+# Perl. $isDiff is reserved for future use (e.g. skipping image rules).
 sub EvalLocalRules {
     my ( $rules, $origText, $isDiff ) = @_;
-    my ( $text, $reportError, $errorText );
+    return $origText if ( !defined($rules) || $rules eq '' );
 
-    $text        = $origText;
-    $reportError = 1;
+    my $text = $origText;
+    my $parsed;
+    eval { $parsed = decode_json($rules); };
+    if ( $@ || ref($parsed) ne 'ARRAY' ) {
+        my $err = $@ || T('Rules must be a JSON array of {from,to,opt} objects.');
+        return $origText . '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml($err);
+    }
 
-# Basic idea: the $rules should change $text, possibly with different behavior if $isDiff is true (no images or
-# color changes?) Note: for fun, the $rules could also change $reportError and $origText
-    if ( !eval $rules ) {
-        $errorText = $@;
-        if ( $errorText eq '' ) {
+    foreach my $r (@$parsed) {
+        next unless ( ref($r) eq 'HASH' && defined( $r->{from} ) && defined( $r->{to} ) );
+        my $from = $r->{from};
+        my $to   = $r->{to};
+        my $opt  = defined( $r->{opt} ) ? $r->{opt} : 'g';
+        $opt =~ s/[^gimsx]//g;
+        my $global = ( $opt =~ /g/ ) ? 1 : 0;
+        ( my $flags = $opt ) =~ s/g//g;
 
-            # Search for "Unknown Error" for the reason the next line is commented
-            $errorText = T('Unknown Error (no error text)');
+        my $re;
+        eval { $re = qr/(?$flags:$from)/; };
+        if ( $@ || !defined($re) ) {
+            $text .= '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml( $@ || $from );
+            next;
         }
-        if ( $errorText ne '' ) {
-            $text = $origText;    # Consider: should partial results be kept?
-            if ($reportError) {
-                $text .= '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml($errorText);
-            }
+        if ($global) {
+            $text =~ s/$re/&_ExpandBackrefs($to,[$1,$2,$3,$4,$5,$6,$7,$8,$9])/ge;
+        } else {
+            $text =~ s/$re/&_ExpandBackrefs($to,[$1,$2,$3,$4,$5,$6,$7,$8,$9])/e;
         }
     }
     return $text;
