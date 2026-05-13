@@ -114,7 +114,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber
-  $SecretFile $SiteSecret);
+  $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -248,6 +248,8 @@ $ListItemCount   = 100;
 $HistoryLimit    = 50;
 $RCHistoryLimit  = 100;
 $InlineDiffLimit = 50;
+$LoginMaxAttempts    = 5;                          # Block after this many failed logins
+$LoginThrottleWindow = 300;                        # Counted within this many seconds
 $TrustedProxies  = '';                             # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
                                                    # Only when REMOTE_ADDR matches one of these will
                                                    # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
@@ -5251,7 +5253,8 @@ sub DoEnterLogin {
 
 sub DoLogin {
     CSRFCheckOrDie();
-    my ( $uid, $uname, $password, $admpass, $success, $err );
+    my ( $uid, $uname, $password, $admpass, $success );
+    my $generic_err = T('Login failed.');
 
     $success = 0;
     $uid     = &GetParam( "p_userid", "" );
@@ -5260,16 +5263,31 @@ sub DoLogin {
     $password = &GetParam( "p_password",  "" );
     $admpass  = &GetParam( "p_adminpass", "" );
 
+    my $ip_key   = 'ip:'    . &RemoteAddr;
+    my $name_key = $uname ne '' ? ( 'name:' . lc($uname) ) : '';
+
+    if ( LoginThrottleBlocked($ip_key) || ( $name_key && LoginThrottleBlocked($name_key) ) ) {
+        AddUserLogDB( $UserID, 'login', '-T' );    # throttled
+        print &GetHeader( '', T('Login'), '' );
+        print '<div class="wikiinfo">',
+          T('Too many failed login attempts. Try again in a few minutes.'),
+          "</div>";
+        print &GetMinimumFooter();
+        return;
+    }
+
     if ( ( $password ne "" ) && ( $password ne "*" ) ) {
         if ( $uname ne "" ) {
-            $err = &LoadUserDataDB( -1, $uname );
+            &LoadUserDataDB( -1, $uname );
         } else {
-            $err = &LoadUserDataDB($uid);
+            &LoadUserDataDB($uid);
         }
         $UserID = $UserData{'id'};
         if ( $UserID > 199 ) {
             if ( $UserData{'param'} =~ /^R/ ) {
-                $err = T("account has not yet been activated");
+
+                # Account exists but is pending activation. Same generic
+                # error as wrong password so existence is not leaked.
             } elsif ( VerifyPassword( $password, $UserData{'password'} ) ) {
                 $success = 1;
                 $SetCookie{'id'} = $UserData{'id'};
@@ -5278,12 +5296,13 @@ sub DoLogin {
                     UpgradePasswordHashDB( $UserData{'username'}, $newhash );
                     $UserData{'password'} = $newhash;
                 }
-            } else {
-                $err .= T("wrong password");
             }
         }
     }
+
     if ($success) {
+        LoginThrottleClear($ip_key);
+        LoginThrottleClear($name_key) if $name_key;
         my $refurl = &GetParam( "refer_url", "" );
         ResetRandKeyDB( $UserID, $UserData{'param'} );
         if ( $refurl =~ /^http/i ) {
@@ -5292,6 +5311,9 @@ sub DoLogin {
                 T("if your browser does not support redirect, please click this link"), 1 );
             return;
         }
+    } else {
+        LoginThrottleHit($ip_key);
+        LoginThrottleHit($name_key) if $name_key;
     }
 
     print &GetHeader( '', T('Login Results'), '' );
@@ -5300,7 +5322,7 @@ sub DoLogin {
         print Ts( 'Login for user %s complete.', "$uname" );
         AddUserLogDB( $UserID, 'login', $uname );
     } else {
-        print Tss( 'Login for user %1 failed. Error: %2', "$uname", $err );
+        print $generic_err;
         AddUserLogDB( $UserID, 'login', '-F' );
     }
     print '<hr class="wikilinefooter">';
@@ -7399,6 +7421,64 @@ sub BuildSessionCookie {
     }
     $args{-secure} = 1 if ( IsRequestSecure() );
     return \%args;
+}
+
+# Login throttle: per-(username | IP) counter window stored in the
+# login_attempts table. Auto-creates the table on first use (idempotent
+# CREATE IF NOT EXISTS). Per the configured limits, more than
+# $LoginMaxAttempts failures within $LoginThrottleWindow seconds blocks
+# further attempts from that key until the window expires.
+sub EnsureLoginThrottleTable {
+    return if ( !$dbh );
+    eval {
+        $dbh->do(
+            'CREATE TABLE IF NOT EXISTS login_attempts ('
+              . 'key TEXT PRIMARY KEY,'
+              . 'count INTEGER NOT NULL,'
+              . 'first_ts INTEGER NOT NULL,'
+              . 'last_ts INTEGER NOT NULL'
+              . ')'
+        );
+    };
+}
+
+# Returns 1 if the (key, current time) pair is blocked; 0 otherwise.
+# A key whose first_ts is older than the window is treated as fresh.
+sub LoginThrottleBlocked {
+    my ($key) = @_;
+    return 0 if ( !defined($key) || $key eq '' || !$dbh );
+    EnsureLoginThrottleTable();
+    my $row = $dbh->selectrow_arrayref(
+        'SELECT count, first_ts FROM login_attempts WHERE key=?',
+        undef, $key );
+    return 0 if ( !$row );
+    my ( $count, $first ) = @$row;
+    return 0 if ( $Now - $first > $LoginThrottleWindow );
+    return ( $count >= $LoginMaxAttempts ) ? 1 : 0;
+}
+
+sub LoginThrottleHit {
+    my ($key) = @_;
+    return if ( !defined($key) || $key eq '' || !$dbh );
+    EnsureLoginThrottleTable();
+    my $row = $dbh->selectrow_arrayref(
+        'SELECT count, first_ts FROM login_attempts WHERE key=?',
+        undef, $key );
+    if ( !$row || $Now - $row->[1] > $LoginThrottleWindow ) {
+        $dbh->do(
+            'INSERT OR REPLACE INTO login_attempts (key,count,first_ts,last_ts) VALUES (?,1,?,?)',
+            undef, $key, $Now, $Now );
+    } else {
+        $dbh->do(
+            'UPDATE login_attempts SET count=count+1, last_ts=? WHERE key=?',
+            undef, $Now, $key );
+    }
+}
+
+sub LoginThrottleClear {
+    my ($key) = @_;
+    return if ( !defined($key) || $key eq '' || !$dbh );
+    eval { $dbh->do( 'DELETE FROM login_attempts WHERE key=?', undef, $key ); };
 }
 
 # Bcrypt $2b$ with cost 12. ~250ms per hash on a modern CPU — slow on purpose.
