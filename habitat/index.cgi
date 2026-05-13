@@ -5882,9 +5882,6 @@ sub SendEmail {
     my ( $to, $from, $reply, $subject, $message ) = @_;
 
     if ( $SendMail =~ /\/mail$/ ) {
-        open FF, ">debugmail.log";
-        print FF "$to, $from, $reply, $subject, $message\n\n$SendMail";
-        close(FF);
         &MailEmail( $to, $from, $reply, $subject, $message );
         return;
     }
