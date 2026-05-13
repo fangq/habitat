@@ -63,6 +63,7 @@ use Text::Diff;
 use Text::Patch;
 use HTML::Scrubber;
 use JSON::PP;
+use Digest::SHA ();
 
 #use diagnostics;
 
@@ -111,7 +112,8 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
-  %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber);
+  %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber
+  $SecretFile $SiteSecret);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -290,6 +292,7 @@ $IndexFile   = "$DataDir/pageidx";             # List of all pages
 $EmailFile   = "$DataDir/watch";               # Email notification lists
 $UserLog     = "$DataDir/userlog";             # Email notification lists
 $PageLog     = "$DataDir/pagelog";             # Email notification lists
+$SecretFile  = "$DataDir/secret";              # Server-side HMAC key (auto-created on first run)
 
 if ($RepInterMap) {
     push @ReplaceableFiles, $InterFile;
@@ -7239,6 +7242,79 @@ sub RemoteAddr {
         }
     }
     return $remote;
+}
+
+# Cryptographically-random bytes. Uses Crypt::URandom when available,
+# falls back to /dev/urandom (works on Linux/BSD/macOS). Never returns
+# rand()-derived data.
+sub RandomBytes {
+    my ($n) = @_;
+    $n = 32 if ( !defined($n) || $n <= 0 );
+    my $bytes;
+    eval { require Crypt::URandom; $bytes = Crypt::URandom::urandom($n); };
+    if ( !defined($bytes) || length($bytes) != $n ) {
+        if ( open( my $fh, '<', '/dev/urandom' ) ) {
+            binmode $fh;
+            my $got = read( $fh, $bytes, $n );
+            close $fh;
+            die("RandomBytes: short read from /dev/urandom") if ( !defined($got) || $got != $n );
+        } else {
+            die("RandomBytes: no CSPRNG available (install Crypt::URandom or provide /dev/urandom)");
+        }
+    }
+    return $bytes;
+}
+
+sub RandomHex {
+    my ($n) = @_;    # bytes; output is 2*$n hex chars
+    return unpack( 'H*', RandomBytes($n) );
+}
+
+# Server-side secret used for HMAC of cookies / CSRF / captcha tokens.
+# Auto-created on first call if $SecretFile does not exist. Lazily cached
+# in $SiteSecret per process.
+sub GetSiteSecret {
+    return $SiteSecret if ( defined($SiteSecret) && length($SiteSecret) >= 32 );
+    if ( -f $SecretFile ) {
+        if ( open( my $fh, '<', $SecretFile ) ) {
+            binmode $fh;
+            local $/;
+            $SiteSecret = <$fh>;
+            close $fh;
+            return $SiteSecret if ( defined($SiteSecret) && length($SiteSecret) >= 32 );
+        }
+    }
+    $SiteSecret = RandomBytes(64);
+    my $tmp = "$SecretFile.tmp.$$";
+    if ( open( my $fh, '>', $tmp ) ) {
+        binmode $fh;
+        print $fh $SiteSecret;
+        close $fh;
+        chmod 0600, $tmp;
+        rename( $tmp, $SecretFile ) or die("GetSiteSecret: rename failed: $!");
+    } else {
+        die("GetSiteSecret: cannot write $SecretFile: $!");
+    }
+    return $SiteSecret;
+}
+
+# Hex-encoded HMAC-SHA256 over the given message with the site secret.
+sub Hmac {
+    my ($msg) = @_;
+    return Digest::SHA::hmac_sha256_hex( $msg, GetSiteSecret() );
+}
+
+# Length-independent constant-time string compare. Returns 1 on match, 0 otherwise.
+# Length difference still leaks via early-return, so wrap callers to compare hashes of
+# attacker-controlled inputs against fixed-length known hashes.
+sub ConstantEq {
+    my ( $a, $b ) = @_;
+    return 0 if ( !defined($a) || !defined($b) || length($a) != length($b) );
+    my $diff = 0;
+    for ( my $i = 0 ; $i < length($a) ; $i++ ) {
+        $diff |= ord( substr( $a, $i, 1 ) ) ^ ord( substr( $b, $i, 1 ) );
+    }
+    return $diff == 0 ? 1 : 0;
 }
 
 sub max {
