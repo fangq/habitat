@@ -64,6 +64,7 @@ use Text::Patch;
 use HTML::Scrubber;
 use JSON::PP;
 use Digest::SHA ();
+use Crypt::Bcrypt qw(bcrypt bcrypt_check);
 
 #use diagnostics;
 
@@ -5011,7 +5012,7 @@ sub DoUpdatePrefs {
             PrintMsg( T("You have to give an email address"), T("Error"), 1 );
         }
     } else {    # for existing users, you have to match password before changing anything
-        if ( $UserData{'password'} ne crypt( $password, $UserData{'password'} ) ) {
+        if ( !VerifyPassword( $password, $UserData{'password'} ) ) {
             PrintMsg(
                 T("You have to type the correct password in order to change your preferences"),
                 T("Error"), 1 );
@@ -5055,7 +5056,7 @@ sub DoUpdatePrefs {
         die( T("Password can only contain basic latin, digits or one of '[]!\@\$%^&'.") );
     } elsif ( $password ne "*" ) {
         print T('Password changed.'), '<br>';
-        $UserData{'password'} = crypt( $password, unpack( "H16", $CaptchaKey ) );
+        $UserData{'password'} = HashPassword($password);
     }
     if ( ( $AdminPass ne "" ) || ( $EditPass ne "" ) ) {
         $password = &GetParam( "p_adminpw", "" );
@@ -5282,11 +5283,14 @@ sub DoLogin {
         if ( $UserID > 199 ) {
             if ( $UserData{'param'} =~ /^R/ ) {
                 $err = T("account has not yet been activated");
-            } elsif ( defined( $UserData{'password'} )
-                && ( $UserData{'password'} eq crypt( $password, $UserData{'password'} ) ) )
-            {
+            } elsif ( VerifyPassword( $password, $UserData{'password'} ) ) {
                 $success = 1;
                 $SetCookie{'id'} = $UserData{'id'};
+                if ( IsLegacyPasswordHash( $UserData{'password'} ) ) {
+                    my $newhash = HashPassword($password);
+                    UpgradePasswordHashDB( $UserData{'username'}, $newhash );
+                    $UserData{'password'} = $newhash;
+                }
             } else {
                 $err .= T("wrong password");
             }
@@ -7315,6 +7319,48 @@ sub ConstantEq {
         $diff |= ord( substr( $a, $i, 1 ) ) ^ ord( substr( $b, $i, 1 ) );
     }
     return $diff == 0 ? 1 : 0;
+}
+
+# Bcrypt $2b$ with cost 12. ~250ms per hash on a modern CPU — slow on purpose.
+sub HashPassword {
+    my ($pw) = @_;
+    return '' if ( !defined($pw) || $pw eq '' );
+    my $salt = RandomBytes(16);    # 16 raw bytes; Crypt::Bcrypt expects raw, not base64
+    return bcrypt( $pw, '2b', 12, $salt );
+}
+
+# Returns 1 on match, 0 otherwise. Handles three stored-hash formats:
+#   1. bcrypt: stored looks like $2b$... / $2a$... / $2y$...  → bcrypt_check
+#   2. legacy crypt(): any other non-empty string             → crypt($pw, $stored) eq $stored
+#   3. empty/undef stored hash                                → never match
+sub VerifyPassword {
+    my ( $pw, $stored ) = @_;
+    return 0 if ( !defined($pw) || !defined($stored) || $stored eq '' );
+    if ( $stored =~ /\A\$2[abxy]\$/ ) {
+        return bcrypt_check( $pw, $stored ) ? 1 : 0;
+    }
+    my $h = crypt( $pw, $stored );
+    return 0 if ( !defined($h) );
+    return ConstantEq( $h, $stored );
+}
+
+# True if $stored is a legacy crypt() hash and should be transparently upgraded
+# to bcrypt the next time the cleartext password is known (i.e. on login).
+sub IsLegacyPasswordHash {
+    my ($stored) = @_;
+    return 0 if ( !defined($stored) || $stored eq '' );
+    return ( $stored !~ /\A\$2[abxy]\$/ );
+}
+
+# Replace the stored hash for a username with a fresh bcrypt hash.
+# Used by login to opportunistically migrate legacy crypt() hashes.
+sub UpgradePasswordHashDB {
+    my ( $username, $newhash ) = @_;
+    return if ( $username eq '' || $newhash eq '' );
+    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    return if ( $dbh eq '' || $userdb eq '' || !SafeIdent($userdb) );
+    my $sth = $dbh->prepare("update $userdb set pass=? where name=?");
+    $sth->execute( $newhash, $username );
 }
 
 sub max {
