@@ -58,7 +58,6 @@ use strict;
 use warnings;
 
 use DBI;
-use Crypt::DES;
 use Text::Diff;
 use Text::Patch;
 use HTML::Scrubber;
@@ -238,7 +237,7 @@ $AMathML       = 0;                                # 1 = allow <amath> tags, 0 =
 $AMathMLPath   = "";
 $MathColor     = "yellow";
 $UseCaptcha    = 1;                                # flag to enable captcha
-$CaptchaKey = pack( "H16", "0928AD813FED0277" );   # you must change this or redefine in config file
+$CaptchaKey = '';                                  # Deprecated. Captcha now uses HMAC over the site secret.
 $DiscussSuffix   = '..discuss';
 $DBName          = "";
 $UseActivation   = 0;
@@ -460,7 +459,10 @@ sub InitWikiEnv {
         $ConfigError .= "database $DBName does not exist";
     }
     %Pages      = ( 'page' => (), 'text' => (), 'section' => (), 'embed' => () );
-    $WikiCipher = new Crypt::DES($CaptchaKey) if $UseCaptcha;
+
+    # $WikiCipher / $CaptchaKey retired: captcha is now an HMAC challenge
+    # signed by the site secret. $UseCaptcha still gates whether captcha
+    # is rendered.
 }
 
 # get parameters before reading cookies
@@ -7164,36 +7166,34 @@ sub RemovePageCache {
     }
 }
 
+# CSPRNG-driven captcha. The challenge token format is
+# "<answer>|<expires>|<sig>" where sig = HMAC("captcha|<answer>|<expires>",
+# site_secret), 10-minute lifetime. The browser sees the question and
+# echoes back the token; the server recomputes the HMAC and compares
+# the user's typed answer to the embedded answer. No cipher, no shared
+# CaptchaKey, no rand() involved in the secret.
 sub PrintCaptcha {
-    my ( $opA, $opB, $opR, $opt, $cryres, $plusbuf );
-
-    $opA = int( rand(24) + 1 );
-    $opB = int( rand(24) + 1 );
-
-    #$opR=(rand()>0.5)?"+":"-";
-    $opR     = "+";
-    $plusbuf = " " x int( rand(3) );
-
-    $opt = ( rand() > 0.5 ) ? "$opA$opR$plusbuf$opB" : "$opA$plusbuf$opR$opB";
-    $opt .= " " x ( 8 - length($opt) );
-
-    $cryres = unpack( "H16", $WikiCipher->encrypt($opt) );
-
+    my $a   = unpack( 'N', RandomBytes(4) ) % 24 + 1;
+    my $b   = unpack( 'N', RandomBytes(4) ) % 24 + 1;
+    my $ans = $a + $b;
+    my $exp = $Now + 600;
+    my $sig = Hmac("captcha|$ans|$exp");
+    my $tok = "$ans|$exp|$sig";
     return
-"<span class='wikicaptcha'>$opA+$opB=<input type='text' id='captchaans' size='4' name='captchaans' 
-title='type your answer here'/> <input type='hidden' name='captchaopt' id='captchaopt' value='$cryres' /></span>\n";
+"<span class='wikicaptcha'>$a+$b=<input type='text' id='captchaans' size='4' name='captchaans' "
+      . "title='type your answer here'/> "
+      . qq(<input type="hidden" name="captchaopt" id="captchaopt" value="$tok" /></span>\n);
 }
 
 sub VerifyCaptcha {
-    my ( $userans, $cryres ) = @_;
-
-    my $opt = $WikiCipher->decrypt( pack( 'H16', $cryres ) );
-    my $trueans;
-    if ( $opt =~ /([0-9]+)\s*\+\s*([0-9]+)/ ) {
-        $trueans = $1 + $2;
-    }
-    if   ( $opt eq "" || $cryres eq "" ) { return 0; }
-    else                                 { return ( $userans == $trueans ); }
+    my ( $userans, $tok ) = @_;
+    return 0 if ( !defined($tok) || !defined($userans) );
+    return 0 unless ( $tok =~ /\A(\d+)\|(\d+)\|([0-9a-f]+)\z/ );
+    my ( $ans, $exp, $sig ) = ( $1, $2, $3 );
+    return 0 if ( $exp < $Now );
+    return 0 unless ConstantEq( $sig, Hmac("captcha|$ans|$exp") );
+    return 0 unless ( $userans =~ /\A\s*-?\d+\s*\z/ );
+    return ( int($userans) == $ans ) ? 1 : 0;
 }
 
 sub ErrMsg {
