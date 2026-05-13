@@ -515,7 +515,7 @@ sub DoCacheBrowse {
     if ( $dbh eq "" || $htmldb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $text = ReadDBItems( $htmldb, 'text', '', '', "id='$query\[$language\]'" );
+    $text = ReadDBItems( $htmldb, 'text', '', '', "id=?", "$query\[$language\]" );
     if ( $text ne '' ) {
         print $text;
         if ( $pagelogdb ne "" ) {
@@ -681,7 +681,7 @@ sub PageExists {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    my $data = ReadDBItems( $pagedb, 'id', '', '', "id='$id'" );
+    my $data = ReadDBItems( $pagedb, 'id', '', '', "id=?", $id );
     if ( $data ne "" ) {
         return 1;
     }
@@ -1065,13 +1065,18 @@ sub ReadRCLogDB {
     if ( $dbh eq "" || $rclogdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("ReadRCLogDB: unsafe table name") if ( !SafeIdent($rclogdb) );
+    $stime  = int($stime);
+    $offset = int($offset);
+    $lim    = int($lim);
     if ( $offset > 0 ) {
         $searchcmd =
-"select * from $rclogdb where time>$stime and time<$offset order by time desc limit 0,$lim";
+"select * from $rclogdb where time>? and time<? order by time desc limit 0,$lim";
+        $sth = $dbh->selectall_arrayref( $searchcmd, undef, $stime, $offset );
     } else {
-        $searchcmd = "select * from $rclogdb where time>$stime order by time desc limit 0,$lim";
+        $searchcmd = "select * from $rclogdb where time>? order by time desc limit 0,$lim";
+        $sth       = $dbh->selectall_arrayref( $searchcmd, undef, $stime );
     }
-    $sth     = $dbh->selectall_arrayref($searchcmd);
     $mintime = 1e10;
     if ( defined $sth->[0] ) {
         if ( @{$sth} > $RCHistoryLimit ) {
@@ -2283,7 +2288,7 @@ sub getnextnum {
     my ($id) = @_;
     $id =~ s/\/$//g;
     my @matchitem = split( /\n/,
-        ReadDBItems( GetPageDB($id), 'id', "\n", '', "id REGEXP \"^$id\/[0-9]+\" group by id" ) );
+        ReadDBItems( GetPageDB($id), 'id', "\n", '', "id REGEXP ? group by id", "^" . quotemeta($id) . "/[0-9]+" ) );
     for ( my $i = 0 ; $i < @matchitem ; $i++ ) {
         $matchitem[$i] =~ s/^$id\///;
     }
@@ -2395,7 +2400,8 @@ sub GetLocalTree {
         my @matchitem = split(
             /\n/,
             ReadDBItems(
-                GetPageDB($id), 'id', "\n", '', "id REGEXP \"$id\/$namepat\" group by id"
+                GetPageDB($id), 'id', "\n", '', "id REGEXP ? group by id",
+                quotemeta($id) . "/" . $namepat
             )
         );
         foreach my $subitem (@matchitem) {
@@ -3607,11 +3613,14 @@ sub ReadLatestPageDB {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("ReadLatestPageDB: unsafe table name") if ( !SafeIdent($pagedb) );
     if ( $rev eq "" ) {
-        $sth = $dbh->selectall_arrayref("select max(revision),* from $pagedb where id='$id'");
+        $sth = $dbh->selectall_arrayref( "select max(revision),* from $pagedb where id=?",
+            undef, $id );
     } else {
         $sth = $dbh->selectall_arrayref(
-            "select revision,* from $pagedb where id='$id' and revision=$rev limit 1");
+            "select revision,* from $pagedb where id=? and revision=? limit 1",
+            undef, $id, $rev );
     }
     if ( defined $sth->[0] ) {
         (
@@ -3650,7 +3659,9 @@ sub OpenPageDB {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $sth = $dbh->selectall_arrayref("select max(revision),* from $pagedb where id='$id'");
+    die("OpenPageDB: unsafe table name") if ( !SafeIdent($pagedb) );
+    $sth = $dbh->selectall_arrayref( "select max(revision),* from $pagedb where id=?",
+        undef, $id );
     if ( defined $sth->[0] ) {
         (
             $maxversion, $pgid, $version, $author, $revision, $tupdate,   $tcreate,
@@ -3765,9 +3776,11 @@ sub SavePageDB {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("SavePageDB: unsafe table name") if ( !SafeIdent($pagedb) );
     $$Page{'name'} = $name;
 
-    $sth = $dbh->selectall_arrayref("select max(revision),data from $pagedb where id='$name';");
+    $sth = $dbh->selectall_arrayref( "select max(revision),data from $pagedb where id=?;",
+        undef, $name );
     if ( defined $sth->[0] ) {
         ( $version, $data ) = @{ $sth->[0] };
         $$Page{'revision'} = $version;
@@ -3801,8 +3814,7 @@ sub SavePageDB {
     $summary   = $$Text{'summary'};
 
     if ($minor) {
-        $sth = $dbh->do("delete from $pagedb where id='$pgid' and revision=$revision");
-        $dbh->commit;
+        DeleteDBItems( $pagedb, "id=? and revision=?", $pgid, $revision );
     }
     $sth =
       $dbh->prepare( "insert into $pagedb (id,version,author,revision,tupdate,"
@@ -3868,11 +3880,12 @@ sub OpenKeptListDB {
 
     @KeptList = ();
 
-    $searchcmd = "select * from $pagedb where id='$OpenPageName' limit $lim";
-    if ( $offset ne '' && $offset > 0 ) {
-        $searchcmd .= " offset $offset";
-    }
-    $sth = $dbh->selectall_arrayref($searchcmd);
+    die("OpenKeptListDB: unsafe table name") if ( !SafeIdent($pagedb) );
+    $lim       = int($lim);
+    $offset    = int($offset);
+    $searchcmd = "select * from $pagedb where id=? limit $lim";
+    $searchcmd .= " offset $offset" if ( $offset > 0 );
+    $sth = $dbh->selectall_arrayref( $searchcmd, undef, $OpenPageName );
     if ( defined $sth->[0] ) {
         if ( @{$sth} == $lim ) {
             pop( @{$sth} );
@@ -3947,15 +3960,17 @@ sub LoadUserDataDB {
     if ( $dbh eq "" || $userdb eq "" ) {
         return T('ERROR: database uninitialized!');
     }
+    die("LoadUserDataDB: unsafe table name") if ( !SafeIdent($userdb) );
     if ( $uname eq "" ) {
-        $sth = $dbh->selectall_arrayref("select * from $userdb where id=$uid limit 1");
+        $uid = int($uid);
+        $sth = $dbh->selectall_arrayref( "select * from $userdb where id=? limit 1", undef, $uid );
     } else {
         if ( $uname =~ /\@/ ) {
-            $sth =
-              $dbh->selectall_arrayref("select * from $userdb where email like '$uname' limit 1");
+            $sth = $dbh->selectall_arrayref( "select * from $userdb where email like ? limit 1",
+                undef, $uname );
         } else {
-            $sth =
-              $dbh->selectall_arrayref("select * from $userdb where name like '$uname' limit 1");
+            $sth = $dbh->selectall_arrayref( "select * from $userdb where name like ? limit 1",
+                undef, $uname );
         }
     }
     if ( !defined $sth->[0] ) {
@@ -4099,7 +4114,7 @@ sub UserCanEdit {
 
 sub UserIsBanned {
     my ( $host, $ip, $data, $status );
-    $data   = ReadDBItems( "system", 'data', "\n", '', "id='banlist'" );
+    $data   = ReadDBItems( "system", 'data', "\n", '', "id=?", 'banlist' );
     $status = 1;
     return 0 if ( !$status );    # No file exists, so no ban
     $data =~ s/\r//g;
@@ -4251,6 +4266,7 @@ sub UpdateHtmlCacheDB {
     if ( $dbh eq "" || $htmldb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("UpdateHtmlCacheDB: unsafe table name") if ( !SafeIdent($htmldb) );
     $sth = $dbh->prepare("replace into $htmldb (id,time,text) values (?,?,?)");
     $sth->execute( "$id\[$language\]", $Now, $html );
 
@@ -4265,12 +4281,11 @@ sub GenerateAllPagesListDB {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $lim       = GetParam( 'listc',  $ListItemCount ) + 1;
-    $offset    = GetParam( 'offset', 0 );
-    $searchcmd = "select id from $pagedb group by id limit " . $lim;
-    if ( $offset ne '' && $offset > 0 ) {
-        $searchcmd .= " offset $offset";
-    }
+    die("GenerateAllPagesListDB: unsafe table name") if ( !SafeIdent($pagedb) );
+    $lim       = int( GetParam( 'listc',  $ListItemCount ) ) + 1;
+    $offset    = int( GetParam( 'offset', 0 ) );
+    $searchcmd = "select id from $pagedb group by id limit $lim";
+    $searchcmd .= " offset $offset" if ( $offset > 0 );
     $sth = $dbh->selectall_arrayref($searchcmd);
     foreach $pg ( @{$sth} ) {
         push( @pages, $pg->[0] );
@@ -4757,16 +4772,18 @@ sub DoActivateUser {
     $treg  = &GetParam( 'regtime', '' );
 
     $userdb = ( split( /\//, $UserDir ) )[-1];
-    $regkey = &ReadDBItems( $userdb, 'param', '', '', "id='$uid'" );
+    $uid    = ( $uid =~ /\A\d+\z/ ) ? $uid : 0;
+    $regkey = &ReadDBItems( $userdb, 'param', '', '', "id=?", $uid );
 
     if ( $regkey eq $regid ) {
         if ( $dbh eq "" || $userdb eq "" ) {
             die( T('ERROR: database uninitialized!') );
         }
-        $sth = $dbh->selectall_arrayref("select id from $userdb where id=$uid limit 1");
+        die("DoActivateUser: unsafe table name") if ( !SafeIdent($userdb) );
+        $sth = $dbh->selectall_arrayref( "select id from $userdb where id=? limit 1", undef, $uid );
         if ( defined $sth->[0] ) {
-            $sth = $dbh->prepare("update $userdb set param='' where id=$uid limit 1");
-            $sth->execute();
+            $sth = $dbh->prepare("update $userdb set param='' where id=? limit 1");
+            $sth->execute($uid);
         }
         ResetRandKeyDB( $uid, '' );
         print &GetHeader( '', T('Activate Account'), '' );
@@ -5313,15 +5330,17 @@ sub ResetRandKeyDB {
     if ( $dbh eq "" || $userdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $sth = $dbh->selectall_arrayref("select id from $userdb where id=$uid limit 1");
+    die("ResetRandKeyDB: unsafe table name") if ( !SafeIdent($userdb) );
+    $uid = int($uid);
+    $sth = $dbh->selectall_arrayref( "select id from $userdb where id=? limit 1", undef, $uid );
     if ( defined $sth->[0] ) {
         my %rkey;
         if ( $sth =~ /$FS2/ ) {
             %rkey = split( /$FS2/, $sth );
         }
         $rkey{&RemoteAddr} = $UserData{'randkey'};
-        $sth = $dbh->prepare("update $userdb set randkey= ? where id=$uid");
-        $sth->execute( join( $FS2, %rkey ) );
+        $sth = $dbh->prepare("update $userdb set randkey= ? where id=?");
+        $sth->execute( join( $FS2, %rkey ), $uid );
     }
 }
 
@@ -5333,6 +5352,7 @@ sub GetNewUserIdDB {
     if ( $dbh eq "" || $userdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("GetNewUserIdDB: unsafe table name") if ( !SafeIdent($userdb) );
     $sth = $dbh->selectall_arrayref("select max(id) from $userdb");
     if ( defined $sth->[0] ) {
         ($id) = @{ $sth->[0] };
@@ -5356,18 +5376,19 @@ sub SaveUserDataDB {
     if ( $dbh eq "" || $userdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $tmp       = ReadDBItems( $userdb, 'id', "\n", '', "name='" . $UserData{'username'} . "'" );
+    die("SaveUserDataDB: unsafe table name") if ( !SafeIdent($userdb) );
+    $tmp       = ReadDBItems( $userdb, 'id', "\n", '', "name=?", $UserData{'username'} );
     $isnewuser = 0;
     if ( $tmp eq '' ) {
         $isnewuser = 1;
     } elsif ( $tmp ne $UserID ) {
         die( Ts( 'ERROR: user name %s has already been taken!', $UserData{'username'} ) );
     }
-    $tmp = ReadDBItems( $userdb, 'id', "\n", '', "email='" . $UserData{'email'} . "'" );
+    $tmp = ReadDBItems( $userdb, 'id', "\n", '', "email=?", $UserData{'email'} );
     if ( $tmp ne '' && $tmp ne $UserID ) {
         die( Ts( 'ERROR: user email %s has already been taken!', $UserData{'email'} ) );
     }
-    $passhash  = ReadDBItems( $userdb, 'pass', "\n", '', "name='" . $UserData{'username'} . "'" );
+    $passhash  = ReadDBItems( $userdb, 'pass', "\n", '', "name=?", $UserData{'username'} );
     $encpass   = $UserData{'password'};
     $adminhash = "";
     if ( $UserData{'adminpw'} ne "" ) {
@@ -5456,7 +5477,7 @@ sub DoWatchPage {
     my $user    = $UserData{'username'};
 
     if ( not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
-        if ( ReadDBItems( $watchdb, 'user', ',', '', "page='$id' and user='$user'" ) eq '' ) {
+        if ( ReadDBItems( $watchdb, 'user', ',', '', "page=? and user=?", $id, $user ) eq '' ) {
             &WriteDBItems( $watchdb, 'page,user', 0, ( $id, $user ) );
             AddUserLogDB( $UserID, 'watch', $id );
         }
@@ -5473,8 +5494,7 @@ sub DoUnWatchPage {
     my $user    = $UserData{'username'};
 
     if ( $dbh && not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
-        my $sth = $dbh->do("delete from $watchdb where page='$id' and user='$user'");
-        $dbh->commit;
+        DeleteDBItems( $watchdb, "page=? and user=?", $id, $user );
     }
     print &GetHeader( '', T('Watch Page'), '' );
     print '<div class="wikiinfo">' . Ts( 'Watch removed for page "%s".', $id );
@@ -5895,9 +5915,9 @@ sub DoPost {
         if ( $dbh eq "" || $htmldb eq "" ) {
             die( T('ERROR: database uninitialized!') );
         }
-        DeleteDBItems( $htmldb, "id='$id\[$language\]'" );
+        DeleteDBItems( $htmldb, "id=?", "$id\[$language\]" );
         if ( $isdynapg ne '' ) {
-            DeleteDBItems( $htmldb, "id='$isdynapg\[$language\]'" );
+            DeleteDBItems( $htmldb, "id=?", "$isdynapg\[$language\]" );
         }
 
     }
@@ -5981,11 +6001,11 @@ sub ReadWatchListDB {
     if ( $dbh eq "" || $watchdb eq "" || $userdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $userlist = ReadDBItems( $watchdb, 'user', "\n", '', "page='$id'" );
+    $userlist = ReadDBItems( $watchdb, 'user', "\n", '', "page=?", $id );
     if ( $userlist ne '' ) {
-        my @users  = split( /\n/, $userlist );
-        my $sqlcmd = "'" . join( "','", @users ) . "'";
-        $addr = ReadDBItems( $userdb, 'email', ',', '', "name IN ($sqlcmd)" );
+        my @users = split( /\n/, $userlist );
+        my $placeholders = join( ',', ('?') x scalar(@users) );
+        $addr = ReadDBItems( $userdb, 'email', ',', '', "name IN ($placeholders)", @users );
     }
     return $addr;
 }
@@ -6056,16 +6076,21 @@ sub SearchTitleAndBody {
         }
     }
     $searchcmd = "";
+    my @binds;
     foreach my $key ( keys %cmd ) {
+        # $key is one of "text=", "author=", "summary=", "text LIKE ", "author LIKE ", "summary LIKE "
+        # — all whitelisted above; values are bound as parameters.
         if ( length($searchcmd) ) { $searchcmd .= " AND "; }
-        $searchcmd .= "$key '" . $cmd{$key} . "' ";
+        $searchcmd .= "$key ? ";
+        push @binds, $cmd{$key};
     }
     if ( $searchcmd eq "" ) { return (); }
+    die("SearchTitleAndBody: unsafe table name") if ( !SafeIdent($pagedb) );
+    $lim    = int($lim);
+    $offset = int($offset);
     $searchcmd = "select id from $pagedb where $searchcmd group by id limit $lim";
-    if ( $offset ne '' && $offset > 0 ) {
-        $searchcmd .= " offset $offset";
-    }
-    $sth = $dbh->selectall_arrayref($searchcmd);
+    $searchcmd .= " offset $offset" if ( $offset > 0 );
+    $sth = $dbh->selectall_arrayref( $searchcmd, undef, @binds );
     if ( defined $sth->[0] ) {
         foreach my $rec ( @{$sth} ) {
             my ($pgid) = @$rec;
@@ -6103,6 +6128,7 @@ sub NewPageCacheClear {
     if ( $dbh eq "" || $htmldb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("NewPageCacheClear: unsafe table name") if ( !SafeIdent($htmldb) );
     my $sth = $dbh->prepare("delete from $htmldb");
     $sth->execute();
 }
@@ -6130,6 +6156,7 @@ sub WriteRcLogDB {
     if ( $dbh eq "" || $rclogdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("WriteRcLogDB: unsafe table name") if ( !SafeIdent($rclogdb) );
     $isadmin = 0 if ( $isadmin eq '' || !defined($isadmin) );
     $sth     = $dbh->prepare(
 "insert into $rclogdb (time,id,summary,isedit,host,kind,userid,name,revision,isadmin) values (?,?,?,?,?,?,?,?,?,?)"
@@ -6188,7 +6215,7 @@ sub DoPageLock {
     }
     return if ( !&ValidIdOrDie($id) );    # Consider nicer error?
     $lockdb = ( split( /\//, $LockDir ) )[-1];
-    $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id='$id'" );
+    $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id=?", $id );
     if ( &GetParam( "set", 1 ) ) {
         if ( not $tag =~ /L/ ) {
             $tag .= "L";
@@ -6217,10 +6244,13 @@ sub UpdatePageLogDB {
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $sth =
-      $dbh->do("insert into $dbname (id,lastvisit,visit,x,y,z) values ('$id',$Now,0,-1,-1,-1);");
+    die("UpdatePageLogDB: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
+    $sth = $dbh->prepare(
+        "insert into $dbname (id,lastvisit,visit,x,y,z) values (?,?,0,-1,-1,-1);");
+    $sth->execute( $id, $Now );
     $dbh->commit;    # sqlite does not support "on duplicate key update"
-    $sth = $dbh->do("update $dbname set lastvisit=$Now, visit=visit+1 where id='$id';");
+    $sth = $dbh->prepare("update $dbname set lastvisit=?, visit=visit+1 where id=?;");
+    $sth->execute( $Now, $id );
     $dbh->commit or die "Can't execute: ", $dbh->errstr;
 }
 
@@ -6231,21 +6261,30 @@ sub AddUserLogDB {
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $dbh->do( "insert into $dbname (id,time,ip,action,target) values ($uid,$Now,'"
-          . &RemoteAddr
-          . "','$action','$target');" );
+    die("AddUserLogDB: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
+    my $sth = $dbh->prepare(
+        "insert into $dbname (id,time,ip,action,target) values (?,?,?,?,?);");
+    $sth->execute( $uid, $Now, &RemoteAddr, $action, $target );
     $dbh->commit or die "Can't execute: ", $dbh->errstr;
+}
+
+sub SafeIdent {
+    my ($name) = @_;
+    return ( defined($name) && $name =~ /\A[A-Za-z_][A-Za-z0-9_]*\z/ );
 }
 
 sub WriteDBItems {
     my ( $dbname, $fields, $doreplace, @vals ) = @_;
-    my ( @res, $sth, $action, $holder );
+    my ( $sth, $action, $holder );
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("WriteDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
     $fields = "*" if ( $fields eq "" );
-    $action = "insert";
-    $action = "replace" if $doreplace;    #this is dangerous, you have to give the full record
+    foreach my $f ( split( /\s*,\s*/, $fields ) ) {
+        die("WriteDBItems: unsafe field name '$f'") if ( $f ne '*' && !SafeIdent($f) );
+    }
+    $action = $doreplace ? "replace" : "insert";
     $holder = $fields;
     $holder =~ s/[0-9a-zA-Z_]+/?/g;
     $sth = $dbh->prepare("$action into $dbname ($fields) values ($holder);")
@@ -6254,56 +6293,49 @@ sub WriteDBItems {
 }
 
 sub CopyDBItems {
-    my ( $db1, $db2, $conditions ) = @_;
-    my ( @res, $sth );
-
+    my ( $db1, $db2, $conditions, @binds ) = @_;
+    my $sth;
     if ( $dbh eq "" || $db1 eq "" || $db2 eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("CopyDBItems: unsafe table name") if ( !SafeIdent($db1) || !SafeIdent($db2) );
     if ( $conditions ne "" ) {
-        $sth = $dbh->do("replace into $db2 select * from $db1 where $conditions;");
+        $sth = $dbh->prepare("replace into $db2 select * from $db1 where $conditions;");
+        $sth->execute(@binds) or die "Can't execute: ", $dbh->errstr;
         $dbh->commit;
     }
-    if ( defined $sth ) {
-        return $sth;
-    }
-    return 0;
+    return defined($sth) ? $sth : 0;
 }
 
 sub DeleteDBItems {
-    my ( $dbname, $conditions ) = @_;
-    my ( @res, $sth );
-
+    my ( $dbname, $conditions, @binds ) = @_;
+    my $sth;
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    if ( $conditions eq "" ) {
-
-        #$sth=$dbh->do("delete from $dbname;");
-        #this will empty everything, it is dangerous, so skip
-    } else {
-        $sth = $dbh->do("delete from $dbname where $conditions;");
+    die("DeleteDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
+    if ( $conditions ne "" ) {
+        $sth = $dbh->prepare("delete from $dbname where $conditions;");
+        $sth->execute(@binds) or die "Can't execute: ", $dbh->errstr;
         $dbh->commit;
     }
-    if ( defined $sth ) {
-        return $sth;
-    }
-    return 0;
+
+    # empty $conditions intentionally refuses to wipe the whole table.
+    return defined($sth) ? $sth : 0;
 }
 
 sub ReadDBItems {
-    my ( $dbname, $fields, $glue1, $glue2, $conditions ) = @_;
+    my ( $dbname, $fields, $glue1, $glue2, $conditions, @binds ) = @_;
     my ( @res, $sth );
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+    die("ReadDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
     $fields = "*" if ( $fields eq "" );
-    if ( $conditions eq "" ) {
-        $sth = $dbh->selectall_arrayref("select $fields from $dbname;");
-    } else {
-        $sth = $dbh->selectall_arrayref("select $fields from $dbname where $conditions;");
-    }
-    if ( defined $sth->[0] ) {
+    my $sql = "select $fields from $dbname";
+    $sql .= " where $conditions" if ( $conditions ne "" );
+    $sth = $dbh->selectall_arrayref( $sql, undef, @binds );
+    if ( defined $sth && defined $sth->[0] ) {
         foreach my $rec (@$sth) {
             if ( @{$rec} > 0 ) {
                 push( @res, join( $glue2, @{$rec} ) );
@@ -6318,7 +6350,7 @@ sub DoEditBanned {
 
     print &GetHeader( "", T("Editing Banned list"), "" );
     return if ( !&UserIsAdminOrError() );
-    $banList = ReadDBItems( "system", 'data', "\n", '', "id='banlist'" );
+    $banList = ReadDBItems( "system", 'data', "\n", '', "id=?", 'banlist' );
     $status  = 1;
 
     $banList = "" if ( !$status );
@@ -6497,16 +6529,17 @@ sub DeletePageRevisionFrom {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $text = ReadDBItems( $pagedb, 'text', '', '', "id='$page' and revision=$major" );
+    die("DeletePageRevisionFrom: unsafe table name") if ( !SafeIdent($pagedb) );
+    $text = ReadDBItems( $pagedb, 'text', '', '', "id=? and revision=?", $page, $major );
     if ( $text eq "" ) {
         die( T('ERROR: specified revision does not exist!') . "$page:$major.$minor" );
     }
     @patches = split( /$FS4/, $text );
     if ( $#patches >= $minor ) {
         my $sth =
-          $dbh->prepare("update $pagedb set text= ? where id='$page' and revision='$major'");
+          $dbh->prepare("update $pagedb set text= ? where id=? and revision=?");
         splice( @patches, $minor, @patches - $minor );
-        $sth->execute( join( $FS4, @patches ) );
+        $sth->execute( join( $FS4, @patches ), $page, $major );
     }
 }
 
@@ -6532,20 +6565,21 @@ sub DeletePage {
     }
     if ( $rev ne "" && $rev >= 0 ) {
         if ( $rev =~ /^([0-9]+)\.([0-9]+)/ && $2 > 0 ) {
-            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page' and revision=$1" );
-            $res = &DeletePageRevisionFrom( $page, $1, $2 );
-            $res = &DeleteDBItems( $rclogdb, "id='$page' and revision=$rev" ) if ($doRC);
+            my ( $maj, $min ) = ( $1, $2 );
+            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id=? and revision=?", $page, $maj );
+            $res = &DeletePageRevisionFrom( $page, $maj, $min );
+            $res = &DeleteDBItems( $rclogdb, "id=? and revision=?", $page, $rev ) if ($doRC);
         } else {
-            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page' and revision=$rev" );
-            $res = &DeleteDBItems( $pagedb,  "id='$page' and revision=$rev" );
-            $res = &DeleteDBItems( $rclogdb, "id='$page' and revision=$rev" ) if ($doRC);
+            $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id=? and revision=?", $page, $rev );
+            $res = &DeleteDBItems( $pagedb,  "id=? and revision=?", $page, $rev );
+            $res = &DeleteDBItems( $rclogdb, "id=? and revision=?", $page, $rev ) if ($doRC);
         }
     } else {
-        $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id='$page'" );
-        $res = &DeleteDBItems( $pagedb,  "id='$page'" );
-        $res = &DeleteDBItems( $rclogdb, "id='$page'" ) if ($doRC);
+        $res = &CopyDBItems( $pagedb, "deleted$pagedb", "id=?", $page );
+        $res = &DeleteDBItems( $pagedb,  "id=?", $page );
+        $res = &DeleteDBItems( $rclogdb, "id=?", $page ) if ($doRC);
     }
-    $res = &DeleteDBItems( $htmldb, "id LIKE '$page\[%\]'" );
+    $res = &DeleteDBItems( $htmldb, "id LIKE ?", "$page\[%\]" );
     &WriteRcLogDB( $page, GetParam( "summary", "" ),
         2, $Now, 0, $UserData{'username'}, $UserData{'email'}, 0 );
     AddUserLogDB( $UserID, 'De', $page ) if ( $UserID >= 1000 );
@@ -6756,21 +6790,15 @@ sub RenamePage {
     if ( $dbh eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $tbname = &GetPageDB($old);
-    $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
-    $sth->execute();
-
-    $tbname = ( split( /\//, $RcFile ) )[-1];
-    $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
-    $sth->execute();
-
-    $tbname = ( split( /\//, $HtmlDir ) )[-1];
-    $sth    = $dbh->prepare("update $tbname set id='$new' where id='$old'");
-    $sth->execute();
-
+    for my $tb ( &GetPageDB($old), ( split( /\//, $RcFile ) )[-1], ( split( /\//, $HtmlDir ) )[-1] ) {
+        die("RenamePage: unsafe table name '$tb'") if ( !SafeIdent($tb) );
+        my $s = $dbh->prepare("update $tb set id=? where id=?");
+        $s->execute( $new, $old );
+    }
     $tbname = ( split( /\//, $EmailFile ) )[-1];
-    $sth    = $dbh->prepare("update $tbname set page='$new' where page='$old'");
-    $sth->execute();
+    die("RenamePage: unsafe table name '$tbname'") if ( !SafeIdent($tbname) );
+    $sth = $dbh->prepare("update $tbname set page=? where page=?");
+    $sth->execute( $new, $old );
     return;
 }
 
@@ -6808,7 +6836,7 @@ sub GetPageWatchLink {
 
 sub GetLockState {
     my ($lockstate);
-    $lockstate = ReadDBItems( "system", 'data', '', '', "id='lockstate'" );
+    $lockstate = ReadDBItems( "system", 'data', '', '', "id=?", 'lockstate' );
     $lockstate = 0 if ( $lockstate != 1 );
 
     return $lockstate;
@@ -6818,7 +6846,7 @@ sub IsPageLocked {
     my ($id) = @_;
     my ( $lockdb, $tag );
     $lockdb = ( split( /\//, $LockDir ) )[-1];
-    $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id='$id'" );
+    $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id=?", $id );
     if ( $tag =~ /L/ ) {
         return 1;
     }
@@ -6858,7 +6886,7 @@ sub IsPageWatched {
 
     if ( $UserID > 1000 ) {
         $watchdb = ( split( /\//, $EmailFile ) )[-1];
-        $tag     = ReadDBItems( $watchdb, 'user', '', '', "page='$id' and user='$user'" );
+        $tag     = ReadDBItems( $watchdb, 'user', '', '', "page=? and user=?", $id, $user );
         if ( $tag ne '' ) {
             return 1;
         }
@@ -7062,7 +7090,9 @@ sub ReadRawWikiPage {
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $sth = $dbh->selectall_arrayref("select max(revision),text from $pagedb where id='$id';");
+    die("ReadRawWikiPage: unsafe table name") if ( !SafeIdent($pagedb) );
+    $sth = $dbh->selectall_arrayref( "select max(revision),text from $pagedb where id=?;",
+        undef, $id );
     if ( defined $sth->[0] ) {
         ( $maxversion, $text ) = @{ $sth->[0] };
         if ( defined $maxversion && $maxversion ne "" ) {
@@ -7121,7 +7151,11 @@ sub RemovePageCache {
         die( T('ERROR: database uninitialized!') );
     }
     $lang = '%' if ( $lang eq '' );
-    DeleteDBItems( $htmldb, "id='$id\[$lang\]'" );
+    if ( $lang eq '%' ) {
+        DeleteDBItems( $htmldb, "id LIKE ?", "$id\[%\]" );
+    } else {
+        DeleteDBItems( $htmldb, "id=?", "$id\[$lang\]" );
+    }
 }
 
 sub PrintCaptcha {
