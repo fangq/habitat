@@ -631,23 +631,17 @@ sub InitCookie {
     $TimeZoneOffset = 0;
     undef $q->{'.cookies'};                    # Clear cache if it exists (for SpeedyCGI)
     %UserData   = ();                          # Fix for persistent environments.
-    %UserCookie = $q->cookie($CookieName);
-    $UserID     = $UserCookie{'id'};
-    $UserID     = 0 if ( !defined $UserID );
-    $UserID =~ s/\D//g;                        # Numeric only
-
-    if ( $UserID < 200 ) {
-        $UserID = 111;
-    } else {
-        &LoadUserDataDB($UserID);
-    }
+    %UserCookie = ();
+    my $rawcookie = $q->cookie($CookieName);
+    $UserID = VerifySessionToken($rawcookie);
     if ( $UserID > 199 ) {
-        if (   ( $UserData{'id'} != $UserCookie{'id'} )
-            || ( $UserData{'randkey'} != $UserCookie{'randkey'} ) )
-        {
-            $UserID   = 113;
-            %UserData = ();    # Invalid.  Consider warning message.
+        &LoadUserDataDB($UserID);
+        if ( $UserData{'id'} ne $UserID ) {
+            $UserID   = 113;                   # User row vanished
+            %UserData = ();
         }
+    } else {
+        $UserID = 111;                         # anonymous (signature failed, expired, or missing)
     }
 
     if ( $UserData{'tzoffset'} != 0 ) {
@@ -1963,15 +1957,11 @@ sub GetHttpHeader {
 
     $type = 'text/html' if ( $type eq '' );
     if ( defined( $SetCookie{'id'} ) ) {
-        $cookie =
-            "$CookieName=" . "rev&"
-          . $SetCookie{'rev'} . "&id&"
-          . $SetCookie{'id'}
-          . "&randkey&"
-          . $SetCookie{'randkey'}
-          . "&lang&"
-          . $SetCookie{'lang'};
-        $cookie .= ";expires=" . gmtime( time() + 60 * 24 * 3600 ) . " GMT";
+        my $val = $SetCookie{'id'}
+          ? SignSessionToken( $SetCookie{'id'}, 30 * 86400 )
+          : '';
+        my $ttl = $SetCookie{'id'} ? 30 * 86400 : -1;
+        $cookie = $q->cookie( BuildSessionCookie( $val, $ttl ) );
         if ( $HttpCharset ne '' ) {
             return $q->header(
                 -cookie  => $cookie,
@@ -2217,14 +2207,12 @@ sub GetRedirectPage {
             $html = "Status: 302 Moved\n";
             $html .= "Location: $url\n";
             if ( defined( $SetCookie{'id'} ) ) {
-                $html .=
-                    "Set-Cookie: $CookieName=" . "rev&"
-                  . $SetCookie{'rev'} . "&id&"
-                  . $SetCookie{'id'}
-                  . "&randkey&"
-                  . $SetCookie{'randkey'}
-                  . "&lang&"
-                  . $SetCookie{'lang'} . "\n";
+                my $val = $SetCookie{'id'}
+                  ? SignSessionToken( $SetCookie{'id'}, 30 * 86400 )
+                  : '';
+                my $ttl = $SetCookie{'id'} ? 30 * 86400 : -1;
+                my $ck  = $q->cookie( BuildSessionCookie( $val, $ttl ) );
+                $html .= "Set-Cookie: $ck\n";
             }
             $html .= "Content-Type: text/html\n\n";           # Needed for browser failure
             $html .= "<html><script type='text/javascript'>
@@ -5201,19 +5189,15 @@ sub DoIndex {
     print &GetCommonFooter();
 }
 
-# Create a new user file/cookie pair
+# Create a new user file/cookie pair. The signed session cookie is
+# emitted on the next response by GetHttpHeader / GetRedirectPage.
 sub DoNewLoginDB {
+    $SetCookie{'id'} = &GetNewUserIdDB();
+    %UserCookie = ( id => $SetCookie{'id'} );
+    $UserID     = $SetCookie{'id'};
 
-    # Consider warning if cookie already exists (maybe use "replace=1" parameter)
-    $SetCookie{'id'}      = &GetNewUserIdDB();
-    $SetCookie{'randkey'} = sprintf( "%08X%08X", int( rand(0x10000000) ), int( rand(0x10000000) ) );
-    $SetCookie{'rev'}     = 1;
-    $SetCookie{'lang'}    = $LangID;
-    %UserCookie           = %SetCookie;
-    $UserID               = $SetCookie{'id'};
-
-    # The cookie will be transmitted in the next header
-    %UserData               = %UserCookie;
+    %UserData = ();
+    $UserData{'id'}         = $SetCookie{'id'};
     $UserData{'createtime'} = $Now;
     $UserData{'createip'}   = &RemoteAddr;
     $UserData{'pagecreate'} = '';
@@ -5320,33 +5304,13 @@ sub DoLogin {
     print &GetMinimumFooter();
 }
 
+# Signals that a freshly-authenticated session cookie should be emitted
+# on the next response. Used to be: rotate per-IP randkey, store in DB.
+# Now: just record uid; the next response signs and sets the cookie.
 sub ResetRandKeyDB {
     my ( $uid, $param ) = @_;
-    my $userdb = ( split( /\//, $UserDir ) )[-1];
-    my $sth;
-
-    if ( $UseActivation && $param =~ /^R/ ) {
-        return;
-    }
-    $SetCookie{'id'}      = $uid;
-    $SetCookie{'randkey'} = sprintf( "%08X%08X", int( rand(0x10000000) ), int( rand(0x10000000) ) );
-    $UserData{'randkey'}  = $SetCookie{'randkey'};
-
-    if ( $dbh eq "" || $userdb eq "" ) {
-        die( T('ERROR: database uninitialized!') );
-    }
-    die("ResetRandKeyDB: unsafe table name") if ( !SafeIdent($userdb) );
-    $uid = int($uid);
-    $sth = $dbh->selectall_arrayref( "select id from $userdb where id=? limit 1", undef, $uid );
-    if ( defined $sth->[0] ) {
-        my %rkey;
-        if ( $sth =~ /$FS2/ ) {
-            %rkey = split( /$FS2/, $sth );
-        }
-        $rkey{&RemoteAddr} = $UserData{'randkey'};
-        $sth = $dbh->prepare("update $userdb set randkey= ? where id=?");
-        $sth->execute( join( $FS2, %rkey ), $uid );
-    }
+    return if ( $UseActivation && $param =~ /^R/ );
+    $SetCookie{'id'} = $uid;
 }
 
 sub GetNewUserIdDB {
@@ -5416,18 +5380,16 @@ sub SaveUserDataDB {
         'alldiff'      => $UserData{'alldiff'},
         'defaultdiff'  => $UserData{'defaultdiff'},
     );
-    if ( defined( $UserData{'rawrandkey'} ) ) {
-        %rkey = split( /$FS2/, $UserData{'rawrandkey'} );
-    }
-    $rkey{&RemoteAddr} = $UserData{'randkey'};
-
     $sth = $dbh->prepare(
             "replace into $userdb (id,name,pass,randkey,groupid,lang,email,param,createtime,"
           . "createip,tzoffset,pagecreate,pagemodify,stylesheet) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     );
+
+    # The randkey column is retained for schema compatibility but is no
+    # longer used for auth (replaced by HMAC-signed session cookies).
     $sth->execute(
         $UserID,                 $UserData{'username'},
-        $encpass,                join( $FS2, %rkey ),
+        $encpass,                '',
         $adminhash,              $UserData{'lang'},
         $UserData{'email'},      $UserData{'param'},
         $UserData{'createtime'}, $UserData{'createip'},
@@ -7317,6 +7279,73 @@ sub ConstantEq {
         $diff |= ord( substr( $a, $i, 1 ) ) ^ ord( substr( $b, $i, 1 ) );
     }
     return $diff == 0 ? 1 : 0;
+}
+
+# Session cookie token format: "<uid>|<expires>|<sig>" where
+#   sig = HMAC-SHA256-hex("<uid>|<expires>", site_secret)
+# This replaces the prior id&randkey multi-field cookie. Old cookies
+# fail VerifySessionToken and the user is treated as anonymous (i.e.
+# forced re-login). Default lifetime is 30 days.
+sub SignSessionToken {
+    my ( $uid, $ttl ) = @_;
+    return '' if ( !defined($uid) || $uid !~ /\A\d+\z/ || $uid <= 0 );
+    $ttl = 30 * 86400 if ( !defined($ttl) || $ttl <= 0 );
+    my $exp = $Now + $ttl;
+    my $sig = Hmac("$uid|$exp");
+    return "$uid|$exp|$sig";
+}
+
+# Returns the uid (>0) if the token is well-formed, unexpired, and
+# the HMAC verifies. Returns 0 otherwise. Constant-time signature
+# compare to avoid timing oracles.
+sub VerifySessionToken {
+    my ($tok) = @_;
+    return 0 if ( !defined($tok) || ref($tok) );
+    return 0 unless ( $tok =~ /\A(\d+)\|(\d+)\|([0-9a-f]+)\z/ );
+    my ( $uid, $exp, $sig ) = ( $1, $2, $3 );
+    return 0 if ( $exp < $Now );
+    return 0 unless ConstantEq( $sig, Hmac("$uid|$exp") );
+    return $uid;
+}
+
+# Returns 1 if the request is over HTTPS, either directly or via a
+# trusted proxy that set X-Forwarded-Proto.
+sub IsRequestSecure {
+    return 1 if ( defined $ENV{HTTPS}             && $ENV{HTTPS}             =~ /^on$/i );
+    return 1 if ( defined $ENV{SERVER_PORT}       && $ENV{SERVER_PORT}       == 443 );
+    if ( $TrustedProxies ne '' && defined $ENV{HTTP_X_FORWARDED_PROTO} ) {
+        my $remote = $ENV{REMOTE_ADDR} || '';
+        foreach my $tp ( split( /\s*,\s*/, $TrustedProxies ) ) {
+            next if ( $tp eq '' );
+            return 1
+              if ( ( $remote eq $tp || index( $remote, $tp ) == 0 )
+                && $ENV{HTTP_X_FORWARDED_PROTO} =~ /^https$/i );
+        }
+    }
+    return 0;
+}
+
+# Builds a CGI.pm cookie hashref with the right attributes for the
+# current request (HttpOnly always; SameSite=Lax always; Secure when
+# the request itself is HTTPS).
+sub BuildSessionCookie {
+    my ( $value, $ttl ) = @_;
+    my %args = (
+        -name     => $CookieName,
+        -value    => defined($value) ? $value : '',
+        -path     => '/',
+        -httponly => 1,
+        -samesite => 'Lax',
+    );
+    if ( defined($ttl) ) {
+        if ( $ttl <= 0 ) {
+            $args{-expires} = 'Thu, 01-Jan-1970 00:00:00 GMT';
+        } else {
+            $args{-expires} = '+' . int( $ttl / 86400 ) . 'd';
+        }
+    }
+    $args{-secure} = 1 if ( IsRequestSecure() );
+    return \%args;
 }
 
 # Bcrypt $2b$ with cost 12. ~250ms per hash on a modern CPU — slow on purpose.
