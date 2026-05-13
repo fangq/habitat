@@ -15,17 +15,25 @@
 
 use strict;
 use warnings;
-use FindBin ();
+use File::Basename ();
+use File::Spec ();
+use Cwd ();
 use CGI::Emulate::PSGI;
 use CGI::Compile;
+
+# __FILE__ is this app.psgi's own path even when loaded indirectly
+# (Plack::Util::load_psgi from a test, mod_perl, etc.); FindBin::Bin
+# would resolve to the caller's $0 dir instead.
+my $here = Cwd::abs_path( File::Basename::dirname(__FILE__) )
+  or die "app.psgi: cannot resolve own directory";
 
 # Make sure CGI-relative paths in the script ($DataDir = "./habitatdb"
 # etc.) resolve to the script's own directory, regardless of where
 # plackup/starman was invoked from.
-chdir $FindBin::Bin or die "app.psgi: cannot chdir to $FindBin::Bin: $!";
-$ENV{PWD} = $FindBin::Bin;
+chdir $here or die "app.psgi: cannot chdir to $here: $!";
+$ENV{PWD} = $here;
 
-my $cgi_path = "$FindBin::Bin/index.cgi";
+my $cgi_path = "$here/index.cgi";
 -f $cgi_path or die "app.psgi: $cgi_path not found";
 
 # Compile the CGI script once into a Perl sub. CGI::Emulate::PSGI then

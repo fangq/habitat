@@ -3020,7 +3020,7 @@ sub ScrubRawHtml {
                 width => 1, height => 1, border => 1, align => 1,
             }
         );
-        $HtmlScrubber->rules( \@rules );
+        $HtmlScrubber->rules(@rules);
     }
     return $HtmlScrubber->scrub($html);
 }
@@ -7523,4 +7523,5 @@ sub max {
 &DoWikiRequest()
   if ( $RunCGI && ( $_ ne 'nocgi' ) );    # Do everything. 1; # In case we are loaded from elsewhere
 
+1;
 # == End of UseModWiki script. ===========================================

@@ -37,6 +37,16 @@ sub _dbh {
     return $HabitatEngine::dbh;
 }
 
+# Commit only if the handle is in manual-transaction mode. Calling
+# commit() under AutoCommit=1 emits a "commit ineffective" warning
+# without changing behavior. SQLite defaults to AutoCommit=1; tests
+# and production typically don't open an explicit transaction here.
+sub _commit_if_needed {
+    my ($dbh) = @_;
+    return if ( !defined($dbh) || $dbh->{AutoCommit} );
+    $dbh->commit;
+}
+
 # Identifier whitelist for any value we have to interpolate directly
 # into SQL (table names, column names) — DBI placeholders can't bind
 # identifiers. Anything outside [A-Za-z_][A-Za-z0-9_]* is rejected.
@@ -78,7 +88,7 @@ sub CopyDBItems {
     return 0 if ( $conditions eq "" );
     my $sth = $dbh->prepare("replace into $db2 select * from $db1 where $conditions;");
     $sth->execute(@binds) or die "Can't execute: " . $dbh->errstr;
-    $dbh->commit;
+    _commit_if_needed($dbh);
     return defined($sth) ? $sth : 0;
 }
 
@@ -93,7 +103,7 @@ sub DeleteDBItems {
     return 0 if ( $conditions eq "" );
     my $sth = $dbh->prepare("delete from $dbname where $conditions;");
     $sth->execute(@binds) or die "Can't execute: " . $dbh->errstr;
-    $dbh->commit;
+    _commit_if_needed($dbh);
     return defined($sth) ? $sth : 0;
 }
 
