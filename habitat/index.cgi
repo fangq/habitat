@@ -666,6 +666,7 @@ sub InitRequest {
         $q->charset($HttpCharset);
     }
     $ScriptName = pop(@ScriptPath);    # Name used in links
+    $ScriptName = '' unless defined $ScriptName;    # Empty SCRIPT_NAME under PSGI
     $IndexInit  = 0;                   # Must be reset for each request
     if ( !defined($InterSiteInit) ) {
         $InterSiteInit = 0;
@@ -7440,9 +7441,14 @@ sub VerifyCSRFToken {
 }
 
 # Verify the inbound csrf_token form/query parameter; on failure print
-# a 403-style error page and die. Call near the top of every handler
-# that mutates server state. POST-only callers may also want to assert
-# REQUEST_METHOD eq 'POST'.
+# a 403-style error page and stop the current request. Call near the
+# top of every handler that mutates server state. POST-only callers
+# may also want to assert REQUEST_METHOD eq 'POST'.
+#
+# Uses exit (not die) so the error page rides out cleanly under both
+# CGI and PSGI. CGI::Emulate::PSGI traps exit and converts it to a
+# normal PSGI response without killing the worker process; under CGI
+# exit ends the per-request fork as usual.
 sub CSRFCheckOrDie {
     return if ( VerifyCSRFToken( &GetParam( 'csrf_token', '' ) ) );
     print $q->header( -status => '403 Forbidden' );
@@ -7452,7 +7458,8 @@ sub CSRFCheckOrDie {
         'The form you submitted is missing a valid CSRF token. Reload the page and try again.'
       ),
       "</p>";
-    die("CSRF check failed for action: " . ( &GetParam( 'action', '?' ) ) );
+    warn( "CSRF check failed for action: " . ( &GetParam( 'action', '?' ) ) );
+    exit 0;
 }
 
 # Builds a CGI.pm cookie hashref with the right attributes for the
