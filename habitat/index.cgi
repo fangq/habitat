@@ -96,7 +96,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
   $UserBuildinCSS %BuildinPages %TextCache %Pages $UseDetailedLog
   $PageLog $UserLog $PrintedHeader $PageItemCount $ListItemCount
-  $HistoryLimit $RCHistoryLimit $InlineDiffLimit);
+  $HistoryLimit $RCHistoryLimit $InlineDiffLimit $TrustedProxies);
 
 # Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
@@ -243,6 +243,10 @@ $ListItemCount   = 100;
 $HistoryLimit    = 50;
 $RCHistoryLimit  = 100;
 $InlineDiffLimit = 50;
+$TrustedProxies  = '';                             # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
+                                                   # Only when REMOTE_ADDR matches one of these will
+                                                   # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
+                                                   # Example: "127.0.0.1,10.0.0.1,192.168.1."
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ( 'bn.com', 'amazon.com', 'search' );
@@ -7111,9 +7115,18 @@ sub JSONFormat {
 
 sub RemoteAddr {
     my $remote = $ENV{'REMOTE_ADDR'};
-    $remote = $ENV{'HTTP_X_REMOTE_ADDR'}
-      if $ENV{'HTTP_X_REMOTE_ADDR'} && ( !$remote || $remote =~ /^(127|192)\./ );
+    my $fwd    = $ENV{'HTTP_X_REMOTE_ADDR'} || $ENV{'HTTP_X_FORWARDED_FOR'};
+    return $remote unless ( $fwd && $TrustedProxies ne '' && defined($remote) );
 
+    foreach my $tp ( split( /\s*,\s*/, $TrustedProxies ) ) {
+        next if ( $tp eq '' );
+        if ( $remote eq $tp || index( $remote, $tp ) == 0 ) {
+            ( $fwd = $fwd ) =~ s/,.*//;    # X-Forwarded-For can be a list; take leftmost
+            $fwd =~ s/^\s+|\s+$//g;
+            return $fwd if ( $fwd =~ /^[0-9a-fA-F:.]+$/ );
+            last;
+        }
+    }
     return $remote;
 }
 
