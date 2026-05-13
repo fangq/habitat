@@ -6914,8 +6914,22 @@ sub SaveUpload {
     $UploadUrl .= '/' if ( substr( $UploadUrl, -1, 1 ) ne '/' );    # End with /
     $filename = $q->param('file');
     $filename =~ s/.*[\/\\](.*)/$1/;                                # Only name after last \ or /
+    $filename =~ s/[^A-Za-z0-9._-]/_/g;                             # Whitelist safe chars
+    $filename =~ s/^\.+//;                                          # No leading dots (no dotfiles)
+    $filename =~ s/\.+/./g;                                         # Collapse runs of dots
+    if ( $filename eq '' || length($filename) > 200 ) {
+        print '<p>' . &QuoteHtml( T('Invalid upload filename.') ) . '</p></div>';
+        print &GetCommonFooter();
+        return;
+    }
     $uploadFilehandle = $q->upload('file');
-    open UPLOADFILE, ">$UploadDir$filename";
+    open( UPLOADFILE, '>', "$UploadDir$filename" )
+      or do {
+        print '<p>' . &QuoteHtml( Ts( 'Could not write upload: %s', $! ) ) . '</p></div>';
+        print &GetCommonFooter();
+        return;
+      };
+    binmode UPLOADFILE;
     while (<$uploadFilehandle>) { print UPLOADFILE; }
     close UPLOADFILE;
 
