@@ -64,6 +64,7 @@ use HTML::Scrubber;
 use JSON::PP;
 use Digest::SHA ();
 use Crypt::Bcrypt qw(bcrypt bcrypt_check);
+use Habitat::Store qw(SafeIdent ReadDBItems WriteDBItems DeleteDBItems CopyDBItems);
 
 #use diagnostics;
 
@@ -6323,83 +6324,6 @@ sub AddUserLogDB {
         "insert into $dbname (id,time,ip,action,target) values (?,?,?,?,?);");
     $sth->execute( $uid, $Now, &RemoteAddr, $action, $target );
     $dbh->commit or die "Can't execute: ", $dbh->errstr;
-}
-
-sub SafeIdent {
-    my ($name) = @_;
-    return ( defined($name) && $name =~ /\A[A-Za-z_][A-Za-z0-9_]*\z/ );
-}
-
-sub WriteDBItems {
-    my ( $dbname, $fields, $doreplace, @vals ) = @_;
-    my ( $sth, $action, $holder );
-    if ( $dbh eq "" || $dbname eq "" ) {
-        die( T('ERROR: database uninitialized!') );
-    }
-    die("WriteDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    $fields = "*" if ( $fields eq "" );
-    foreach my $f ( split( /\s*,\s*/, $fields ) ) {
-        die("WriteDBItems: unsafe field name '$f'") if ( $f ne '*' && !SafeIdent($f) );
-    }
-    $action = $doreplace ? "replace" : "insert";
-    $holder = $fields;
-    $holder =~ s/[0-9a-zA-Z_]+/?/g;
-    $sth = $dbh->prepare("$action into $dbname ($fields) values ($holder);")
-      or die "Can't prepare: ", $dbh->errstr;
-    $sth->execute(@vals) or die "Can't execute: ", $dbh->errstr;
-}
-
-sub CopyDBItems {
-    my ( $db1, $db2, $conditions, @binds ) = @_;
-    my $sth;
-    if ( $dbh eq "" || $db1 eq "" || $db2 eq "" ) {
-        die( T('ERROR: database uninitialized!') );
-    }
-    die("CopyDBItems: unsafe table name") if ( !SafeIdent($db1) || !SafeIdent($db2) );
-    if ( $conditions ne "" ) {
-        $sth = $dbh->prepare("replace into $db2 select * from $db1 where $conditions;");
-        $sth->execute(@binds) or die "Can't execute: ", $dbh->errstr;
-        $dbh->commit;
-    }
-    return defined($sth) ? $sth : 0;
-}
-
-sub DeleteDBItems {
-    my ( $dbname, $conditions, @binds ) = @_;
-    my $sth;
-    if ( $dbh eq "" || $dbname eq "" ) {
-        die( T('ERROR: database uninitialized!') );
-    }
-    die("DeleteDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    if ( $conditions ne "" ) {
-        $sth = $dbh->prepare("delete from $dbname where $conditions;");
-        $sth->execute(@binds) or die "Can't execute: ", $dbh->errstr;
-        $dbh->commit;
-    }
-
-    # empty $conditions intentionally refuses to wipe the whole table.
-    return defined($sth) ? $sth : 0;
-}
-
-sub ReadDBItems {
-    my ( $dbname, $fields, $glue1, $glue2, $conditions, @binds ) = @_;
-    my ( @res, $sth );
-    if ( $dbh eq "" || $dbname eq "" ) {
-        die( T('ERROR: database uninitialized!') );
-    }
-    die("ReadDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    $fields = "*" if ( $fields eq "" );
-    my $sql = "select $fields from $dbname";
-    $sql .= " where $conditions" if ( $conditions ne "" );
-    $sth = $dbh->selectall_arrayref( $sql, undef, @binds );
-    if ( defined $sth && defined $sth->[0] ) {
-        foreach my $rec (@$sth) {
-            if ( @{$rec} > 0 ) {
-                push( @res, join( $glue2, @{$rec} ) );
-            }
-        }
-    }
-    return join( $glue1, @res );
 }
 
 sub DoEditBanned {
