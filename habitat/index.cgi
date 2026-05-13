@@ -6926,15 +6926,20 @@ sub SaveUpload {
     if ( $filename =~ /${ImageExtensions}$/ ) {
         print '<hr><img src="' . $UploadUrl . $filename . '">' . "\n";
         if ( $q->param('dothumb') eq 'on' ) {
-            system(
-"convert -sample 200x200 \"$UploadDir$filename\" \"$UploadDir/thumb/mini_$filename\""
-            );
-            print '<hr>upload:thumb/mini_'
-              . $printFilename
-              . '<hr><img src="'
-              . $UploadUrl
-              . '/thumb/mini_'
-              . $filename . '">' . "\n";
+            my $src   = "$UploadDir$filename";
+            my $dst   = "$UploadDir/thumb/mini_$filename";
+            my $rc    = system { 'convert' } 'convert', '-sample', '200x200', $src, $dst;
+            if ( $rc == 0 ) {
+                print '<hr>upload:thumb/mini_'
+                  . $printFilename
+                  . '<hr><img src="'
+                  . $UploadUrl
+                  . '/thumb/mini_'
+                  . $filename . '">' . "\n";
+            } else {
+                print '<hr>'
+                  . &QuoteHtml( T('Thumbnail generation failed.') ) . "\n";
+            }
         }
     }
     print '</div>';
