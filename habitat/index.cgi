@@ -1668,7 +1668,7 @@ sub GetPageLinkText {
         $id = &FreeToNormal($id);
         $name =~ s/_/ /g;
     }
-    $style = 'wikipagelink' if ( $style eq '' );
+    $style = 'wikipagelink' if ( ! length ($style) );
     return &ScriptLinkClass( $id, $name, $style, $hint );
 }
 
@@ -2490,7 +2490,7 @@ sub EmbedWikiPageRaw {
         if ( $uri eq "" ) {
             $res = &ReadRawWikiPage($id);
         } else {
-            $res = &GetVariable( &ReadRawWikiPage($id) );
+            $res = &GetVariable( &ReadRawWikiPage($id), $uri );
         }
         push( @$PageStack, $id );
     } else {
