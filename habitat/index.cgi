@@ -4040,6 +4040,7 @@ sub OpenKeptRevisions {
 
 sub LoadUserDataDB {
     my ( $uid, $uname ) = @_;
+    $uname = '' if ( !defined($uname) );
     %UserData = ();
     my $userdb = ( split( /\//, $UserDir ) )[-1];
     my $sth;
@@ -4057,8 +4058,10 @@ sub LoadUserDataDB {
     # Explicit column list — Stage 5 dropped randkey from the schema,
     # so `SELECT *` ordinal-unpacking would shift. Naming columns
     # explicitly also lets us reorder fields freely in the future.
+    # Note: the `stylesheet` column was renamed to `prefs` and the
+    # contents switched from $FS2-joined to JSON in Stage 5.
     my $cols = "id,name,pass,groupid,lang,email,param,createtime,"
-             . "stylesheet,createip,tzoffset,pagecreate,pagemodify";
+             . "prefs,createip,tzoffset,pagecreate,pagemodify";
 
     if ( $uname eq "" ) {
         $uid = int($uid);
@@ -4085,7 +4088,17 @@ sub LoadUserDataDB {
             $email,      $param,    $createtime, $extradata,
             $createip,   $tzoffset, $pagecreate, $pagemodify
         ) = @{ $sth->[0] };
-        %extra = split( /$FS2/, $extradata ) if defined $extradata;
+
+        # `prefs` is JSON (Stage 5); legacy rows from before the
+        # migration may still carry the $FS2-joined form, accept both.
+        if ( defined($extradata) && $extradata ne '' ) {
+            if ( $extradata =~ /^\s*\{/ ) {
+                my $h = eval { decode_json($extradata) };
+                %extra = %$h if ( !$@ && ref($h) eq 'HASH' );
+            } else {
+                %extra = split( /$FS2/, $extradata );
+            }
+        }
     }
     $UserData{'id'}           = $id;
     $UserData{'username'}     = $name;
@@ -5505,12 +5518,15 @@ sub SaveUserDataDB {
         'defaultdiff'  => $UserData{'defaultdiff'},
     );
     # The randkey column was retired in Stage 5 (replaced by HMAC-
-    # signed session cookies). WriteDBItems generates a dialect-aware
-    # upsert (REPLACE on SQLite, ON CONFLICT DO UPDATE on Postgres).
+    # signed session cookies). The prefs column was renamed from
+    # `stylesheet` and stores JSON instead of $FS2-joined text.
+    # WriteDBItems generates a dialect-aware upsert (REPLACE on
+    # SQLite, ON CONFLICT DO UPDATE on Postgres).
+    my $prefs_json = encode_json( \%extra );
     WriteDBItems(
         $userdb,
         "id,name,pass,groupid,lang,email,param,createtime,"
-          . "createip,tzoffset,pagecreate,pagemodify,stylesheet",
+          . "createip,tzoffset,pagecreate,pagemodify,prefs",
         1,
         $UserID,                 $UserData{'username'},
         $encpass,                $adminhash,
@@ -5518,7 +5534,7 @@ sub SaveUserDataDB {
         $UserData{'param'},      $UserData{'createtime'},
         $UserData{'createip'},   $UserData{'tzoffset'},
         $UserData{'pagecreate'}, $UserData{'pagemodify'},
-        join( $FS2, %extra )
+        $prefs_json,
     );
     if ( $isnewuser && $UseActivation ) {
         &SendRegMail();
