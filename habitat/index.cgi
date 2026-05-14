@@ -5125,7 +5125,15 @@ sub DoEditPrefs {
     print '<h4>' . T('User info:') . "</h4>";
     print '<span class="span_prefinfo"><label class="formlabel">' . T('User name:') . '</label>';
     if ( $UserData{'username'} ne '' ) {
-        print "<span class='span_username'>" . $UserData{'username'} . "</span> ($UserID)";
+        # Username is constrained to $FreeLinkPattern's charset, which
+        # excludes < > " &, so XSS via this output is already blocked
+        # by validation in DoUpdatePrefs. QuoteHtml is defensive
+        # depth-in-defense: an apostrophe in 'O'Brien' or similar
+        # still renders correctly, and any future relaxation of the
+        # username charset won't break out of the surrounding span.
+        print "<span class='span_username'>"
+          . QuoteHtml( $UserData{'username'} )
+          . "</span> (" . QuoteHtml($UserID) . ")";
         print &GetHiddenValue( 'p_username', $UserData{'username'} ), "\n";
     } else {
         print &GetFormText( 'username', "", 20, 30 ) . "<strong>*</strong>";
@@ -5791,7 +5799,8 @@ sub DoWatchPage {
         }
     }
     print &GetHeader( '', T('Watch Page'), '' );
-    print '<div class="wikiinfo">' . Ts( 'Watch activated for page "%s".', $id );
+    print '<div class="wikiinfo">'
+      . Ts( 'Watch activated for page "%s".', QuoteHtml($id) );
     print '</div>';
     print &GetCommonFooter();
 }
@@ -5806,7 +5815,8 @@ sub DoUnWatchPage {
         DeleteDBItems( $watchdb, "page=? and username=?", $id, $user );
     }
     print &GetHeader( '', T('Watch Page'), '' );
-    print '<div class="wikiinfo">' . Ts( 'Watch removed for page "%s".', $id );
+    print '<div class="wikiinfo">'
+      . Ts( 'Watch removed for page "%s".', QuoteHtml($id) );
     print '</div>';
     print &GetCommonFooter();
 }
@@ -7401,10 +7411,16 @@ sub ReadNameSpaceRules {
     foreach $name ( keys %$rule ) {
         $fname = $$rule{$name};
         if ( -f $fname ) {
-            $fname = $$rule{$name};
-            open FRULE, "<$fname" || die("can not read file");
-            @ru = <FRULE>;
-            close FRULE;
+
+            # `||` binds tighter than `,` — the previous form
+            # `open FRULE, "<$fname" || die(...)` opened the string
+            # `"<$fname" || "can not read file"` which is always the
+            # left operand, so the die() never fired. `or` has lower
+            # precedence than `,` and gives the intended short-circuit.
+            open( my $fh, '<', $fname )
+              or die("ReadNameSpaceRules: cannot read $fname: $!");
+            @ru = <$fh>;
+            close $fh;
             $$rule{$name} = join( "", @ru );
         } else {
             $$rule{$name} = "";
