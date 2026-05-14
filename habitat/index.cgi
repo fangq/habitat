@@ -86,7 +86,7 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $ShowEdits $ThinLine $LinkPattern $InterLinkPattern $InterSitePattern
   $UrlProtocols $UrlPattern $ImageExtensions $RFCPattern $ISBNPattern
   $FS $FS1 $FS2 $FS3 $FS4 $FS5 $CookieName $SiteBase $StyleSheet $NotFoundPg
-  $FooterNote $EditNote $MaxPost $NewText $NotifyDefault $HttpCharset
+  $FooterNote $EditNote $MaxPost $NewText $HttpCharset
   $UserGotoBar $DeletedPage $ReplaceFile @ReplaceableFiles $TableSyntax
   $MetaKeywords $NamedAnchors $InterWikiMoniker $SiteDescription $RssLogoUrl
   $NumberDates $EarlyRules $LateRules $NewFS $KeepSize $SlashLinks $BGColor
@@ -97,12 +97,11 @@ use vars qw(@RcDays @HtmlPairs @HtmlSingle
   $UploadDir $UploadUrl $LimitFileUrl $MaintTrimRc $SearchButton
   $EditNameLink $UseMetaWiki @ImageSites $BracketImg $cvUTF8ToUCS2
   $cvUCS2ToUTF8 $MaxTreeDepth $PageEmbed $MaxEmbedDepth $IsPrintTree
-  $AMathML $AMathMLPath $MathColor $CaptchaKey $UseCaptcha $WikiCipher
+  $AMathML $AMathMLPath $MathColor $UseCaptcha
   $UserBuildinCSS %BuildinPages %TextCache %Pages $UseDetailedLog
   $PageLog $UserLog $PrintedHeader $PageItemCount $ListItemCount
   $HistoryLimit $RCHistoryLimit $InlineDiffLimit $TrustedProxies);
 
-# Note: $NotifyDefault is kept because it was a config variable in 0.90
 # Other global variables:
 use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %KeptRevisions %UserCookie %SetCookie %UserData %IndexHash %Translate
@@ -238,7 +237,6 @@ $AMathML       = 0;                                # 1 = allow <amath> tags, 0 =
 $AMathMLPath   = "";
 $MathColor     = "yellow";
 $UseCaptcha    = 1;                                # flag to enable captcha
-$CaptchaKey = '';                                  # Deprecated. Captcha now uses HMAC over the site secret.
 $DiscussSuffix   = '..discuss';
 $DBName          = "";
 $UseActivation   = 0;
@@ -713,7 +711,7 @@ sub InitCookie {
         $UserID = 111;                         # anonymous (signature failed, expired, or missing)
     }
 
-    if ( $UserData{'tzoffset'} != 0 ) {
+    if ( defined $UserData{'tzoffset'} && $UserData{'tzoffset'} != 0 ) {
         $TimeZoneOffset = $UserData{'tzoffset'} * ( 60 * 60 );
     }
     if ( defined $UserData{'lang'} && $UserData{'lang'} ne "" ) {
@@ -763,6 +761,7 @@ sub DoBrowseRequest {
         return 1;
     }
 
+    $action = lc( &GetParam( 'action', '' ) );    # used by both keywords + id paths
     $id = &GetParam( 'keywords', '' );
     if ($id) {             # Just script?PageName
         if ( $FreeLinks && ( !PageExists($id) ) ) {
@@ -777,7 +776,6 @@ sub DoBrowseRequest {
         &BrowsePage($id) if &ValidIdOrDie($id);
         return 1;
     }
-    $action = lc( &GetParam( 'action', '' ) );
 
     $id = &GetParam( 'id', '' );
 
@@ -919,8 +917,9 @@ sub BrowsePage {
     }
     &OpenDefaultPage($id);
 
-    $openKept = 0;
-    $revision = &GetParam( 'revision', '' );
+    $openKept  = 0;
+    $inlinerev = '';
+    $revision  = &GetParam( 'revision', '' );
     if ( $revision =~ /(\d+)\.(\d+)/ ) {
         $revision  = $1;
         $inlinerev = $2;
@@ -929,7 +928,7 @@ sub BrowsePage {
     $revision =~ s/\D//g;         # Remove non-numeric chars
     $goodRevision = $revision;    # Non-blank only if exists
     if ( $revision ne '' ) {
-        &OpenKeptRevisions( $id, 'text_default', $inlinerev >= 0 );
+        &OpenKeptRevisions( $id, 'text_default', $inlinerev ne '' && $inlinerev >= 0 );
         $openKept = 1;
         if ( !defined( $KeptRevisions{$revision} ) ) {
             $goodRevision = '';
@@ -941,7 +940,10 @@ sub BrowsePage {
     $Text = \%{ $Pages{$id}->{'text'} };
 
     # build-in pages are only used for browsing
-    if ( defined $$Text{'isnew'} && $BuildinPages{$id} ne '' ) {
+    if (   defined $$Text{'isnew'}
+        && defined $BuildinPages{$id}
+        && $BuildinPages{$id} ne '' )
+    {
         $$Text{'text'} = $BuildinPages{$id};
     }
 
@@ -1175,6 +1177,7 @@ sub ReadRCLogDB {
         }
     }
     if ( $mintime > 0 ) {
+        $moretocome = '' if ( !defined($moretocome) );
         return ( "Internal:Offset:$mintime$moretocome", reverse(@fullrc) );
     } else {
         return reverse(@fullrc);
@@ -1311,11 +1314,16 @@ sub GetRc {
     $rcchangehist = &GetParam( "rcchangehist", 1 );
 
     # Optimize translations out of main loop
-    $tEdit         = T('(edit)');
-    $tDiff         = T('(diff)');
-    $tChanges      = T('changes');
-    $diffPrefix    = $QuotedFullUrl . &QuoteHtml("?action=browse\&diff=4\&id=");
-    $historyPrefix = $QuotedFullUrl . &QuoteHtml("?action=history\&id=");
+    $tEdit    = T('(edit)');
+    $tDiff    = T('(diff)');
+    $tChanges = T('changes');
+
+    # $QuotedFullUrl is initialized lazily by GetRcRss (RSS code path).
+    # The HTML path doesn't go through there, so fall back to FullUrl.
+    my $base = defined($QuotedFullUrl) && $QuotedFullUrl ne '' ? $QuotedFullUrl
+             : &QuoteHtml( $FullUrl // '' );
+    $diffPrefix    = $base . &QuoteHtml("?action=browse\&diff=4\&id=");
+    $historyPrefix = $base . &QuoteHtml("?action=history\&id=");
     foreach $rcline (@outrc) {
         ( $ts, $pagename ) = split( /$FS3/, $rcline );
         $pagecount{$pagename}++;
@@ -1724,9 +1732,7 @@ sub ScriptLink {
 
 sub ScriptLinkClass {
     my ( $action, $text, $class, $hint ) = @_;
-    if ( $hint ne '' ) {
-        $hint = "title='$hint'";
-    }
+    $hint = defined($hint) && $hint ne '' ? "title='$hint'" : '';
     return
         "<a href=\"$ScriptName"
       . &ScriptLinkChar()
@@ -1759,7 +1765,7 @@ sub GetEditLink {
         $id = &FreeToNormal($id);
         $name =~ s/_/ /g;
     }
-    $style = 'wikipageedit' if ( $style eq '' );
+    $style = 'wikipageedit' if ( !defined($style) || $style eq '' );
     return &ScriptLinkClass( "action=edit&id=$id", $name, $style, $hint );
 }
 
@@ -2068,10 +2074,10 @@ sub GetHtmlHeader {
     $title = $q->escapeHTML($title);
     $html .= "<html><head><title>$title</title>\n";
     $html .= "<meta http-equiv=\"content-type\" content=\"text/html; charset=$HttpCharset\"/>";
-    if ( $nocache ne '' ) {
+    if ( defined($nocache) && $nocache ne '' ) {
         $html .= "<meta http-equiv=\"cache-control\" content=\"$nocache\"/>";
     }
-    if ( $FavIcon ne '' ) {
+    if ( defined($FavIcon) && $FavIcon ne '' ) {
         $html .= '<link rel="SHORTCUT ICON" href="' . $FavIcon . '">';
     }
     if ($MetaKeywords) {
@@ -2133,9 +2139,9 @@ sub GetFooterText {
         return $q->end_html;
     }
     $result = '<div class="wikifooter">';
-    if ( $$Section{'revision'} > 0 ) {
+    if ( defined( $$Section{'revision'} ) && $$Section{'revision'} > 0 ) {
         $result .= '<div class="wikipginfo">';
-        if ( $rev eq '' ) {    # Only for most current rev
+        if ( !defined($rev) || $rev eq '' ) {    # Only for most current rev
             $result .= T('Last edited');
         } else {
             $result .= T('Edited');
@@ -2219,7 +2225,7 @@ sub GetGotoBar {
     if ( $UserGotoBar ne '' ) {
         $bartext .= $UserGotoBar;
     }
-    if ( $UserData{'username'} eq '' ) {
+    if ( !defined( $UserData{'username'} ) || $UserData{'username'} eq '' ) {
         $bartext .=
             "<li><a href=\"$ScriptName"
           . &ScriptLinkChar()
@@ -2351,7 +2357,7 @@ sub ApplyRegExp {
             }
         }
     }
-    if (@$pagepath) {
+    if ( defined($pagepath) && ref($pagepath) eq 'ARRAY' && @$pagepath ) {
         $pageText = &ApplyRegExpRules( join( '', @$pagepath ), $pageText, 0 );
     }
     return $pageText;
@@ -2502,13 +2508,7 @@ sub GetLocalTree {
 
 sub RestorePageHash {
     my ($id) = @_;
-    my $pagehash;
-
-    #   $pagehash=crypt($id,unpack("H16",$CaptchaKey));
-    #   $pagehash=~ s/\./_/;
-    #   $pagehash=substr($pagehash,0,10);
-    #   $pagehash=~ s/\s//;
-    $pagehash = $id;
+    my $pagehash = $id;
 
     $SaveUrl         = "SaveUrl$pagehash";
     $SaveNumUrl      = "SaveNumUrl$pagehash";
@@ -2520,6 +2520,9 @@ sub RestorePageHash {
 
 sub EmbedWikiPage {
     my ( $id, $uri, $name, $text ) = @_;
+    $uri  = '' if ( !defined($uri) );
+    $name = '' if ( !defined($name) );
+    $text = '' if ( !defined($text) );
     my ( $res, $PageStack );
     if ( $name eq "" ) {
         $name = $id;
@@ -2551,6 +2554,8 @@ sub EmbedWikiPage {
 
 sub EmbedWikiPageRaw {
     my ( $id, $uri, $name ) = @_;
+    $uri  = '' if ( !defined($uri) );
+    $name = '' if ( !defined($name) );
     my ( $res, $PageStack );
     if ( $name eq "" ) {
         $name = $id;
@@ -2676,17 +2681,20 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
         # remove variable definitions added by FangQ, 2006/4/16
         s/\{\{\{$FreeLinkPattern\}((.|\n)*?)\}\}/$2/g;
 
-        if ( $EarlyRules ne '' ) {
+        if ( defined($EarlyRules) && $EarlyRules ne '' ) {
             $_ = &EvalLocalRules( $EarlyRules, $_, !$useImage );
         }
         s/\[\#(\w+)\]/&StoreHref(" name=\"$1\"")/ge if $NamedAnchors;
         if ($HtmlTags) {
             my ($t);
             foreach $t (@HtmlPairs) {
-                s/\&lt;$t(\s[^<>]+?)?\&gt;(.*?)\&lt;\/$t\&gt;/<$t$1>$2<\/$t>/gis;
+                # The (\s[^<>]+?)? capture is optional; when absent $1 is
+                # undef. Use /e to materialize it as '' rather than emit
+                # "Use of uninitialized value" each iteration.
+                s{\&lt;$t(\s[^<>]+?)?\&gt;(.*?)\&lt;\/$t\&gt;}{"<$t" . (defined($1)?$1:"") . ">$2</$t>"}gise;
             }
             foreach $t (@HtmlSingle) {
-                s/\&lt;$t(\s[^<>]+?)?\&gt;/<$t$1>/gi;
+                s{\&lt;$t(\s[^<>]+?)?\&gt;}{"<$t" . (defined($1)?$1:"") . ">"}gie;
             }
         } else {
 
@@ -3078,6 +3086,7 @@ sub InterPageLink {
     my ( $name, $site, $remotePage, $url, $punct );
 
     ( $id, $punct ) = &SplitUrlPunct($id);
+    $punct = '' if ( !defined($punct) );
     $name = $id;
     ( $site, $remotePage ) = split( /:/, $id, 2 );
     $url = &GetSiteUrl($site);
@@ -3160,7 +3169,7 @@ sub StorePre {
 
 sub StoreHref {
     my ( $anchor, $text ) = @_;
-
+    $text = '' if ( !defined($text) );
     return "<a" . &StoreRaw($anchor) . ">$text</a>";
 }
 
@@ -3169,6 +3178,8 @@ sub StoreUrl {
     my ( $link, $extra );
 
     ( $link, $extra ) = &UrlLink( $name, $useImage );
+    $link  = '' if ( !defined($link) );
+    $extra = '' if ( !defined($extra) );
 
     # Next line ensures no empty links are stored
     $link = &StoreRaw($link) if ( $link ne "" );
@@ -5300,6 +5311,7 @@ sub DoNewLoginDB {
 
 sub EnterLoginForm {
     my ($refurl) = @_;
+    $refurl = '' if ( !defined($refurl) );
     print &GetFormStart();
     print &GetHiddenValue( 'enter_login', 1 ), "\n";
     print &GetHiddenValue( 'refer_url', $refurl ), "\n" if ( $refurl =~ /^http/i );
@@ -5619,7 +5631,7 @@ sub PrintPageList {
               . ( $offs - $ListItemCount );
             print &ScriptLink( $url, "&laquo;" . Ts( 'Previous %s pages', $ListItemCount ) );
         }
-        if ( $moretocome ne '' ) {
+        if ( defined($moretocome) && $moretocome ne '' ) {
             if ( $offs >= $ListItemCount ) {
                 print "&nbsp;&nbsp;";
             }
@@ -7110,12 +7122,13 @@ sub ReadRawWikiPage {
     if ( defined $sth->[0] ) {
         ( $maxversion, $text ) = @{ $sth->[0] };
         if ( defined $maxversion && $maxversion ne "" ) {
-            ( $text, $inlinerev ) = &PatchPage($text) if ( $force eq '' );
+            ( $text, $inlinerev ) = &PatchPage($text)
+              if ( !defined($force) || $force eq '' );
             $TextCache{$id} = $text;
             return $text;
         }
     }
-    return "" if ( $BuildinPages{$id} eq '' );
+    return "" if ( !defined( $BuildinPages{$id} ) || $BuildinPages{$id} eq '' );
     return $BuildinPages{$id};
 
 }
@@ -7546,8 +7559,12 @@ sub max {
 
 #END_OF_OTHER_CODE
 
-&DoWikiRequest()
-  if ( $RunCGI && ( $_ ne 'nocgi' ) );    # Do everything. 1; # In case we are loaded from elsewhere
+# Auto-run guard. The test harness sets $_ = 'nocgi' before `require`
+# to suppress this; everything else (real CGI, CGI::Compile under
+# app.psgi, mod_perl) leaves $_ untouched and the call fires. `caller`
+# can't be used as the sentinel — CGI::Compile wraps the script body
+# in a sub so caller() is non-empty even when we *do* want to run.
+&DoWikiRequest() if ( $RunCGI && ( ( $_ // '' ) ne 'nocgi' ) );
 
 1;
 # == End of UseModWiki script. ===========================================
