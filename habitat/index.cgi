@@ -64,12 +64,12 @@ use HTML::Scrubber;
 use JSON::PP;
 use Habitat::Store qw(SafeIdent ReadDBItems WriteDBItems DeleteDBItems CopyDBItems);
 use Habitat::Auth qw(
-    RandomBytes RandomHex GetSiteSecret Hmac ConstantEq
-    SignSessionToken VerifySessionToken BuildSessionCookie IsRequestSecure
-    GenCSRFToken VerifyCSRFToken CSRFCheckOrDie
-    PrintCaptcha VerifyCaptcha
-    EnsureLoginThrottleTable LoginThrottleBlocked LoginThrottleHit LoginThrottleClear
-    HashPassword VerifyPassword IsLegacyPasswordHash UpgradePasswordHashDB
+  RandomBytes RandomHex GetSiteSecret Hmac ConstantEq
+  SignSessionToken VerifySessionToken BuildSessionCookie IsRequestSecure
+  GenCSRFToken VerifyCSRFToken CSRFCheckOrDie
+  PrintCaptcha VerifyCaptcha
+  EnsureLoginThrottleTable LoginThrottleBlocked LoginThrottleHit LoginThrottleClear
+  HashPassword VerifyPassword IsLegacyPasswordHash UpgradePasswordHashDB
 );
 
 #use diagnostics;
@@ -235,29 +235,29 @@ $EditNameLink = 0;                             # 1 = edit links use name (CSS), 
 $UseMetaWiki  = 0;                             # 1 = add MetaWiki search links, 0 = no MW links
 $BracketImg   = 1;                             # 1 = [url url.gif] becomes image link, 0 = no img
 
-$PageEmbed     = 1;                                # 1 = {{page|name}} format
-$MaxEmbedDepth = 5;                                # maximum depth for page embedding
-$IsPrintTree   = 1;                                # print tree for subpages
-$MaxTreeDepth  = 8;
-$AMathML       = 0;                                # 1 = allow <amath> tags, 0 = no amath markup
-$AMathMLPath   = "";
-$MathColor     = "yellow";
-$UseCaptcha    = 1;                                # flag to enable captcha
-$DiscussSuffix   = '..discuss';
-$DBName          = "";
-$UseActivation   = 0;
-$UseDetailedLog  = 0;
-$PageItemCount   = 20;
-$ListItemCount   = 100;
-$HistoryLimit    = 50;
-$RCHistoryLimit  = 100;
-$InlineDiffLimit = 50;
-$LoginMaxAttempts    = 5;                          # Block after this many failed logins
-$LoginThrottleWindow = 300;                        # Counted within this many seconds
-$TrustedProxies  = '';                             # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
-                                                   # Only when REMOTE_ADDR matches one of these will
-                                                   # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
-                                                   # Example: "127.0.0.1,10.0.0.1,192.168.1."
+$PageEmbed           = 1;            # 1 = {{page|name}} format
+$MaxEmbedDepth       = 5;            # maximum depth for page embedding
+$IsPrintTree         = 1;            # print tree for subpages
+$MaxTreeDepth        = 8;
+$AMathML             = 0;            # 1 = allow <amath> tags, 0 = no amath markup
+$AMathMLPath         = "";
+$MathColor           = "yellow";
+$UseCaptcha          = 1;            # flag to enable captcha
+$DiscussSuffix       = '..discuss';
+$DBName              = "";
+$UseActivation       = 0;
+$UseDetailedLog      = 0;
+$PageItemCount       = 20;
+$ListItemCount       = 100;
+$HistoryLimit        = 50;
+$RCHistoryLimit      = 100;
+$InlineDiffLimit     = 50;
+$LoginMaxAttempts    = 5;            # Block after this many failed logins
+$LoginThrottleWindow = 300;          # Counted within this many seconds
+$TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
+                                     # Only when REMOTE_ADDR matches one of these will
+                                     # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
+                                     # Example: "127.0.0.1,10.0.0.1,192.168.1."
 
 # Names of sites.  (The first entry is used for the number link.)
 @IsbnNames = ( 'bn.com', 'amazon.com', 'search' );
@@ -288,18 +288,18 @@ $TrustedProxies  = '';                             # Comma-separated list of tru
 $IndentLimit = 20;                             # Maximum depth of nested lists
 $PageDir     = "$DataDir/page";                # Stores page data
 $HtmlDir     = "$DataDir/html";                # Stores HTML versions
-$UserDir     = "$DataDir/users";               # Stores user data (table named "users" -- "user" is reserved in PG)
-$KeepDir     = "$DataDir/keep";                # Stores kept (old) page data
-$TempDir     = "$DataDir/temp";                # Temporary files and locks
-$LockDir     = "$TempDir/lock";                # DB is locked if this exists
-$InterFile   = "$DataDir/intermap";            # Interwiki site->url map
-$RcFile      = "$DataDir/rclog";               # New RecentChanges logfile
-$RcOldFile   = "$DataDir/oldrclog";            # Old RecentChanges logfile
-$IndexFile   = "$DataDir/pageidx";             # List of all pages
-$EmailFile   = "$DataDir/watch";               # Email notification lists
-$UserLog     = "$DataDir/userlog";             # Email notification lists
-$PageLog     = "$DataDir/pagelog";             # Email notification lists
-$SecretFile  = "$DataDir/secret";              # Server-side HMAC key (auto-created on first run)
+$UserDir    = "$DataDir/users"; # Stores user data (table named "users" -- "user" is reserved in PG)
+$KeepDir    = "$DataDir/keep";  # Stores kept (old) page data
+$TempDir    = "$DataDir/temp";  # Temporary files and locks
+$LockDir    = "$TempDir/lock";  # DB is locked if this exists
+$InterFile  = "$DataDir/intermap";    # Interwiki site->url map
+$RcFile     = "$DataDir/rclog";       # New RecentChanges logfile
+$RcOldFile  = "$DataDir/oldrclog";    # Old RecentChanges logfile
+$IndexFile  = "$DataDir/pageidx";     # List of all pages
+$EmailFile  = "$DataDir/watch";       # Email notification lists
+$UserLog    = "$DataDir/userlog";     # Email notification lists
+$PageLog    = "$DataDir/pagelog";     # Email notification lists
+$SecretFile = "$DataDir/secret";      # Server-side HMAC key (auto-created on first run)
 
 if ($RepInterMap) {
     push @ReplaceableFiles, $InterFile;
@@ -344,12 +344,11 @@ sub ResetRequestState {
 # The "main" program, called at the end of this script file.
 sub DoWikiRequest {
     ResetRequestState();
-    if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ )
-    {    # running a local wiki
+    if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ ) {    # running a local wiki
         $DataDir = $ENV{'PWD'} . "/$DataDir" if ( $DataDir =~ /^[^\/]/ );
     }
     if ( $UseConfig && ( -f $ConfigFile ) ) {
-        if ( !do $ConfigFile ) {    # Some error occurred
+        if ( !do $ConfigFile ) {                         # Some error occurred
             $ConfigError = $@;
             if ( $ConfigError eq '' ) {
 
@@ -361,8 +360,7 @@ sub DoWikiRequest {
                 $ConfigError = T('Unknown Error (no error text)');
             }
         }
-        if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ )
-        {    # running a local wiki
+        if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ ) {    # running a local wiki
             $LogoUrl    = "/$LogoUrl"    if ( $LogoUrl    =~ /^[^\/]/ );
             $StyleSheet = "/$StyleSheet" if ( $StyleSheet =~ /^[^\/]/ );
             $FavIcon    = "/$FavIcon"    if ( $FavIcon    =~ /^[^\/]/ );
@@ -489,6 +487,7 @@ sub InitLinkPatterns {
 }
 
 sub InitWikiEnv {
+
     # Connect (or reconnect) lazily. Under PSGI/Starman this runs once per
     # worker; subsequent requests reuse the same $dbh after a cheap ping.
     # SQLite ping is a no-op; matters more for Postgres / network DBs.
@@ -687,9 +686,9 @@ sub InitRequest {
     if ( $HttpCharset ne '' ) {
         $q->charset($HttpCharset);
     }
-    $ScriptName = pop(@ScriptPath);    # Name used in links
+    $ScriptName = pop(@ScriptPath);                 # Name used in links
     $ScriptName = '' unless defined $ScriptName;    # Empty SCRIPT_NAME under PSGI
-    $IndexInit  = 0;                   # Must be reset for each request
+    $IndexInit  = 0;                                # Must be reset for each request
     if ( !defined($InterSiteInit) ) {
         $InterSiteInit = 0;
         %InterSite     = ();
@@ -711,19 +710,20 @@ sub InitCookie {
     my ($tmplang);
     %SetCookie      = ();
     $TimeZoneOffset = 0;
-    undef $q->{'.cookies'};                    # Clear cache if it exists (for SpeedyCGI)
-    %UserData   = ();                          # Fix for persistent environments.
+    undef $q->{'.cookies'};                  # Clear cache if it exists (for SpeedyCGI)
+    %UserData   = ();                        # Fix for persistent environments.
     %UserCookie = ();
     my $rawcookie = $q->cookie($CookieName);
     $UserID = VerifySessionToken($rawcookie);
+
     if ( $UserID > 199 ) {
         &LoadUserDataDB($UserID);
         if ( $UserData{'id'} ne $UserID ) {
-            $UserID   = 113;                   # User row vanished
+            $UserID   = 113;    # User row vanished
             %UserData = ();
         }
     } else {
-        $UserID = 111;                         # anonymous (signature failed, expired, or missing)
+        $UserID = 111;          # anonymous (signature failed, expired, or missing)
     }
 
     if ( defined $UserData{'tzoffset'} && $UserData{'tzoffset'} != 0 ) {
@@ -777,8 +777,8 @@ sub DoBrowseRequest {
     }
 
     $action = lc( &GetParam( 'action', '' ) );    # used by both keywords + id paths
-    $id = &GetParam( 'keywords', '' );
-    if ($id) {             # Just script?PageName
+    $id     = &GetParam( 'keywords', '' );
+    if ($id) {                                    # Just script?PageName
         if ( $FreeLinks && ( !PageExists($id) ) ) {
             $id = &FreeToNormal($id);
         }
@@ -1131,6 +1131,7 @@ sub BrowsePage {
         $saveHtml =~ s/.*<\!DOCTYPE/<!DOCTYPE/gs;
         &WriteStringToFile( $exportfile, $saveHtml );
     }
+
     # Stage 6: only cache when the rendered HTML is the anonymous view.
     # The page includes per-user elements (admin bar / user toolbar /
     # login link) that would otherwise leak admin content to non-admins
@@ -1180,13 +1181,13 @@ sub ReadRCLogDB {
     $offset = int($offset);
     $offset = 0x7fffffff if ( $offset > 0x7fffffff );
     $lim    = int($lim);
+
     # `LIMIT off, count` is SQLite/MySQL syntax; Postgres requires
     # `LIMIT count OFFSET off`. Both dialects accept the LIMIT-then-
     # OFFSET form below.
     if ( $offset > 0 ) {
-        $searchcmd =
-"select * from $rclogdb where time>? and time<? order by time desc limit $lim";
-        $sth = $dbh->selectall_arrayref( $searchcmd, undef, $stime, $offset );
+        $searchcmd = "select * from $rclogdb where time>? and time<? order by time desc limit $lim";
+        $sth       = $dbh->selectall_arrayref( $searchcmd, undef, $stime, $offset );
     } else {
         $searchcmd = "select * from $rclogdb where time>? order by time desc limit $lim";
         $sth       = $dbh->selectall_arrayref( $searchcmd, undef, $stime );
@@ -1207,7 +1208,8 @@ sub ReadRCLogDB {
                 # (DoRc / GetRcHtml / GetHtmlRcLine / GetRcRss /
                 # GetRssRcLine) handle both shapes; once the in-memory
                 # round-trip is hashref-only, the FS-byte path drops out.
-                push @fullrc, {
+                push @fullrc,
+                  {
                     ts       => $ts,
                     pagename => $pagename,
                     summary  => $summary,
@@ -1218,7 +1220,7 @@ sub ReadRCLogDB {
                     revision => $rev,
                     name     => $name,
                     admin    => $admin,
-                };
+                  };
                 $mintime = $ts if ( $ts < $mintime );
             }
         }
@@ -1280,8 +1282,9 @@ sub DoRc {
 
     # Read rclog data (and oldrclog data if needed)
     @fullrc = &ReadRCLogDB($starttime);
-    if ( @fullrc > 0 && !ref( $fullrc[0] )
-         && $fullrc[0] =~ /^Internal:Offset:([0-9]+)([+]*)/ )
+    if (   @fullrc > 0
+        && !ref( $fullrc[0] )
+        && $fullrc[0] =~ /^Internal:Offset:([0-9]+)([+]*)/ )
     {
         $offs       = $1;
         $moretocome = $2;
@@ -1289,7 +1292,7 @@ sub DoRc {
     }
     $lastTs = 0;
     if ( @fullrc > 0 ) {    # Only false if no lines in file
-        # Stage 5: rows are hashrefs from ReadRCLogDB.
+                            # Stage 5: rows are hashrefs from ReadRCLogDB.
         my $last = $fullrc[$#fullrc];
         $lastTs = ref($last) eq 'HASH' ? $last->{ts} : ( split( /$FS3/, $last ) )[0];
     }
@@ -1351,8 +1354,10 @@ sub GetRc {
     if ( $showedit != 1 ) {
         my @temprc = ();
         foreach $rcline (@outrc) {
-            my $is = ref($rcline) eq 'HASH' ? $rcline->{isEdit}
-                : ( split( /$FS3/, $rcline ) )[3];
+            my $is =
+              ref($rcline) eq 'HASH'
+              ? $rcline->{isEdit}
+              : ( split( /$FS3/, $rcline ) )[3];
             if ( $showedit == 0 ) {    # 0 = No edits
                 push( @temprc, $rcline ) if ( $is != 1 );
             } else {                   # 2 = Only edits
@@ -1372,8 +1377,10 @@ sub GetRc {
 
     # $QuotedFullUrl is initialized lazily by GetRcRss (RSS code path).
     # The HTML path doesn't go through there, so fall back to FullUrl.
-    my $base = defined($QuotedFullUrl) && $QuotedFullUrl ne '' ? $QuotedFullUrl
-             : &QuoteHtml( $FullUrl // '' );
+    my $base =
+      defined($QuotedFullUrl) && $QuotedFullUrl ne ''
+      ? $QuotedFullUrl
+      : &QuoteHtml( $FullUrl // '' );
     $diffPrefix    = $base . &QuoteHtml("?action=browse\&diff=4\&id=");
     $historyPrefix = $base . &QuoteHtml("?action=history\&id=");
     foreach $rcline (@outrc) {
@@ -1404,13 +1411,13 @@ sub GetRc {
             $extra{$_} = $rcline->{$_} for (qw(id revision name admin));
         } else {
             my $extraTemp;
-            ( $ts, $pagename, $summary, $isEdit, $host, $kind, $extraTemp )
-              = split( /$FS3/, $rcline );
+            ( $ts, $pagename, $summary, $isEdit, $host, $kind, $extraTemp ) =
+              split( /$FS3/, $rcline );
             %extra = split( /$FS2/, $extraTemp, -1 );
         }
         next if ( ( !$all )         && ( $ts < $changetime{$pagename} ) );
         next if ( ( $idOnly ne "" ) && ( $idOnly ne $pagename ) );
-        next if ( $extra{'admin'} && ( &UserPermission() < $extra{'admin'} ) );
+        next if ( $extra{'admin'}   && ( &UserPermission() < $extra{'admin'} ) );
         if ( $date ne &CalcDay($ts) ) {
             $date = &CalcDay($ts);
             if ( 1 == $rcType ) {    # HTML
@@ -1727,8 +1734,8 @@ sub GetHistoryLine {
             %revtext = split( /$FS3/, $sect{'data'}, -1 );
         }
     } else {
-        %sect    = split( /$FS2/, $section,        -1 );
-        %revtext = split( /$FS3/, $sect{'data'},   -1 );
+        %sect    = split( /$FS2/, $section,      -1 );
+        %revtext = split( /$FS3/, $sect{'data'}, -1 );
     }
     @textpatch = split( /$FS4/, $revtext{'text'} ) if defined $revtext{'text'};
 
@@ -1825,7 +1832,7 @@ sub GetPageLinkText {
         $id = &FreeToNormal($id);
         $name =~ s/_/ /g;
     }
-    $style = 'wikipagelink' if ( ! length ($style) );
+    $style = 'wikipagelink' if ( !length($style) );
     return &ScriptLinkClass( $id, $name, $style, $hint );
 }
 
@@ -2118,7 +2125,8 @@ sub GetHttpHeader {
 
     $type = 'text/html' if ( $type eq '' );
     if ( defined( $SetCookie{'id'} ) ) {
-        my $val = $SetCookie{'id'}
+        my $val =
+          $SetCookie{'id'}
           ? SignSessionToken( $SetCookie{'id'}, 30 * 86400 )
           : '';
         my $ttl = $SetCookie{'id'} ? 30 * 86400 : -1;
@@ -2371,7 +2379,8 @@ sub GetRedirectPage {
             $html = "Status: 302 Moved\n";
             $html .= "Location: $url\n";
             if ( defined( $SetCookie{'id'} ) ) {
-                my $val = $SetCookie{'id'}
+                my $val =
+                  $SetCookie{'id'}
                   ? SignSessionToken( $SetCookie{'id'}, 30 * 86400 )
                   : '';
                 my $ttl = $SetCookie{'id'} ? 30 * 86400 : -1;
@@ -2443,9 +2452,15 @@ sub ApplyRegExp {
 sub getnextnum {
     my ($id) = @_;
     $id =~ s/\/$//g;
-    my $op = Habitat::Store::regex_op();
-    my @matchitem = split( /\n/,
-        ReadDBItems( GetPageDB($id), 'id', "\n", '', "id $op ? group by id", "^" . quotemeta($id) . "/[0-9]+" ) );
+    my $op        = Habitat::Store::regex_op();
+    my @matchitem = split(
+        /\n/,
+        ReadDBItems(
+            GetPageDB($id), 'id', "\n", '',
+            "id $op ? group by id",
+            "^" . quotemeta($id) . "/[0-9]+"
+        )
+    );
     for ( my $i = 0 ; $i < @matchitem ; $i++ ) {
         $matchitem[$i] =~ s/^$id\///;
     }
@@ -2488,12 +2503,13 @@ sub WikiToHTML {
             Text::Markdown::Discount::markdown($body);
         };
         if ( $@ || !defined($html) ) {
-            return "<div class='wikimsg'>"
+            return
+                "<div class='wikimsg'>"
               . T('Markdown renderer not available: ')
               . QuoteHtml( $@ // '?' )
               . "</div>";
         }
-        return ScrubRawHtml($html);
+        return $Pages{$id}->{'page'}{'admin_saved'} ? $html : ScrubRawHtml($html);
     }
 
     #  if($id=~ /\//) { $pageText .= "<localtree>";}
@@ -2528,7 +2544,17 @@ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiP
     $pageText =~ s/&lt;timenow&gt;/$timestr/gi;
 
     if ($RawHtml) {
-        $pageText =~ s/<html>((.|\n)*?)<\/html>/&StoreRaw(&ScrubRawHtml($1))/ige;
+
+        # Author-only gate: pages whose current revision was saved by
+        # an admin bypass ScrubRawHtml and can carry <script>, AJAX,
+        # CORS-using JS, etc. Pages last saved by anyone else stay
+        # scrubbed, even if the page was previously trusted, because
+        # admin_saved is recaptured at every save.
+        if ( $Pages{$id}->{'page'}{'admin_saved'} ) {
+            $pageText =~ s/<html>((.|\n)*?)<\/html>/&StoreRaw($1)/ige;
+        } else {
+            $pageText =~ s/<html>((.|\n)*?)<\/html>/&StoreRaw(&ScrubRawHtml($1))/ige;
+        }
     }
     $pageText = &QuoteHtml($pageText);
     $pageText =~ s/\\ *\r?\n/ /g;    # Join lines with backslash at end
@@ -2575,11 +2601,12 @@ sub GetLocalTree {
     my ( $id, $namepat, $format ) = @_;
     my ( $toptree, $topnode );
     if ( !( defined $LocalTree ) && $IsPrintTree ) {
-        my $op = Habitat::Store::regex_op();
+        my $op        = Habitat::Store::regex_op();
         my @matchitem = split(
             /\n/,
             ReadDBItems(
-                GetPageDB($id), 'id', "\n", '', "id $op ? group by id",
+                GetPageDB($id), 'id', "\n", '',
+                "id $op ? group by id",
                 quotemeta($id) . "/" . $namepat
             )
         );
@@ -2786,10 +2813,11 @@ src="$AMathMLPath"><\/script><script>mathcolor="$MathColor"<\/script>/g if $AMat
         if ($HtmlTags) {
             my ($t);
             foreach $t (@HtmlPairs) {
+
                 # The (\s[^<>]+?)? capture is optional; when absent $1 is
                 # undef. Use /e to materialize it as '' rather than emit
                 # "Use of uninitialized value" each iteration.
-                s{\&lt;$t(\s[^<>]+?)?\&gt;(.*?)\&lt;\/$t\&gt;}{"<$t" . (defined($1)?$1:"") . ">$2</$t>"}gise;
+s{\&lt;$t(\s[^<>]+?)?\&gt;(.*?)\&lt;\/$t\&gt;}{"<$t" . (defined($1)?$1:"") . ">$2</$t>"}gise;
             }
             foreach $t (@HtmlSingle) {
                 s{\&lt;$t(\s[^<>]+?)?\&gt;}{"<$t" . (defined($1)?$1:"") . ">"}gie;
@@ -3070,7 +3098,8 @@ sub ApplyRegExpRules {
 
 sub _ExpandBackrefs {
     my ( $tpl, $caps ) = @_;
-    $tpl =~ s{\\(\d)|\$(\d)}{ defined $caps->[ ( $1 || $2 ) - 1 ] ? $caps->[ ( $1 || $2 ) - 1 ] : '' }ge;
+    $tpl =~
+      s{\\(\d)|\$(\d)}{ defined $caps->[ ( $1 || $2 ) - 1 ] ? $caps->[ ( $1 || $2 ) - 1 ] : '' }ge;
     return $tpl;
 }
 
@@ -3120,12 +3149,23 @@ sub EvalLocalRules {
 sub ScrubRawHtml {
     my ($html) = @_;
     if ( !defined $HtmlScrubber ) {
-        $HtmlScrubber = HTML::Scrubber->new( default => [ 0, { '*' => 0 } ], comment => 0, process => 0 );
+        $HtmlScrubber =
+          HTML::Scrubber->new( default => [ 0, { '*' => 0 } ], comment => 0, process => 0 );
         my %attr = (
-            class       => 1, id      => 1, title => 1, alt     => 1, name => 1,
-            width       => 1, height  => 1, align => 1, valign  => 1,
-            border      => 1, colspan => 1, rowspan => 1,
-            cellpadding => 1, cellspacing => 1,
+            class       => 1,
+            id          => 1,
+            title       => 1,
+            alt         => 1,
+            name        => 1,
+            width       => 1,
+            height      => 1,
+            align       => 1,
+            valign      => 1,
+            border      => 1,
+            colspan     => 1,
+            rowspan     => 1,
+            cellpadding => 1,
+            cellspacing => 1,
         );
         my @plain = qw(b i u em strong s strike code tt kbd var sub sup
           big small span div p br hr h1 h2 h3 h4 h5 h6
@@ -3133,18 +3173,29 @@ sub ScrubRawHtml {
           caption blockquote pre cite q mark abbr acronym
           font center header nav section article aside footer);
         my @rules = map { ( $_ => \%attr ) } @plain;
-        push @rules, (
+        push @rules,
+          (
             a => {
                 href   => qr!^(?:https?:|ftp:|mailto:|/|\#)!i,
-                name   => 1, class => 1, id => 1, title => 1,
+                name   => 1,
+                class  => 1,
+                id     => 1,
+                title  => 1,
                 target => qr/^_(blank|self|parent|top)$/i,
             },
             img => {
-                src   => qr!^(?:https?:|/|\./|data:image/(?:png|jpe?g|gif|webp);base64,)!i,
-                alt   => 1, class => 1, id => 1, title => 1, name => 1,
-                width => 1, height => 1, border => 1, align => 1,
+                src    => qr!^(?:https?:|/|\./|data:image/(?:png|jpe?g|gif|webp);base64,)!i,
+                alt    => 1,
+                class  => 1,
+                id     => 1,
+                title  => 1,
+                name   => 1,
+                width  => 1,
+                height => 1,
+                border => 1,
+                align  => 1,
             }
-        );
+          );
         $HtmlScrubber->rules(@rules);
     }
     return $HtmlScrubber->scrub($html);
@@ -3185,7 +3236,7 @@ sub InterPageLink {
 
     ( $id, $punct ) = &SplitUrlPunct($id);
     $punct = '' if ( !defined($punct) );
-    $name = $id;
+    $name  = $id;
     ( $site, $remotePage ) = split( /:/, $id, 2 );
     $url = &GetSiteUrl($site);
     return ( "", $id . $punct ) if ( $url eq "" );
@@ -3649,13 +3700,14 @@ sub GetKeptDiff {
         my $kept = $KeptRevisions{$vmajor};
         if ( ref($kept) eq 'HASH' ) {
             my $data = $kept->{data};
-            my $body = ref($data) eq 'HASH'
-                ? $data->{text}
-                : ( split( /$FS3/, $data, -1 ) )[1];    # legacy fallback
+            my $body =
+              ref($data) eq 'HASH'
+              ? $data->{text}
+              : ( split( /$FS3/, $data, -1 ) )[1];    # legacy fallback
             ( $oldText, $inlinerev ) = &PatchPage( $body, $vminor );
         }
     }
-    return "" if ( $oldText eq "" );    # Old revision not found
+    return "" if ( $oldText eq "" );                  # Old revision not found
     return &GetDiff( $oldText, $newText, $lock );
 }
 
@@ -3770,11 +3822,11 @@ sub OpenNewSection {
     # until SaveSection runs (same snapshot semantics as the prior
     # split-on-Open / join-on-Save round-trip, just without the byte
     # separator).
-    $$Page{$name} = { %$Section };
+    $$Page{$name} = {%$Section};
 }
 
 sub OpenNewText {
-    my ( $id, $name ) = @_;                              # Name of text (usually "default")
+    my ( $id, $name ) = @_;    # Name of text (usually "default")
     my ($Text);
 
     $Text = \%{ $Pages{$id}->{'text'} };
@@ -3793,7 +3845,7 @@ sub OpenNewText {
 
     # Pass the text hash directly; SaveSection stores it as a
     # hashref under $Section{data} (was: FS3-joined string).
-    &OpenNewSection( $id, "text_$name", { %$Text } );
+    &OpenNewSection( $id, "text_$name", {%$Text} );
 }
 
 sub GetPageFile {
@@ -3817,6 +3869,7 @@ sub ReadLatestPageDB {
     }
     die("ReadLatestPageDB: unsafe table name") if ( !SafeIdent($pagedb) );
     if ( $rev eq "" ) {
+
         # ORDER BY ... LIMIT 1 is portable across SQLite and Postgres.
         # The historical "SELECT max(revision), *" was SQLite-only and
         # only happened to pull the matching row's columns by accident.
@@ -3847,10 +3900,11 @@ sub ReadLatestPageDB {
 
 sub OpenPageDB {
     my ($id) = @_;
-    my ( $fname, $data, $pagedb, $sth, $maxversion );
+    my ( $fname, $data, $pagedb, $sth );
     my (
-        $pgid,    $version, $author, $revision,  $tupdate, $tcreate, $ip, $host,
-        $summary, $text,    $minor,  $newauthor, $Page,    $Text,    $Section
+        $pgid,        $version, $author,  $revision, $tupdate, $tcreate,
+        $ip,          $host,    $summary, $text,     $minor,   $newauthor,
+        $admin_saved, $Page,    $Text,    $Section
     );
 
     $Page    = \%{ $Pages{$id}->{'page'} };
@@ -3866,23 +3920,32 @@ sub OpenPageDB {
         die( T('ERROR: database uninitialized!') );
     }
     die("OpenPageDB: unsafe table name") if ( !SafeIdent($pagedb) );
+
+    # Explicit column list (was: `SELECT revision, *` with positional
+    # unpacking). Explicit columns survive schema additions without
+    # silently mis-binding — when admin_saved was added in this stage,
+    # the old `*` would have shifted every variable in the assignment.
     $sth = $dbh->selectall_arrayref(
-        "SELECT revision, * FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
-        undef, $id );
+        "SELECT id, version, author, revision, tupdate, tcreate, ip, host, "
+          . "summary, text, minor, newauthor, data, admin_saved "
+          . "FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
+        undef, $id
+    );
     if ( defined $sth->[0] ) {
         (
-            $maxversion, $pgid, $version, $author, $revision, $tupdate,   $tcreate,
-            $ip,         $host, $summary, $text,   $minor,    $newauthor, $data
+            $pgid, $version, $author, $revision, $tupdate,   $tcreate, $ip,
+            $host, $summary, $text,   $minor,    $newauthor, $data,    $admin_saved
         ) = @{ $sth->[0] };
         if ( $pgid eq "" || $revision eq "" ) {
             &OpenNewPage($id);
             &OpenNewText( $id, 'default' );
         } else {
-            $$Page{'name'}     = $pgid;
-            $$Page{'version'}  = $version;
-            $$Page{'revision'} = $revision;
-            $$Page{'tscreate'} = $tcreate;
-            $$Page{'ts'}       = $tupdate;
+            $$Page{'name'}        = $pgid;
+            $$Page{'version'}     = $version;
+            $$Page{'revision'}    = $revision;
+            $$Page{'tscreate'}    = $tcreate;
+            $$Page{'ts'}          = $tupdate;
+            $$Page{'admin_saved'} = $admin_saved || 0;
 
             $$Section{'name'}     = 'text_default';
             $$Section{'version'}  = $version;
@@ -3899,8 +3962,8 @@ sub OpenPageDB {
             $$Text{'summary'}   = $summary;
 
             # Stage 5: snapshot via hashref (was: FS3/FS2-joined string).
-            $$Section{'data'}           = { %$Text };
-            $$Page{ $$Section{'name'} } = { %$Section };
+            $$Section{'data'} = {%$Text};
+            $$Page{ $$Section{'name'} } = {%$Section};
         }
     } else {    # open new page
         &OpenNewPage($id);
@@ -3922,9 +3985,11 @@ sub OpenSection {
     if ( !defined( $$Page{$name} ) ) {
         &OpenNewSection( $id, $name, "" );
     } elsif ( ref( $$Page{$name} ) eq 'HASH' ) {
+
         # Stage 5 in-memory shape: hashref. Copy out into $Section.
         %$Section = %{ $$Page{$name} };
     } else {
+
         # Legacy form may show up if some external caller stuffed an
         # FS2-joined string into the page hash; tolerate it.
         %$Section = split( /$FS2/, $$Page{$name}, -1 );
@@ -4005,7 +4070,8 @@ sub SavePageDB {
     my $cur_row = $dbh->selectrow_arrayref(
         "SELECT revision, version, author, tupdate, tcreate, ip, host, summary, "
           . "text, minor, newauthor, data FROM $pagedb WHERE id=?",
-        undef, $name );
+        undef, $name
+    );
 
     my $cur_rev = 0;
     my $cur_tcreate;
@@ -4024,9 +4090,7 @@ sub SavePageDB {
         my ( $kind, $body ) = ( 'snapshot', $cur_text );
 
         if ( $UseDiff && defined($new_text) && defined($cur_text) ) {
-            my $diff = eval {
-                Text::Diff::diff( \$new_text, \$cur_text, { STYLE => 'Unified' } );
-            };
+            my $diff = eval { Text::Diff::diff( \$new_text, \$cur_text, { STYLE => 'Unified' } ); };
             if ( !$@ && defined($diff) && length($diff) < length($cur_text) ) {
                 $kind = 'diff';
                 $body = $diff;
@@ -4037,7 +4101,7 @@ sub SavePageDB {
             $revdb,
             "page_id,revision,version,author,tupdate,tcreate,ip,host,"
               . "summary,minor,newauthor,data,kind,text",
-            0,    # plain insert; (page_id, revision) PK guards dupes
+            0,                 # plain insert; (page_id, revision) PK guards dupes
             $name,
             $cur_row->[0],     # revision
             $cur_row->[1],     # version
@@ -4062,12 +4126,20 @@ sub SavePageDB {
     my $tcreate = $cur_tcreate || $$Page{'tscreate'} || $Now;
     my $tupdate = $Now;
 
+    # Per-page trust flag for the raw-HTML bypass: scrub is skipped at
+    # render time iff this is 1 and the page is rendered via WikiToHTML.
+    # Captured at save time from the saver's admin status, not derived
+    # later — so demoting the admin password invalidates trust on the
+    # next save, never retroactively.
+    my $admin_saved = UserIsAdmin() ? 1 : 0;
+    $$Page{'admin_saved'} = $admin_saved;
+
     # Upsert the current snapshot. UPSERT semantics: REPLACE INTO on
     # SQLite, INSERT ... ON CONFLICT (id) DO UPDATE on Postgres.
     WriteDBItems(
         $pagedb,
         "id,revision,version,author,tupdate,tcreate,ip,host,"
-          . "summary,text,minor,newauthor,data",
+          . "summary,text,minor,newauthor,data,admin_saved",
         1,    # upsert on id
         $name,
         $new_rev,
@@ -4082,6 +4154,7 @@ sub SavePageDB {
         $$Text{'minor'},
         $$Text{'newauthor'},
         $UserData{'id'},
+        $admin_saved,
     );
 }
 
@@ -4100,7 +4173,7 @@ sub SaveSection {
     $$Section{'data'}     = $data;
 
     # Hash copy (was: FS2-joined string).
-    $$Page{$name} = { %$Section };
+    $$Page{$name} = {%$Section};
 }
 
 sub SaveText {
@@ -4144,16 +4217,19 @@ sub OpenKeptListDB {
     # `page_revisions` (kind='snapshot' or 'diff'). UNION-merge them
     # ordered by revision and apply the same paging the legacy code
     # did via LIMIT/OFFSET.
-    my $cur_cols = "id AS page_id, revision, version, author, tupdate, "
-                 . "tcreate, ip, host, summary, minor, newauthor, data, "
-                 . "'snapshot' AS kind, text";
-    my $rev_cols = "page_id, revision, version, author, tupdate, "
-                 . "tcreate, ip, host, summary, minor, newauthor, data, "
-                 . "kind, text";
-    my $sql = "SELECT $cur_cols FROM $pagedb WHERE id=? "
-            . "UNION ALL "
-            . "SELECT $rev_cols FROM $revdb WHERE page_id=? "
-            . "ORDER BY revision DESC LIMIT $lim";
+    my $cur_cols =
+        "id AS page_id, revision, version, author, tupdate, "
+      . "tcreate, ip, host, summary, minor, newauthor, data, "
+      . "'snapshot' AS kind, text";
+    my $rev_cols =
+        "page_id, revision, version, author, tupdate, "
+      . "tcreate, ip, host, summary, minor, newauthor, data, "
+      . "kind, text";
+    my $sql =
+        "SELECT $cur_cols FROM $pagedb WHERE id=? "
+      . "UNION ALL "
+      . "SELECT $rev_cols FROM $revdb WHERE page_id=? "
+      . "ORDER BY revision DESC LIMIT $lim";
     $sql .= " OFFSET $offset" if ( $offset > 0 );
 
     my $sth = $dbh->selectall_arrayref( $sql, undef, $OpenPageName, $OpenPageName );
@@ -4173,9 +4249,8 @@ sub OpenKeptListDB {
         }
         foreach my $rec ( @{$sth} ) {
             my (
-                $pgid, $revision, $version, $author, $tupdate, $tcreate,
-                $ip,   $host,     $summary, $minor,  $newauthor, $data,
-                $kind, $text
+                $pgid, $revision, $version, $author,    $tupdate, $tcreate, $ip,
+                $host, $summary,  $minor,   $newauthor, $data,    $kind,    $text
             ) = @$rec;
             next if ( !defined($pgid) || $pgid eq "" || !defined($revision) || $revision eq "" );
 
@@ -4185,29 +4260,28 @@ sub OpenKeptListDB {
             # row immediately above.
             my $resolved;
             if ( !defined($running_text) ) {
-                $resolved = $text;          # first iteration = current
+                $resolved = $text;    # first iteration = current
             } elsif ( $kind eq 'diff' ) {
-                $resolved = eval {
-                    Text::Patch::patch( $running_text, $text, STYLE => 'Unified' );
-                };
+                $resolved =
+                  eval { Text::Patch::patch( $running_text, $text, STYLE => 'Unified' ); };
                 $resolved = $text if ( $@ || !defined($resolved) );
             } else {
-                $resolved = $text;          # snapshot
+                $resolved = $text;    # snapshot
             }
             $running_text = $resolved;
 
             $KeptList[$revision] = {
-                name      => "text_default",
-                version   => $version,
-                revision  => $revision,
-                tscreate  => $tcreate,
-                ts        => $tupdate,
-                ip        => $ip,
-                host      => $host,
-                id        => $data,
-                username  => $author,
-                kind      => $kind,
-                data      => {
+                name     => "text_default",
+                version  => $version,
+                revision => $revision,
+                tscreate => $tcreate,
+                ts       => $tupdate,
+                ip       => $ip,
+                host     => $host,
+                id       => $data,
+                username => $author,
+                kind     => $kind,
+                data     => {
                     text      => $resolved,
                     minor     => $minor,
                     newauthor => $newauthor,
@@ -4240,14 +4314,13 @@ sub OpenKeptRevisions {
 
 sub LoadUserDataDB {
     my ( $uid, $uname ) = @_;
-    $uname = '' if ( !defined($uname) );
+    $uname    = '' if ( !defined($uname) );
     %UserData = ();
     my $userdb = ( split( /\//, $UserDir ) )[-1];
     my $sth;
     my (
-        $id,         $name,    $pass,       $group,      $lang,
-        $email,      $param,   $createtime, $extradata,  $createip,
-        $tzoffset,   $pagecreate, $pagemodify, %extra
+        $id,         $name,      $pass,     $group,    $lang,       $email,      $param,
+        $createtime, $extradata, $createip, $tzoffset, $pagecreate, $pagemodify, %extra
     );
 
     if ( $dbh eq "" || $userdb eq "" ) {
@@ -4261,19 +4334,19 @@ sub LoadUserDataDB {
     # Note: the `stylesheet` column was renamed to `prefs` and the
     # contents switched from $FS2-joined to JSON in Stage 5.
     my $cols = "id,name,pass,groupid,lang,email,param,createtime,"
-             . "prefs,createip,tzoffset,pagecreate,pagemodify";
+      . "prefs,createip,tzoffset,pagecreate,pagemodify";
 
     if ( $uname eq "" ) {
         $uid = int($uid);
-        $sth = $dbh->selectall_arrayref(
-            "SELECT $cols FROM $userdb WHERE id=? LIMIT 1", undef, $uid );
+        $sth =
+          $dbh->selectall_arrayref( "SELECT $cols FROM $userdb WHERE id=? LIMIT 1", undef, $uid );
     } else {
         if ( $uname =~ /\@/ ) {
-            $sth = $dbh->selectall_arrayref(
-                "SELECT $cols FROM $userdb WHERE email LIKE ? LIMIT 1", undef, $uname );
+            $sth = $dbh->selectall_arrayref( "SELECT $cols FROM $userdb WHERE email LIKE ? LIMIT 1",
+                undef, $uname );
         } else {
-            $sth = $dbh->selectall_arrayref(
-                "SELECT $cols FROM $userdb WHERE name LIKE ? LIMIT 1", undef, $uname );
+            $sth = $dbh->selectall_arrayref( "SELECT $cols FROM $userdb WHERE name LIKE ? LIMIT 1",
+                undef, $uname );
         }
     }
     if ( !defined $sth->[0] ) {
@@ -4284,9 +4357,9 @@ sub LoadUserDataDB {
         }
     } else {
         (
-            $id,         $name,     $pass,       $group,    $lang,
-            $email,      $param,    $createtime, $extradata,
-            $createip,   $tzoffset, $pagecreate, $pagemodify
+            $id,       $name,       $pass,       $group,     $lang,
+            $email,    $param,      $createtime, $extradata, $createip,
+            $tzoffset, $pagecreate, $pagemodify
         ) = @{ $sth->[0] };
 
         # `prefs` is JSON (Stage 5); legacy rows from before the
@@ -4460,7 +4533,7 @@ sub UserIsAdmin {
     $stored = &GetParam( "adminpw", "" );
     return 0 if ( $stored eq "" );
     foreach my $token ( split( /\s+/, $AdminPass ) ) {
-        next if ( $token eq "" );
+        next     if ( $token eq "" );
         return 1 if ( VerifyPassword( $token, $stored ) );
     }
     return 0;
@@ -4473,7 +4546,7 @@ sub UserIsEditor {
     $stored = &GetParam( "adminpw", "" );
     return 0 if ( $stored eq "" );
     foreach my $token ( split( /\s+/, $EditPass ) ) {
-        next if ( $token eq "" );
+        next     if ( $token eq "" );
         return 1 if ( VerifyPassword( $token, $stored ) );
     }
     return 0;
@@ -5125,6 +5198,7 @@ sub DoEditPrefs {
     print '<h4>' . T('User info:') . "</h4>";
     print '<span class="span_prefinfo"><label class="formlabel">' . T('User name:') . '</label>';
     if ( $UserData{'username'} ne '' ) {
+
         # Username is constrained to $FreeLinkPattern's charset, which
         # excludes < > " &, so XSS via this output is already blocked
         # by validation in DoUpdatePrefs. QuoteHtml is defensive
@@ -5133,7 +5207,8 @@ sub DoEditPrefs {
         # username charset won't break out of the surrounding span.
         print "<span class='span_username'>"
           . QuoteHtml( $UserData{'username'} )
-          . "</span> (" . QuoteHtml($UserID) . ")";
+          . "</span> ("
+          . QuoteHtml($UserID) . ")";
         print &GetHiddenValue( 'p_username', $UserData{'username'} ), "\n";
     } else {
         print &GetFormText( 'username', "", 20, 30 ) . "<strong>*</strong>";
@@ -5516,10 +5591,10 @@ sub DoIndex {
 # emitted on the next response by GetHttpHeader / GetRedirectPage.
 sub DoNewLoginDB {
     $SetCookie{'id'} = &GetNewUserIdDB();
-    %UserCookie = ( id => $SetCookie{'id'} );
-    $UserID     = $SetCookie{'id'};
+    %UserCookie      = ( id => $SetCookie{'id'} );
+    $UserID          = $SetCookie{'id'};
 
-    %UserData = ();
+    %UserData               = ();
     $UserData{'id'}         = $SetCookie{'id'};
     $UserData{'createtime'} = $Now;
     $UserData{'createip'}   = &RemoteAddr;
@@ -5581,7 +5656,7 @@ sub DoLogin {
     $password = &GetParam( "p_password",  "" );
     $admpass  = &GetParam( "p_adminpass", "" );
 
-    my $ip_key   = 'ip:'    . &RemoteAddr;
+    my $ip_key   = 'ip:' . &RemoteAddr;
     my $name_key = $uname ne '' ? ( 'name:' . lc($uname) ) : '';
 
     if ( LoginThrottleBlocked($ip_key) || ( $name_key && LoginThrottleBlocked($name_key) ) ) {
@@ -5725,6 +5800,7 @@ sub SaveUserDataDB {
         'alldiff'      => $UserData{'alldiff'},
         'defaultdiff'  => $UserData{'defaultdiff'},
     );
+
     # The randkey column was retired in Stage 5 (replaced by HMAC-
     # signed session cookies). The prefs column was renamed from
     # `stylesheet` and stores JSON instead of $FS2-joined text.
@@ -5736,12 +5812,18 @@ sub SaveUserDataDB {
         "id,name,pass,groupid,lang,email,param,createtime,"
           . "createip,tzoffset,pagecreate,pagemodify,prefs",
         1,
-        $UserID,                 $UserData{'username'},
-        $encpass,                $adminhash,
-        $UserData{'lang'},       $UserData{'email'},
-        $UserData{'param'},      $UserData{'createtime'},
-        $UserData{'createip'},   $UserData{'tzoffset'},
-        $UserData{'pagecreate'}, $UserData{'pagemodify'},
+        $UserID,
+        $UserData{'username'},
+        $encpass,
+        $adminhash,
+        $UserData{'lang'},
+        $UserData{'email'},
+        $UserData{'param'},
+        $UserData{'createtime'},
+        $UserData{'createip'},
+        $UserData{'tzoffset'},
+        $UserData{'pagecreate'},
+        $UserData{'pagemodify'},
         $prefs_json,
     );
     if ( $isnewuser && $UseActivation ) {
@@ -5793,14 +5875,15 @@ sub DoWatchPage {
     my $user    = $UserData{'username'};
 
     if ( not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
-        if ( ReadDBItems( $watchdb, 'username', ',', '', "page=? and username=?", $id, $user ) eq '' ) {
+        if ( ReadDBItems( $watchdb, 'username', ',', '', "page=? and username=?", $id, $user ) eq
+            '' )
+        {
             &WriteDBItems( $watchdb, 'page,username', 0, ( $id, $user ) );
             AddUserLogDB( $UserID, 'watch', $id );
         }
     }
     print &GetHeader( '', T('Watch Page'), '' );
-    print '<div class="wikiinfo">'
-      . Ts( 'Watch activated for page "%s".', QuoteHtml($id) );
+    print '<div class="wikiinfo">' . Ts( 'Watch activated for page "%s".', QuoteHtml($id) );
     print '</div>';
     print &GetCommonFooter();
 }
@@ -5815,8 +5898,7 @@ sub DoUnWatchPage {
         DeleteDBItems( $watchdb, "page=? and username=?", $id, $user );
     }
     print &GetHeader( '', T('Watch Page'), '' );
-    print '<div class="wikiinfo">'
-      . Ts( 'Watch removed for page "%s".', QuoteHtml($id) );
+    print '<div class="wikiinfo">' . Ts( 'Watch removed for page "%s".', QuoteHtml($id) );
     print '</div>';
     print &GetCommonFooter();
 }
@@ -6312,7 +6394,7 @@ sub ReadWatchListDB {
     }
     $userlist = ReadDBItems( $watchdb, 'username', "\n", '', "page=?", $id );
     if ( $userlist ne '' ) {
-        my @users = split( /\n/, $userlist );
+        my @users        = split( /\n/, $userlist );
         my $placeholders = join( ',', ('?') x scalar(@users) );
         $addr = ReadDBItems( $userdb, 'email', ',', '', "name IN ($placeholders)", @users );
     }
@@ -6387,19 +6469,21 @@ sub SearchTitleAndBody {
     $searchcmd = "";
     my @binds;
     foreach my $key ( keys %cmd ) {
-        # $key is one of "text=", "author=", "summary=", "text LIKE ", "author LIKE ", "summary LIKE "
-        # — all whitelisted above; values are bound as parameters.
+
+      # $key is one of "text=", "author=", "summary=", "text LIKE ", "author LIKE ", "summary LIKE "
+      # — all whitelisted above; values are bound as parameters.
         if ( length($searchcmd) ) { $searchcmd .= " AND "; }
         $searchcmd .= "$key ? ";
         push @binds, $cmd{$key};
     }
     if ( $searchcmd eq "" ) { return (); }
     die("SearchTitleAndBody: unsafe table name") if ( !SafeIdent($pagedb) );
-    $lim    = int($lim);
-    $offset = int($offset);
+    $lim       = int($lim);
+    $offset    = int($offset);
     $searchcmd = "select id from $pagedb where $searchcmd group by id limit $lim";
     $searchcmd .= " offset $offset" if ( $offset > 0 );
     $sth = $dbh->selectall_arrayref( $searchcmd, undef, @binds );
+
     if ( defined $sth->[0] ) {
         foreach my $rec ( @{$sth} ) {
             my ($pgid) = @$rec;
@@ -6556,8 +6640,7 @@ sub UpdatePageLogDB {
         die( T('ERROR: database uninitialized!') );
     }
     die("UpdatePageLogDB: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    $sth = $dbh->prepare(
-        "insert into $dbname (id,lastvisit,visit,x,y,z) values (?,?,0,-1,-1,-1);");
+    $sth = $dbh->prepare("insert into $dbname (id,lastvisit,visit,x,y,z) values (?,?,0,-1,-1,-1);");
     $sth->execute( $id, $Now );
     $dbh->commit;    # sqlite does not support "on duplicate key update"
     $sth = $dbh->prepare("update $dbname set lastvisit=?, visit=visit+1 where id=?;");
@@ -6573,8 +6656,7 @@ sub AddUserLogDB {
         die( T('ERROR: database uninitialized!') );
     }
     die("AddUserLogDB: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    my $sth = $dbh->prepare(
-        "insert into $dbname (id,time,ip,action,target) values (?,?,?,?,?);");
+    my $sth = $dbh->prepare("insert into $dbname (id,time,ip,action,target) values (?,?,?,?,?);");
     $sth->execute( $uid, $Now, &RemoteAddr, $action, $target );
     $dbh->commit or die "Can't execute: ", $dbh->errstr;
 }
@@ -6993,8 +7075,8 @@ sub RenameTextLinks {
                 $newText = &SubstituteTextLinks( $old, $new, $oldText );
                 if ( $oldText ne $newText ) {
                     $$Text{'text'}    = $newText;
-                    $$Section{'data'} = { %$Text };
-                    $$Page{$section}  = { %$Section };
+                    $$Section{'data'} = {%$Text};
+                    $$Page{$section}  = {%$Section};
                     $changed          = 1;
                 }
             } elsif ( $section =~ /^cache_diff/ ) {
@@ -7040,6 +7122,7 @@ sub RenamePage {
     if ( $dbh eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
+
     # Move page rows + RC log rows (id matches the rename key directly).
     for my $tb ( &GetPageDB($old), ( split( /\//, $RcFile ) )[-1] ) {
         die("RenamePage: unsafe table name '$tb'") if ( !SafeIdent($tb) );
@@ -7140,7 +7223,8 @@ sub GetAdminBar {
     $result .= '<li>' . &ScriptLink( "action=editlinks", T("Edit/Rename pages") );
     my $tok = GenCSRFToken();
     if ( &GetLockState == 1 ) {
-        $result .= '<li>' . &ScriptLink( "action=editlock&set=0&csrf_token=$tok", T("Unlock site") );
+        $result .=
+          '<li>' . &ScriptLink( "action=editlock&set=0&csrf_token=$tok", T("Unlock site") );
     } else {
         $result .= '<li>' . &ScriptLink( "action=editlock&set=1&csrf_token=$tok", T("Lock site") );
     }
@@ -7299,9 +7383,9 @@ sub SaveUpload {
     if ( $filename =~ /${ImageExtensions}$/ ) {
         print '<hr><img src="' . $UploadUrl . $filename . '">' . "\n";
         if ( $q->param('dothumb') eq 'on' ) {
-            my $src   = "$UploadDir$filename";
-            my $dst   = "$UploadDir/thumb/mini_$filename";
-            my $rc    = system { 'convert' } 'convert', '-sample', '200x200', $src, $dst;
+            my $src = "$UploadDir$filename";
+            my $dst = "$UploadDir/thumb/mini_$filename";
+            my $rc  = system {'convert'} 'convert', '-sample', '200x200', $src, $dst;
             if ( $rc == 0 ) {
                 print '<hr>upload:thumb/mini_'
                   . $printFilename
@@ -7310,8 +7394,7 @@ sub SaveUpload {
                   . '/thumb/mini_'
                   . $filename . '">' . "\n";
             } else {
-                print '<hr>'
-                  . &QuoteHtml( T('Thumbnail generation failed.') ) . "\n";
+                print '<hr>' . &QuoteHtml( T('Thumbnail generation failed.') ) . "\n";
             }
         }
     }
@@ -7491,7 +7574,7 @@ sub RemoteAddr {
     foreach my $tp ( split( /\s*,\s*/, $TrustedProxies ) ) {
         next if ( $tp eq '' );
         if ( $remote eq $tp || index( $remote, $tp ) == 0 ) {
-            ( $fwd = $fwd ) =~ s/,.*//;    # X-Forwarded-For can be a list; take leftmost
+            ( $fwd = $fwd ) =~ s/,.*//;          # X-Forwarded-For can be a list; take leftmost
             $fwd =~ s/^\s+|\s+$//g;
             return $fwd if ( $fwd =~ /^[0-9a-fA-F:.]+$/ );
             last;
@@ -7519,4 +7602,5 @@ sub max {
 &DoWikiRequest() if ( $RunCGI && ( ( $_ // '' ) ne 'nocgi' ) );
 
 1;
+
 # == End of UseModWiki script. ===========================================

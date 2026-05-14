@@ -33,13 +33,12 @@ use DBI;
 use Habitat::Store ();
 
 my (
-    $source_dsn, $source_user, $source_pass,
-    $dest_dsn,   $dest_user,   $dest_pass,
-    $dry_run,    $batch_size,  $verbose, $help,
+    $source_dsn, $source_user, $source_pass, $dest_dsn, $dest_user,
+    $dest_pass,  $dry_run,     $batch_size,  $verbose,  $help,
 );
-$batch_size = 500;
-$dest_user  = '';
-$dest_pass  = '';
+$batch_size  = 500;
+$dest_user   = '';
+$dest_pass   = '';
 $source_user = '';
 $source_pass = '';
 
@@ -92,7 +91,7 @@ USAGE
 # `page_revisions`. See migrate_page() below.
 my @TABLES = (
     { source => 'user',           dest => 'users' },
-    { source => 'page',           dest => 'page',           handler => \&migrate_page },
+    { source => 'page',           dest => 'page', handler => \&migrate_page },
     { source => 'deletedpage',    dest => 'deletedpage' },
     { source => 'html',           dest => 'html' },
     { source => 'rclog',          dest => 'rclog' },
@@ -106,15 +105,14 @@ my @TABLES = (
 
 # Also accept new-style sources that already have the renamed tables.
 # Walk both source candidates per logical table.
-my %ALIAS_SOURCES = (
-    'users' => [ 'users', 'user' ],
-);
+my %ALIAS_SOURCES = ( 'users' => [ 'users', 'user' ], );
 
 # Per-table column-name remaps from the legacy schema to the current
 # one. Keyed by DESTINATION table name. Map { src_col => dst_col };
 # undef value would drop a column.
 my %COLUMN_RENAME = (
     watch => { user => 'username' },
+
     # Stage 5: prefs blob renamed from `stylesheet`. The TRANSFORMS
     # map (below) handles the FS-joined -> JSON conversion of the
     # value itself.
@@ -131,8 +129,10 @@ my %COLUMN_TRANSFORM = (
         prefs => sub {
             my ($val) = @_;
             return undef if ( !defined($val) || $val eq '' );
+
             # Already JSON? Pass through.
             return $val if ( $val =~ /^\s*[\{\[]/ );
+
             # Legacy $FS2-joined hash (\x1e2 == "\x1e" . "2")
             my $FS2 = "\x1e2";
             my %h   = split( /$FS2/, $val );
@@ -149,15 +149,15 @@ sub log_msg { print STDERR "[migrate] @_\n" }
 log_msg "source: $source_dsn";
 log_msg "dest  : $dest_dsn" . ( $dry_run ? "  (dry-run)" : "" );
 
-my $src = DBI->connect(
-    $source_dsn, $source_user, $source_pass,
-    { RaiseError => 1, AutoCommit => 1, PrintError => 0 }
-) or die "source connect failed: $DBI::errstr\n";
+my $src =
+  DBI->connect( $source_dsn, $source_user, $source_pass,
+    { RaiseError => 1, AutoCommit => 1, PrintError => 0 } )
+  or die "source connect failed: $DBI::errstr\n";
 
-my $dst = DBI->connect(
-    $dest_dsn, $dest_user, $dest_pass,
-    { RaiseError => 1, AutoCommit => 0, PrintError => 0 }
-) or die "dest connect failed: $DBI::errstr\n";
+my $dst =
+  DBI->connect( $dest_dsn, $dest_user, $dest_pass,
+    { RaiseError => 1, AutoCommit => 0, PrintError => 0 } )
+  or die "dest connect failed: $DBI::errstr\n";
 
 # ----------------------------------------------------------------
 # Provision the destination schema
@@ -238,39 +238,46 @@ sub migrate_page {
     return if ( $src_count == 0 );
 
     # Group all source rows by id.
-    my $sth = $src->prepare(
-        "SELECT id, version, author, revision, tupdate, tcreate, ip, host, "
+    my $sth =
+      $src->prepare( "SELECT id, version, author, revision, tupdate, tcreate, ip, host, "
           . "summary, text, minor, newauthor, data, tag "
-          . "FROM $src_table ORDER BY id, revision"
-    );
+          . "FROM $src_table ORDER BY id, revision" );
     $sth->execute;
 
     my %by_id;    # id => arrayref of row hashrefs
     while ( my $r = $sth->fetchrow_arrayref ) {
         my $row = {
-            id        => $r->[0],  version  => $r->[1],
-            author    => $r->[2],  revision => $r->[3],
-            tupdate   => $r->[4],  tcreate  => $r->[5],
-            ip        => $r->[6],  host     => $r->[7],
-            summary   => $r->[8],  text     => $r->[9],
-            minor     => $r->[10], newauthor => $r->[11],
-            data      => $r->[12], tag      => $r->[13],
+            id        => $r->[0],
+            version   => $r->[1],
+            author    => $r->[2],
+            revision  => $r->[3],
+            tupdate   => $r->[4],
+            tcreate   => $r->[5],
+            ip        => $r->[6],
+            host      => $r->[7],
+            summary   => $r->[8],
+            text      => $r->[9],
+            minor     => $r->[10],
+            newauthor => $r->[11],
+            data      => $r->[12],
+            tag       => $r->[13],
         };
         push @{ $by_id{ $row->{id} } }, $row;
     }
 
-    my $page_ins = $dst->prepare(
-        "INSERT INTO $dst_table "
+    # `admin_saved` defaults to 0 for migrated content: the legacy
+    # schema has no concept of admin-saved trust, so re-saving a page
+    # post-migration is what grants the raw-HTML bypass.
+    my $page_ins =
+      $dst->prepare( "INSERT INTO $dst_table "
           . "(id, version, author, revision, tupdate, tcreate, ip, host, "
-          . " summary, text, minor, newauthor, data, tag) "
-          . "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-    );
-    my $rev_ins = $dst->prepare(
-        "INSERT INTO $rev_table "
+          . " summary, text, minor, newauthor, data, tag, admin_saved) "
+          . "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)" );
+    my $rev_ins =
+      $dst->prepare( "INSERT INTO $rev_table "
           . "(page_id, revision, version, author, tupdate, tcreate, ip, host, "
           . " summary, minor, newauthor, data, kind, text) "
-          . "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-    );
+          . "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)" );
 
     my $total_pages = 0;
     my $total_revs  = 0;
@@ -285,7 +292,7 @@ sub migrate_page {
         my @history;    # ascending list of { revision, text, meta... }
         for my $row (@rows) {
             my @patches = split( /$FS4/, $row->{text} );
-            my $base    = $patches[0];   # snapshot for this row's revision
+            my $base    = $patches[0];                     # snapshot for this row's revision
 
             # First, push the row's snapshot itself.
             push @history,
@@ -317,7 +324,7 @@ sub migrate_page {
                 my $diff = $half[-1];
                 next if ( $diff eq '' );
                 $cur_text = eval { Text::Patch::patch( $cur_text, $diff, STYLE => "Unified" ) };
-                last if $@;     # malformed chain; stop
+                last if $@;                      # malformed chain; stop
                 push @history,
                   {
                     revision  => $row->{revision} - $i,
@@ -342,7 +349,8 @@ sub migrate_page {
         # revision number; prefer the major-rev row, which is the
         # snapshot, and which we pushed first).
         my %seen;
-        @history = grep { !$seen{ $_->{revision} }++ } sort { $a->{revision} <=> $b->{revision} } @history;
+        @history =
+          grep { !$seen{ $_->{revision} }++ } sort { $a->{revision} <=> $b->{revision} } @history;
 
         next unless @history;
         my $latest = $history[-1];
@@ -350,13 +358,11 @@ sub migrate_page {
         # 1. Write the latest revision to the new `page` table.
         unless ($dry_run) {
             $page_ins->execute(
-                $id,                  $latest->{version},
-                $latest->{author},    $latest->{revision},
-                $latest->{tupdate},   $latest->{tcreate},
-                $latest->{ip},        $latest->{host},
-                $latest->{summary},   $latest->{text},
-                $latest->{minor},     $latest->{newauthor},
-                $latest->{data},      $latest->{tag},
+                $id,                 $latest->{version}, $latest->{author},
+                $latest->{revision}, $latest->{tupdate}, $latest->{tcreate},
+                $latest->{ip},       $latest->{host},    $latest->{summary},
+                $latest->{text},     $latest->{minor},   $latest->{newauthor},
+                $latest->{data},     $latest->{tag},
             );
         }
         $total_pages++;
@@ -366,13 +372,10 @@ sub migrate_page {
             my $h = $history[$i];
             unless ($dry_run) {
                 $rev_ins->execute(
-                    $id,            $h->{revision},
-                    $h->{version},  $h->{author},
-                    $h->{tupdate},  $h->{tcreate},
-                    $h->{ip},       $h->{host},
-                    $h->{summary},  $h->{minor},
-                    $h->{newauthor}, $h->{data},
-                    'snapshot',     $h->{text},
+                    $id,           $h->{revision}, $h->{version},   $h->{author},
+                    $h->{tupdate}, $h->{tcreate},  $h->{ip},        $h->{host},
+                    $h->{summary}, $h->{minor},    $h->{newauthor}, $h->{data},
+                    'snapshot',    $h->{text},
                 );
             }
             $total_revs++;
@@ -386,12 +389,9 @@ sub migrate_page {
 
     my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $dst_table );
     my $rev_count = $dry_run ? '(dry-run)' : row_count( $dst, $rev_table );
-    $report->{$label} =
-      { src => $src_count, dst => "$dst_count page + $rev_count rev" };
-    log_msg sprintf(
-        "done %s : src=%d -> %d current rows + %d historical rows",
-        $label, $src_count, $total_pages, $total_revs
-    );
+    $report->{$label} = { src => $src_count, dst => "$dst_count page + $rev_count rev" };
+    log_msg sprintf( "done %s : src=%d -> %d current rows + %d historical rows",
+        $label, $src_count, $total_pages, $total_revs );
 }
 
 # ----------------------------------------------------------------
@@ -441,8 +441,8 @@ for my $tbl_spec (@TABLES) {
     my ( @src_keep, @dst_keep );
     for my $col (@src_cols) {
         my $dest_col = exists $rename->{$col} ? $rename->{$col} : $col;
-        next unless defined $dest_col;        # explicit drop
-        next unless $dst_set{$dest_col};       # column doesn't exist in dest
+        next unless defined $dest_col;      # explicit drop
+        next unless $dst_set{$dest_col};    # column doesn't exist in dest
         push @src_keep, $col;
         push @dst_keep, $dest_col;
     }
@@ -452,9 +452,14 @@ for my $tbl_spec (@TABLES) {
     }
 
     my $src_count = row_count( $src, $src_table );
-    log_msg sprintf( "copy %s : %d rows, columns: %s",
-        $label, $src_count,
-        join( ",", map { $src_keep[$_] . ($src_keep[$_] eq $dst_keep[$_] ? "" : "->$dst_keep[$_]") } 0 .. $#src_keep ) );
+    log_msg sprintf(
+        "copy %s : %d rows, columns: %s",
+        $label,
+        $src_count,
+        join( ",",
+            map { $src_keep[$_] . ( $src_keep[$_] eq $dst_keep[$_] ? "" : "->$dst_keep[$_]" ) }
+              0 .. $#src_keep )
+    );
 
     next if ( $src_count == 0 );
 
@@ -471,8 +476,8 @@ for my $tbl_spec (@TABLES) {
 
     # Pre-compute the transform list, indexed by row position. Most
     # tables have no transforms so this is undef -> array-of-undefs.
-    my $xforms = $COLUMN_TRANSFORM{$dst_table};
-    my @xform_fns = map { $xforms && $xforms->{$_} } @dst_keep;
+    my $xforms        = $COLUMN_TRANSFORM{$dst_table};
+    my @xform_fns     = map  { $xforms && $xforms->{$_} } @dst_keep;
     my $has_any_xform = grep { $_ } @xform_fns;
 
     my $batched = 0;
@@ -508,8 +513,7 @@ for my $tbl_spec (@TABLES) {
 print "\n--- migration summary ---\n";
 printf "%-30s %-12s %-12s\n", "table", "source", "dest";
 for my $label ( sort keys %report ) {
-    printf "%-30s %-12s %-12s\n",
-        $label, $report{$label}{src}, $report{$label}{dst};
+    printf "%-30s %-12s %-12s\n", $label, $report{$label}{src}, $report{$label}{dst};
 }
 
 $src->disconnect;

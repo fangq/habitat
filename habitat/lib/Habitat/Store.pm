@@ -25,14 +25,14 @@ use warnings;
 use Exporter qw(import);
 
 our @EXPORT_OK = qw(
-    SafeIdent
-    ReadDBItems
-    WriteDBItems
-    DeleteDBItems
-    CopyDBItems
-    dialect
-    regex_op
-    init_schema
+  SafeIdent
+  ReadDBItems
+  WriteDBItems
+  DeleteDBItems
+  CopyDBItems
+  dialect
+  regex_op
+  init_schema
 );
 
 sub _dbh {
@@ -102,13 +102,13 @@ sub json_column_type {
 # for each non-key column.
 sub _build_upsert_sql {
     my ( $dbh, $table, $fields, $keys ) = @_;
-    my @cols = split /\s*,\s*/, $fields;
+    my @cols         = split /\s*,\s*/, $fields;
     my $placeholders = join ',', ('?') x scalar(@cols);
 
     if ( dialect($dbh) eq 'pg' ) {
-        my @keylist = split /\s*,\s*/, ( defined($keys) && $keys ne '' ? $keys : $cols[0] );
-        my %is_key = map { $_ => 1 } @keylist;
-        my @updates = map { "$_ = EXCLUDED.$_" } grep { !$is_key{$_} } @cols;
+        my @keylist    = split /\s*,\s*/, ( defined($keys) && $keys ne '' ? $keys : $cols[0] );
+        my %is_key     = map { $_ => 1 } @keylist;
+        my @updates    = map { "$_ = EXCLUDED.$_" } grep { !$is_key{$_} } @cols;
         my $set_clause = @updates ? "DO UPDATE SET " . join( ',', @updates ) : "DO NOTHING";
         return
             "INSERT INTO $table ($fields) VALUES ($placeholders) "
@@ -147,6 +147,7 @@ sub init_schema {
     # ids manually via GetNewUserIdDB, so neither dialect needs a
     # serial/autoincrement.
     my @ddl = (
+
         # Stage 5: page table now holds ONLY the current revision per
         # page. Historical revisions live in page_revisions. Legacy
         # installs (where the page table has multiple rows per id +
@@ -159,6 +160,7 @@ sub init_schema {
             tupdate integer, tcreate integer,
             ip varchar(32), host varchar(64), summary varchar(128), text text,
             minor integer, newauthor integer, data varchar(32), tag varchar(32),
+            admin_saved integer NOT NULL DEFAULT 0,
             PRIMARY KEY (id)
         )},
         q{CREATE INDEX IF NOT EXISTS page_id ON page (id)},
@@ -186,7 +188,8 @@ sub init_schema {
             id varchar(512), version integer,
             author varchar(32), revision integer, tupdate integer, tcreate integer,
             ip varchar(32), host varchar(64), summary varchar(128), text text,
-            minor integer, newauthor integer, data varchar(32), tag varchar(32)
+            minor integer, newauthor integer, data varchar(32), tag varchar(32),
+            admin_saved integer NOT NULL DEFAULT 0
         )},
 
         # Renamed from "user" (which is a reserved keyword in Postgres
@@ -200,14 +203,16 @@ sub init_schema {
         #     a dialect-aware type (JSONB on Postgres, JSON on MySQL,
         #     TEXT on SQLite/MariaDB). migrate.pl converts the
         #     FS-joined blob to JSON during table copy.
-        sprintf( q{CREATE TABLE IF NOT EXISTS users (
+        sprintf(
+            q{CREATE TABLE IF NOT EXISTS users (
             id integer PRIMARY KEY,
             name varchar(32), pass varchar(255),
             groupid varchar(255), lang varchar(8),
             email varchar(64), param varchar(32), createtime integer,
             prefs %s, createip varchar(32), tzoffset integer,
             pagecreate varchar(512), pagemodify varchar(512)
-        )}, json_column_type( dialect($dbh) ) ),
+        )}, json_column_type( dialect($dbh) )
+        ),
 
         q{CREATE TABLE IF NOT EXISTS html (
             id varchar(512) PRIMARY KEY, time integer, text text
@@ -277,8 +282,11 @@ sub init_schema {
     # would, without disturbing the caller's transaction shape.
     my $jt = json_column_type( dialect($dbh) );
     for my $alter (
-        "ALTER TABLE users ADD COLUMN prefs $jt",
-    ) {
+        "ALTER TABLE users       ADD COLUMN prefs $jt",
+        "ALTER TABLE page        ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
+        "ALTER TABLE deletedpage ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
+      )
+    {
         my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
 
         # Silence DBI's PrintError noise specifically for this attempt;
@@ -322,7 +330,7 @@ sub WriteDBItems {
     my $dbh = _dbh();
     die("ERROR: database uninitialized!") if ( !defined($dbh) || $dbh eq "" || $dbname eq "" );
     die("WriteDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    $fields = "*" if ( $fields eq "" );
+    $fields = "*"                                    if ( $fields eq "" );
     foreach my $f ( split( /\s*,\s*/, $fields ) ) {
         die("WriteDBItems: unsafe field name '$f'") if ( $f ne '*' && !SafeIdent($f) );
     }
@@ -353,7 +361,7 @@ sub CopyDBItems {
     die("ERROR: database uninitialized!")
       if ( !defined($dbh) || $dbh eq "" || $db1 eq "" || $db2 eq "" );
     die("CopyDBItems: unsafe table name") if ( !SafeIdent($db1) || !SafeIdent($db2) );
-    return 0 if ( $conditions eq "" );
+    return 0                              if ( $conditions eq "" );
     my $sth = $dbh->prepare("INSERT INTO $db2 SELECT * FROM $db1 WHERE $conditions");
     $sth->execute(@binds) or die "Can't execute: " . $dbh->errstr;
     _commit_if_needed($dbh);
@@ -368,7 +376,7 @@ sub DeleteDBItems {
     die("ERROR: database uninitialized!")
       if ( !defined($dbh) || $dbh eq "" || $dbname eq "" );
     die("DeleteDBItems: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    return 0 if ( $conditions eq "" );
+    return 0                                          if ( $conditions eq "" );
     my $sth = $dbh->prepare("delete from $dbname where $conditions;");
     $sth->execute(@binds) or die "Can't execute: " . $dbh->errstr;
     _commit_if_needed($dbh);
@@ -390,6 +398,7 @@ sub ReadDBItems {
     $sql .= " where $conditions" if ( $conditions ne "" );
     my $sth = $dbh->selectall_arrayref( $sql, undef, @binds );
     my @res;
+
     if ( defined $sth && defined $sth->[0] ) {
         foreach my $rec (@$sth) {
             push( @res, join( $glue2, @{$rec} ) ) if ( @{$rec} > 0 );
