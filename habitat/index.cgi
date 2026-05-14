@@ -554,6 +554,14 @@ sub DoCacheBrowse {
     my ( $query, $idFile, $text, $language, %param );
 
     return 0 if ( !$UseCache );
+
+    # Stage 6: cache is anonymous-only (see BrowsePage write guard).
+    # DoCacheBrowse runs BEFORE InitCookie (which sets $UserID), so
+    # we use the raw cookie header as the anonymous-marker: any
+    # incoming Cookie at all means "might be authenticated, skip the
+    # cache". Conservative — anonymous requests carrying stale cookies
+    # also skip — but never leaks per-user content to other users.
+    return 0 if ( defined( $ENV{HTTP_COOKIE} ) && $ENV{HTTP_COOKIE} ne '' );
     $query = $ENV{'QUERY_STRING'};
     %param = &InitParam();
 
@@ -1123,7 +1131,14 @@ sub BrowsePage {
         $saveHtml =~ s/.*<\!DOCTYPE/<!DOCTYPE/gs;
         &WriteStringToFile( $exportfile, $saveHtml );
     }
-    &UpdateHtmlCacheDB( $id, $fullHtml ) if ( $UseCache && ( $oldId eq '' ) );
+    # Stage 6: only cache when the rendered HTML is the anonymous view.
+    # The page includes per-user elements (admin bar / user toolbar /
+    # login link) that would otherwise leak admin content to non-admins
+    # on cache hit. UserID 111 is the wiki's bare-anonymous sentinel
+    # (set in InitCookie when no session token is present).
+    if ( $UseCache && $oldId eq '' && $UserID == 111 ) {
+        &UpdateHtmlCacheDB( $id, $fullHtml );
+    }
 }
 
 sub ReBrowsePage {
@@ -6994,11 +7009,29 @@ sub RenamePage {
     if ( $dbh eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    for my $tb ( &GetPageDB($old), ( split( /\//, $RcFile ) )[-1], ( split( /\//, $HtmlDir ) )[-1] ) {
+    # Move page rows + RC log rows (id matches the rename key directly).
+    for my $tb ( &GetPageDB($old), ( split( /\//, $RcFile ) )[-1] ) {
         die("RenamePage: unsafe table name '$tb'") if ( !SafeIdent($tb) );
         my $s = $dbh->prepare("update $tb set id=? where id=?");
         $s->execute( $new, $old );
     }
+
+    # Also move page_revisions rows.
+    my $revdb = &GetPageDB($old) . "_revisions";
+    if ( SafeIdent($revdb) ) {
+        my $s = $dbh->prepare("update $revdb set page_id=? where page_id=?");
+        $s->execute( $new, $old );
+    }
+
+    # Stage 6: html cache keys are `id[lang]`, not bare `id`. The old
+    # `UPDATE set id=? WHERE id=?` never matched anything. Drop every
+    # cached language variant for the old id; new pages will repopulate
+    # the cache lazily on first read.
+    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
+    if ( SafeIdent($htmldb) ) {
+        DeleteDBItems( $htmldb, "id LIKE ?", "$old\[%\]" );
+    }
+
     $tbname = ( split( /\//, $EmailFile ) )[-1];
     die("RenamePage: unsafe table name '$tbname'") if ( !SafeIdent($tbname) );
     $sth = $dbh->prepare("update $tbname set page=? where page=?");
