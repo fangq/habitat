@@ -2343,8 +2343,9 @@ sub ApplyRegExp {
 sub getnextnum {
     my ($id) = @_;
     $id =~ s/\/$//g;
+    my $op = Habitat::Store::regex_op();
     my @matchitem = split( /\n/,
-        ReadDBItems( GetPageDB($id), 'id', "\n", '', "id REGEXP ? group by id", "^" . quotemeta($id) . "/[0-9]+" ) );
+        ReadDBItems( GetPageDB($id), 'id', "\n", '', "id $op ? group by id", "^" . quotemeta($id) . "/[0-9]+" ) );
     for ( my $i = 0 ; $i < @matchitem ; $i++ ) {
         $matchitem[$i] =~ s/^$id\///;
     }
@@ -2453,10 +2454,11 @@ sub GetLocalTree {
     my ( $id, $namepat, $format ) = @_;
     my ( $toptree, $topnode );
     if ( !( defined $LocalTree ) && $IsPrintTree ) {
+        my $op = Habitat::Store::regex_op();
         my @matchitem = split(
             /\n/,
             ReadDBItems(
-                GetPageDB($id), 'id', "\n", '', "id REGEXP ? group by id",
+                GetPageDB($id), 'id', "\n", '', "id $op ? group by id",
                 quotemeta($id) . "/" . $namepat
             )
         );
@@ -3671,7 +3673,11 @@ sub ReadLatestPageDB {
     }
     die("ReadLatestPageDB: unsafe table name") if ( !SafeIdent($pagedb) );
     if ( $rev eq "" ) {
-        $sth = $dbh->selectall_arrayref( "select max(revision),* from $pagedb where id=?",
+        # ORDER BY ... LIMIT 1 is portable across SQLite and Postgres.
+        # The historical "SELECT max(revision), *" was SQLite-only and
+        # only happened to pull the matching row's columns by accident.
+        $sth = $dbh->selectall_arrayref(
+            "SELECT revision, * FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
             undef, $id );
     } else {
         $sth = $dbh->selectall_arrayref(
@@ -3716,7 +3722,8 @@ sub OpenPageDB {
         die( T('ERROR: database uninitialized!') );
     }
     die("OpenPageDB: unsafe table name") if ( !SafeIdent($pagedb) );
-    $sth = $dbh->selectall_arrayref( "select max(revision),* from $pagedb where id=?",
+    $sth = $dbh->selectall_arrayref(
+        "SELECT revision, * FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
         undef, $id );
     if ( defined $sth->[0] ) {
         (
@@ -3835,7 +3842,8 @@ sub SavePageDB {
     die("SavePageDB: unsafe table name") if ( !SafeIdent($pagedb) );
     $$Page{'name'} = $name;
 
-    $sth = $dbh->selectall_arrayref( "select max(revision),data from $pagedb where id=?;",
+    $sth = $dbh->selectall_arrayref(
+        "SELECT revision, data FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
         undef, $name );
     if ( defined $sth->[0] ) {
         ( $version, $data ) = @{ $sth->[0] };
@@ -7079,7 +7087,8 @@ sub ReadRawWikiPage {
         die( T('ERROR: database uninitialized!') );
     }
     die("ReadRawWikiPage: unsafe table name") if ( !SafeIdent($pagedb) );
-    $sth = $dbh->selectall_arrayref( "select max(revision),text from $pagedb where id=?;",
+    $sth = $dbh->selectall_arrayref(
+        "SELECT revision, text FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
         undef, $id );
     if ( defined $sth->[0] ) {
         ( $maxversion, $text ) = @{ $sth->[0] };
