@@ -112,6 +112,30 @@ my %ALIAS_SOURCES = (
 # undef value would drop a column.
 my %COLUMN_RENAME = (
     watch => { user => 'username' },
+    # Stage 5: prefs blob renamed from `stylesheet`. The TRANSFORMS
+    # map (below) handles the FS-joined -> JSON conversion of the
+    # value itself.
+    users => { stylesheet => 'prefs' },
+);
+
+# Per-table per-column value transforms applied during row copy.
+# Keyed by DESTINATION table name, then DESTINATION column name.
+# The function receives the source value and returns the value to
+# insert into the destination.
+use JSON::PP;
+my %COLUMN_TRANSFORM = (
+    users => {
+        prefs => sub {
+            my ($val) = @_;
+            return undef if ( !defined($val) || $val eq '' );
+            # Already JSON? Pass through.
+            return $val if ( $val =~ /^\s*[\{\[]/ );
+            # Legacy $FS2-joined hash (\x1e2 == "\x1e" . "2")
+            my $FS2 = "\x1e2";
+            my %h   = split( /$FS2/, $val );
+            return encode_json( \%h );
+        },
+    },
 );
 
 sub log_msg { print STDERR "[migrate] @_\n" }
@@ -238,11 +262,23 @@ for my $tbl_spec (@TABLES) {
     }
     $select->execute;
 
+    # Pre-compute the transform list, indexed by row position. Most
+    # tables have no transforms so this is undef -> array-of-undefs.
+    my $xforms = $COLUMN_TRANSFORM{$dst_table};
+    my @xform_fns = map { $xforms && $xforms->{$_} } @dst_keep;
+    my $has_any_xform = grep { $_ } @xform_fns;
+
     my $batched = 0;
     my $total   = 0;
     while ( my $row = $select->fetchrow_arrayref ) {
+        my @vals = @$row;
+        if ($has_any_xform) {
+            for my $i ( 0 .. $#vals ) {
+                $vals[$i] = $xform_fns[$i]->( $vals[$i] ) if $xform_fns[$i];
+            }
+        }
         if ( !$dry_run ) {
-            $insert->execute(@$row);
+            $insert->execute(@vals);
         }
         $total++;
         $batched++;

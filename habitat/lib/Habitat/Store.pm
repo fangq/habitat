@@ -79,6 +79,19 @@ sub regex_op {
     return ( dialect() eq 'pg' ) ? '~' : 'REGEXP';
 }
 
+# DDL type fragment for a JSON column. Differs per dialect:
+#   pg     -> JSONB    (parsed at write, indexable via GIN, fast field access)
+#   mysql  -> JSON     (parsed binary internally; PG-jsonb-equivalent)
+#   sqlite -> TEXT     (no native column type; just text containing JSON)
+#   mariadb-> JSON     (alias for LONGTEXT + JSON_VALID check)
+# Callers pass the dialect string (or omit for current handle).
+sub json_column_type {
+    my $d = $_[0] || dialect();
+    return 'JSONB' if $d eq 'pg';
+    return 'JSON'  if $d eq 'mysql';
+    return 'TEXT';
+}
+
 # Build an UPSERT statement for the given table and field list.
 #   $fields: comma-separated column list ("id,data,time").
 #   $keys  : conflict-key list (defaults to the FIRST column of $fields,
@@ -153,20 +166,22 @@ sub init_schema {
         # Renamed from "user" (which is a reserved keyword in Postgres
         # and yields CURRENT_USER unless double-quoted). The migration
         # script handles the rename for existing SQLite installs.
-        # Stage 5 dropped the legacy `randkey` column: the per-IP
-        # randkey map it carried was retired in Stage 1 when sessions
-        # moved to HMAC-signed cookies. migrate.pl picks up old rows
-        # via column-intersection logic, so existing data carrying the
-        # column is preserved correctly during migration but the
-        # column itself never appears in the new schema.
-        q{CREATE TABLE IF NOT EXISTS users (
+        # Stage 5 changes vs the original UseModWiki shape:
+        #   - dropped `randkey` (per-IP map retired in Stage 1)
+        #   - renamed `stylesheet` -> `prefs`
+        #     The column historically stored an $FS2-joined "k1\x1e2v1\x1e2k2..."
+        #     blob with ~12 user-preference keys. Switched to JSON, with
+        #     a dialect-aware type (JSONB on Postgres, JSON on MySQL,
+        #     TEXT on SQLite/MariaDB). migrate.pl converts the
+        #     FS-joined blob to JSON during table copy.
+        sprintf( q{CREATE TABLE IF NOT EXISTS users (
             id integer PRIMARY KEY,
             name varchar(32), pass varchar(255),
             groupid varchar(255), lang varchar(8),
             email varchar(64), param varchar(32), createtime integer,
-            stylesheet varchar(128), createip varchar(32), tzoffset integer,
+            prefs %s, createip varchar(32), tzoffset integer,
             pagecreate varchar(512), pagemodify varchar(512)
-        )},
+        )}, json_column_type( dialect($dbh) ) ),
 
         q{CREATE TABLE IF NOT EXISTS html (
             id varchar(512) PRIMARY KEY, time integer, text text
@@ -220,6 +235,43 @@ sub init_schema {
     for my $stmt (@ddl) {
         eval { $dbh->do($stmt) };
         die("init_schema: $@\n  while executing:\n$stmt\n") if $@;
+    }
+
+    # Additive column upgrades for existing installs. CREATE TABLE IF
+    # NOT EXISTS above doesn't modify a table that already has rows; a
+    # pre-Stage-5 schema is missing the renamed `prefs` column on
+    # `users`. SQLite doesn't support `ADD COLUMN IF NOT EXISTS` (only
+    # Pg ≥ 9.6 does), so we issue the bare ADD COLUMN.
+    #
+    # On Postgres, a failed statement inside a transaction puts the
+    # transaction into an aborted state — even if we eval-swallow the
+    # Perl-level error, subsequent statements all fail until the
+    # transaction is rolled back. SAVEPOINT / ROLLBACK TO SAVEPOINT
+    # gives us the same statement-level isolation that autocommit
+    # would, without disturbing the caller's transaction shape.
+    my $jt = json_column_type( dialect($dbh) );
+    for my $alter (
+        "ALTER TABLE users ADD COLUMN prefs $jt",
+    ) {
+        my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
+
+        # Silence DBI's PrintError noise specifically for this attempt;
+        # we expect either success or "column already exists" and report
+        # the latter as a no-op rather than a warning to stderr.
+        local $dbh->{PrintError} = 0;
+
+        eval { $dbh->do("SAVEPOINT $sp") };
+        eval { $dbh->do($alter) };
+        my $err = $@;
+        if ( $err && $err !~ /duplicate column|already exists/i ) {
+            eval { $dbh->do("ROLLBACK TO SAVEPOINT $sp") };
+            eval { $dbh->do("RELEASE SAVEPOINT $sp") };
+            die("init_schema (ALTER): $err\n  while executing:\n$alter\n");
+        }
+        if ($err) {
+            eval { $dbh->do("ROLLBACK TO SAVEPOINT $sp") };
+        }
+        eval { $dbh->do("RELEASE SAVEPOINT $sp") };
     }
     return 1;
 }
