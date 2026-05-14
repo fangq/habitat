@@ -71,34 +71,30 @@ SKIP: {
 # UpgradePasswordHashDB — bcrypt-after-legacy-login migration
 # ----------------------------------------------------------------
 my $dbh = $HabitatEngine::dbh;
-$dbh->do( "INSERT INTO user (id, name, pass) VALUES (1001, 'alice', ?)",
+$dbh->do( "INSERT INTO users (id, name, pass) VALUES (1001, 'alice', ?)",
     undef, $legacy_des );
 
 # Confirm the row is present with the legacy hash
 my ($pass_before) = $dbh->selectrow_array(
-    "SELECT pass FROM user WHERE name='alice'" );
+    "SELECT pass FROM users WHERE name='alice'" );
 is( $pass_before, $legacy_des, "user row seeded with legacy crypt() hash" );
 
 # Pretend DoLogin succeeded and is now rehashing
 my $new_hash = HabitatEngine::HashPassword("hello");
-{
-    no warnings 'once';
-    local $HabitatEngine::UserDir = "$HabitatEngine::DataDir/user";    # used by UpgradePasswordHashDB
-    HabitatEngine::UpgradePasswordHashDB( "alice", $new_hash );
-}
+HabitatEngine::UpgradePasswordHashDB( "alice", $new_hash );
 
 my ($pass_after) = $dbh->selectrow_array(
-    "SELECT pass FROM user WHERE name='alice'" );
+    "SELECT pass FROM users WHERE name='alice'" );
 isnt( $pass_after, $legacy_des, "user row was updated" );
 ok( $pass_after =~ /^\$2[abxy]\$/, "row now stores a bcrypt hash" );
 ok( HabitatEngine::VerifyPassword( "hello", $pass_after ),
     "the rehashed value verifies the original cleartext password" );
 
 # Calling with empty values is safe
-my $count_before = $dbh->selectrow_array("SELECT COUNT(*) FROM user");
+my $count_before = $dbh->selectrow_array("SELECT COUNT(*) FROM users");
 HabitatEngine::UpgradePasswordHashDB( "", $new_hash );
 HabitatEngine::UpgradePasswordHashDB( "bob", "" );
-my $count_after = $dbh->selectrow_array("SELECT COUNT(*) FROM user");
+my $count_after = $dbh->selectrow_array("SELECT COUNT(*) FROM users");
 is( $count_before, $count_after, "UpgradePasswordHashDB no-ops on empty args" );
 
 done_testing;
