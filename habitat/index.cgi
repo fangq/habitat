@@ -4044,25 +4044,33 @@ sub LoadUserDataDB {
     my $userdb = ( split( /\//, $UserDir ) )[-1];
     my $sth;
     my (
-        $id,         $name,       $pass,       $randkey,  $group,    $lang,
-        $email,      $param,      $createtime, $createip, $tzoffset, $pagecreate,
-        $pagemodify, $stylesheet, $extradata,  %extra
+        $id,         $name,    $pass,       $group,      $lang,
+        $email,      $param,   $createtime, $extradata,  $createip,
+        $tzoffset,   $pagecreate, $pagemodify, %extra
     );
 
     if ( $dbh eq "" || $userdb eq "" ) {
         return T('ERROR: database uninitialized!');
     }
     die("LoadUserDataDB: unsafe table name") if ( !SafeIdent($userdb) );
+
+    # Explicit column list — Stage 5 dropped randkey from the schema,
+    # so `SELECT *` ordinal-unpacking would shift. Naming columns
+    # explicitly also lets us reorder fields freely in the future.
+    my $cols = "id,name,pass,groupid,lang,email,param,createtime,"
+             . "stylesheet,createip,tzoffset,pagecreate,pagemodify";
+
     if ( $uname eq "" ) {
         $uid = int($uid);
-        $sth = $dbh->selectall_arrayref( "select * from $userdb where id=? limit 1", undef, $uid );
+        $sth = $dbh->selectall_arrayref(
+            "SELECT $cols FROM $userdb WHERE id=? LIMIT 1", undef, $uid );
     } else {
         if ( $uname =~ /\@/ ) {
-            $sth = $dbh->selectall_arrayref( "select * from $userdb where email like ? limit 1",
-                undef, $uname );
+            $sth = $dbh->selectall_arrayref(
+                "SELECT $cols FROM $userdb WHERE email LIKE ? LIMIT 1", undef, $uname );
         } else {
-            $sth = $dbh->selectall_arrayref( "select * from $userdb where name like ? limit 1",
-                undef, $uname );
+            $sth = $dbh->selectall_arrayref(
+                "SELECT $cols FROM $userdb WHERE name LIKE ? LIMIT 1", undef, $uname );
         }
     }
     if ( !defined $sth->[0] ) {
@@ -4073,23 +4081,16 @@ sub LoadUserDataDB {
         }
     } else {
         (
-            $id,       $name,     $pass,       $randkey,    $group,
-            $lang,     $email,    $param,      $createtime, $extradata,
-            $createip, $tzoffset, $pagecreate, $pagemodify
+            $id,         $name,     $pass,       $group,    $lang,
+            $email,      $param,    $createtime, $extradata,
+            $createip,   $tzoffset, $pagecreate, $pagemodify
         ) = @{ $sth->[0] };
-        %extra = split( /$FS2/, $extradata );
+        %extra = split( /$FS2/, $extradata ) if defined $extradata;
     }
-    $UserData{'id'}         = $id;
-    $UserData{'username'}   = $name;
-    $UserData{'password'}   = $pass;
-    $UserData{'adminpw'}    = $group;
-    $UserData{'rawrandkey'} = $randkey;
-    if ( $randkey =~ /$FS2/ ) {
-        my %rkey = split( /$FS2/, $randkey );
-        $UserData{'randkey'} = $rkey{&RemoteAddr};
-    } else {
-        $UserData{'randkey'} = $randkey;
-    }
+    $UserData{'id'}           = $id;
+    $UserData{'username'}     = $name;
+    $UserData{'password'}     = $pass;
+    $UserData{'adminpw'}      = $group;
     $UserData{'lang'}         = $lang;
     $UserData{'email'}        = $email;
     $UserData{'param'}        = $param;
@@ -5503,22 +5504,22 @@ sub SaveUserDataDB {
         'alldiff'      => $UserData{'alldiff'},
         'defaultdiff'  => $UserData{'defaultdiff'},
     );
-    $sth = $dbh->prepare(
-            "replace into $userdb (id,name,pass,randkey,groupid,lang,email,param,createtime,"
-          . "createip,tzoffset,pagecreate,pagemodify,stylesheet) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-    );
-
-    # The randkey column is retained for schema compatibility but is no
-    # longer used for auth (replaced by HMAC-signed session cookies).
-    $sth->execute(
+    # The randkey column was retired in Stage 5 (replaced by HMAC-
+    # signed session cookies). WriteDBItems generates a dialect-aware
+    # upsert (REPLACE on SQLite, ON CONFLICT DO UPDATE on Postgres).
+    WriteDBItems(
+        $userdb,
+        "id,name,pass,groupid,lang,email,param,createtime,"
+          . "createip,tzoffset,pagecreate,pagemodify,stylesheet",
+        1,
         $UserID,                 $UserData{'username'},
-        $encpass,                '',
-        $adminhash,              $UserData{'lang'},
-        $UserData{'email'},      $UserData{'param'},
-        $UserData{'createtime'}, $UserData{'createip'},
-        $UserData{'tzoffset'},   $UserData{'pagecreate'},
-        $UserData{'pagemodify'}, join( $FS2, %extra )
-    ) or die($DBI::errstr);
+        $encpass,                $adminhash,
+        $UserData{'lang'},       $UserData{'email'},
+        $UserData{'param'},      $UserData{'createtime'},
+        $UserData{'createip'},   $UserData{'tzoffset'},
+        $UserData{'pagecreate'}, $UserData{'pagemodify'},
+        join( $FS2, %extra )
+    );
     if ( $isnewuser && $UseActivation ) {
         &SendRegMail();
     }
