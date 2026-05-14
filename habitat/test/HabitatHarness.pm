@@ -15,16 +15,22 @@ package HabitatHarness;
 
 use strict;
 use warnings;
-use FindBin qw($Bin);
+use File::Basename ();
+use Cwd ();
 use File::Spec ();
 
 # Chdir to habitat/ at compile time so any subsequent `use Habitat::*`
-# in the test file resolves against habitat/lib/. Done in BEGIN so it
-# happens before module-load-time of test-file use statements.
+# resolves against habitat/lib/. Done in BEGIN so it happens before
+# module-load-time of test-file `use` statements.
+#
+# The harness resolves the wiki dir from its OWN file location rather
+# than $Bin (the loader's $0). This makes the harness work from any
+# loader location — test/*.t, test/benchmarks/*.pl, ad-hoc scripts.
 BEGIN {
-    my $habitat_dir = File::Spec->catdir( $Bin, File::Spec->updir );
-    chdir $habitat_dir or die "HabitatHarness: cannot chdir to $habitat_dir: $!";
-    unshift @INC, File::Spec->catdir( $habitat_dir, 'lib' );
+    my $here   = Cwd::abs_path( File::Basename::dirname(__FILE__) );  # habitat/test/
+    my $wikidir = Cwd::abs_path( File::Spec->catdir( $here, File::Spec->updir ) );
+    chdir $wikidir or die "HabitatHarness: cannot chdir to $wikidir: $!";
+    unshift @INC, File::Spec->catdir( $wikidir, 'lib' );
 }
 
 sub load_wiki {
