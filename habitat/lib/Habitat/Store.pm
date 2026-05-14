@@ -106,6 +106,115 @@ sub _build_upsert_sql {
     return "REPLACE INTO $table ($fields) VALUES ($placeholders)";
 }
 
+# ----------------------------------------------------------------
+# Schema bootstrap
+# ----------------------------------------------------------------
+#
+# init_schema($dbh_opt) creates every table and index the wiki needs,
+# idempotently. Safe to call on a fresh install (provisions the
+# schema) or on an existing one (CREATE IF NOT EXISTS skips the
+# work). Used by:
+#   - the test harness (in-memory SQLite per test)
+#   - utils/migrate.pl    (Stage 4 migration script)
+#   - first-run setup     (when $DataDir/<dbfile> doesn't exist yet)
+#
+# The schema below is the SINGLE source of truth — db/gendb.sql is
+# retained as historical documentation but the code path uses this
+# function. To extend the schema, change the @ddl list here and the
+# test harness picks it up automatically.
+
+sub init_schema {
+    my $dbh = $_[0] || _dbh();
+    die("init_schema: no \$dbh") if ( !defined($dbh) );
+
+    # SQLite and Postgres accept the same DDL for the column types we
+    # use here (varchar(N), integer, text). The only difference is the
+    # auto-increment column on `user`, which we just declare as an
+    # ordinary INTEGER PRIMARY KEY — the wiki has always picked user
+    # ids manually via GetNewUserIdDB, so neither dialect needs a
+    # serial/autoincrement.
+    my @ddl = (
+        q{CREATE TABLE IF NOT EXISTS page (
+            id varchar(512), version integer,
+            author varchar(32), revision integer, tupdate integer, tcreate integer,
+            ip varchar(32), host varchar(64), summary varchar(128), text text,
+            minor integer, newauthor integer, data varchar(32), tag varchar(32)
+        )},
+        q{CREATE INDEX IF NOT EXISTS page_id ON page (id)},
+        q{CREATE UNIQUE INDEX IF NOT EXISTS page_id_rev ON page (id, revision)},
+
+        q{CREATE TABLE IF NOT EXISTS deletedpage (
+            id varchar(512), version integer,
+            author varchar(32), revision integer, tupdate integer, tcreate integer,
+            ip varchar(32), host varchar(64), summary varchar(128), text text,
+            minor integer, newauthor integer, data varchar(32), tag varchar(32)
+        )},
+
+        q{CREATE TABLE IF NOT EXISTS user (
+            id integer PRIMARY KEY,
+            name varchar(32), pass varchar(255),
+            randkey varchar(255), groupid varchar(255), lang varchar(8),
+            email varchar(64), param varchar(32), createtime integer,
+            stylesheet varchar(128), createip varchar(32), tzoffset integer,
+            pagecreate varchar(512), pagemodify varchar(512)
+        )},
+
+        q{CREATE TABLE IF NOT EXISTS html (
+            id varchar(512) PRIMARY KEY, time integer, text text
+        )},
+
+        q{CREATE TABLE IF NOT EXISTS rclog (
+            time integer, id varchar(512), summary varchar(128),
+            isedit integer, host varchar(64), kind varchar(8),
+            userid integer, name varchar(32), revision integer, isadmin integer
+        )},
+        q{CREATE INDEX IF NOT EXISTS rclog_time ON rclog (time)},
+        q{CREATE INDEX IF NOT EXISTS rclog_id   ON rclog (id)},
+
+        q{CREATE TABLE IF NOT EXISTS lock (
+            id varchar(512) PRIMARY KEY, tag varchar(32)
+        )},
+
+        # The original UseModWiki schema named this column "user", which
+        # is a reserved word in Postgres (yields CURRENT_USER unless
+        # quoted). Renamed to "username" so the wiki's SQL stays portable
+        # without per-call-site quoting. The migration script handles
+        # the ALTER TABLE for existing SQLite installs.
+        q{CREATE TABLE IF NOT EXISTS watch (
+            page varchar(512), username varchar(32)
+        )},
+        q{CREATE INDEX IF NOT EXISTS watch_page ON watch (page)},
+
+        q{CREATE TABLE IF NOT EXISTS system (
+            id varchar(64) PRIMARY KEY, data text, time integer
+        )},
+
+        q{CREATE TABLE IF NOT EXISTS pagelog (
+            id varchar(512) PRIMARY KEY, lastvisit integer, visit integer,
+            x integer, y integer, z integer
+        )},
+
+        q{CREATE TABLE IF NOT EXISTS userlog (
+            id integer, time integer, ip varchar(32),
+            action varchar(8), target varchar(255)
+        )},
+
+        # Stage 1 throttle table; previously auto-created lazily.
+        q{CREATE TABLE IF NOT EXISTS login_attempts (
+            key text PRIMARY KEY,
+            count integer NOT NULL,
+            first_ts integer NOT NULL,
+            last_ts integer NOT NULL
+        )},
+    );
+
+    for my $stmt (@ddl) {
+        eval { $dbh->do($stmt) };
+        die("init_schema: $@\n  while executing:\n$stmt\n") if $@;
+    }
+    return 1;
+}
+
 # Identifier whitelist for any value we have to interpolate directly
 # into SQL (table names, column names) — DBI placeholders can't bind
 # identifiers. Anything outside [A-Za-z_][A-Za-z0-9_]* is rejected.

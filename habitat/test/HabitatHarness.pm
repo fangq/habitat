@@ -51,6 +51,7 @@ sub load_wiki {
 # needed for the Store helpers to operate against the test DB.
 sub fresh_test_db {
     require DBI;
+    require Habitat::Store;
     my $dbh = DBI->connect( 'dbi:SQLite:dbname=:memory:', '', '',
         { RaiseError => 1, AutoCommit => 1 } );
     $dbh->func(
@@ -61,72 +62,15 @@ sub fresh_test_db {
         },
         'create_function'
     );
-    apply_schema($dbh);
+
+    # Single source of truth for the schema lives in Habitat::Store —
+    # the test harness and the production wiki bootstrap go through
+    # the same code path.
+    Habitat::Store::init_schema($dbh);
 
     # The store reads $HabitatEngine::dbh; expose ours there.
     no warnings 'once';
     $HabitatEngine::dbh = $dbh;
-    return $dbh;
-}
-
-# Mirror of habitat/db/gendb.sql, kept here so tests don't depend on
-# a file path that might move. Kept in sync by hand; if you change
-# the production schema, change this too.
-sub apply_schema {
-    my ($dbh) = @_;
-    my @stmts = split /;\s*\n/, <<'SQL';
-CREATE TABLE page (
-  id varchar(512), version integer,
-  author varchar(32), revision integer, tupdate integer, tcreate integer,
-  ip varchar(32), host varchar(64), summary varchar(128), text text,
-  minor integer, newauthor integer, data varchar(32), tag varchar(32)
-);
-CREATE INDEX page_id ON page(id ASC);
-CREATE TABLE deletedpage (
-  id varchar(512), version integer,
-  author varchar(32), revision integer, tupdate integer, tcreate integer,
-  ip varchar(32), host varchar(64), summary varchar(128), text text,
-  minor integer, newauthor integer, data varchar(32), tag varchar(32)
-);
-CREATE TABLE user (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name varchar(32), pass varchar(255),
-  randkey varchar(255), groupid varchar(255), lang varchar(8),
-  email varchar(64), param varchar(32), createtime integer,
-  stylesheet varchar(128), createip varchar(32), tzoffset integer,
-  pagecreate varchar(512), pagemodify varchar(512)
-);
-CREATE TABLE html (
-  id varchar(512) PRIMARY KEY, time integer, text text
-);
-CREATE TABLE rclog (
-  time integer, id varchar(512), summary varchar(128),
-  isedit integer, host varchar(64), kind varchar(8),
-  userid integer, name varchar(32), revision integer, isadmin integer
-);
-CREATE TABLE lock (
-  id varchar(512) PRIMARY KEY, tag varchar(32)
-);
-CREATE TABLE watch (
-  page varchar(512), user varchar(32)
-);
-CREATE TABLE system (
-  id varchar(64) PRIMARY KEY, data text, time integer
-);
-CREATE TABLE pagelog (
-  id varchar(512) PRIMARY KEY, lastvisit integer, visit integer,
-  x integer, y integer, z integer
-);
-CREATE TABLE userlog (
-  id integer, time integer, ip varchar(32),
-  action varchar(8), target varchar(255)
-);
-SQL
-    for my $stmt (@stmts) {
-        $stmt =~ s/^\s+|\s+$//g;
-        next if $stmt eq '';
-        $dbh->do($stmt);
-    }
     return $dbh;
 }
 

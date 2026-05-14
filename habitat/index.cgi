@@ -497,10 +497,12 @@ sub InitWikiEnv {
             $dbh = DBI->connect( $DBName, $DBUser, $DBPass, \%DBErr )
               or die($DBI::errstr);
 
-            # SQLite: register a REGEXP UDF used by getnextnum / GetLocalTree.
-            # Other drivers (e.g. Postgres) ignore this; wrap in eval so it
-            # doesn't break the connection on non-SQLite DBs.
-            eval {
+            # Register the REGEXP UDF that getnextnum / GetLocalTree
+            # rely on — but only on SQLite, where there is no built-in.
+            # Postgres has the `~` operator (selected by
+            # Habitat::Store::regex_op) so no UDF is needed.
+            my $driver = eval { $dbh->{Driver}{Name} } || '';
+            if ( $driver eq 'SQLite' ) {
                 $dbh->func(
                     'regexp', 2,
                     sub {
@@ -509,7 +511,13 @@ sub InitWikiEnv {
                     },
                     'create_function'
                 );
-            };
+            }
+
+            # First-run bootstrap: create the schema if it isn't there.
+            # CREATE IF NOT EXISTS makes this idempotent on subsequent
+            # boots. Available for both dialects.
+            eval { Habitat::Store::init_schema($dbh) };
+            $ConfigError .= "schema bootstrap warning: $@" if $@;
         }
     } else {
         $ConfigError .= "database $DBName does not exist";
@@ -5539,8 +5547,8 @@ sub DoWatchPage {
     my $user    = $UserData{'username'};
 
     if ( not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
-        if ( ReadDBItems( $watchdb, 'user', ',', '', "page=? and user=?", $id, $user ) eq '' ) {
-            &WriteDBItems( $watchdb, 'page,user', 0, ( $id, $user ) );
+        if ( ReadDBItems( $watchdb, 'username', ',', '', "page=? and username=?", $id, $user ) eq '' ) {
+            &WriteDBItems( $watchdb, 'page,username', 0, ( $id, $user ) );
             AddUserLogDB( $UserID, 'watch', $id );
         }
     }
@@ -5557,7 +5565,7 @@ sub DoUnWatchPage {
     my $user    = $UserData{'username'};
 
     if ( $dbh && not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
-        DeleteDBItems( $watchdb, "page=? and user=?", $id, $user );
+        DeleteDBItems( $watchdb, "page=? and username=?", $id, $user );
     }
     print &GetHeader( '', T('Watch Page'), '' );
     print '<div class="wikiinfo">' . Ts( 'Watch removed for page "%s".', $id );
@@ -6065,7 +6073,7 @@ sub ReadWatchListDB {
     if ( $dbh eq "" || $watchdb eq "" || $userdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
-    $userlist = ReadDBItems( $watchdb, 'user', "\n", '', "page=?", $id );
+    $userlist = ReadDBItems( $watchdb, 'username', "\n", '', "page=?", $id );
     if ( $userlist ne '' ) {
         my @users = split( /\n/, $userlist );
         my $placeholders = join( ',', ('?') x scalar(@users) );
@@ -6878,7 +6886,7 @@ sub IsPageWatched {
 
     if ( $UserID > 1000 ) {
         $watchdb = ( split( /\//, $EmailFile ) )[-1];
-        $tag     = ReadDBItems( $watchdb, 'user', '', '', "page=? and user=?", $id, $user );
+        $tag     = ReadDBItems( $watchdb, 'username', '', '', "page=? and username=?", $id, $user );
         if ( $tag ne '' ) {
             return 1;
         }
