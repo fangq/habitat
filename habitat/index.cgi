@@ -1171,13 +1171,24 @@ sub ReadRCLogDB {
             ( $ts, $pagename, $summary, $isEdit, $host, $kind, $uid, $name, $rev, $admin ) =
               @{$rec};
             if ( $ts ne "" ) {
-                $extra{'id'}       = $uid;
-                $extra{'revision'} = $rev;
-                $extra{'name'}     = $name;
-                $extra{'admin'}    = $admin;
-                push( @fullrc,
-                    "$ts$FS3$pagename$FS3$summary$FS3$isEdit$FS3$host$FS3$kind$FS3"
-                      . join( $FS2, %extra ) );
+
+                # Stage 5: push a hashref per RC entry instead of
+                # FS3/FS2-joined strings. All downstream consumers
+                # (DoRc / GetRcHtml / GetHtmlRcLine / GetRcRss /
+                # GetRssRcLine) handle both shapes; once the in-memory
+                # round-trip is hashref-only, the FS-byte path drops out.
+                push @fullrc, {
+                    ts       => $ts,
+                    pagename => $pagename,
+                    summary  => $summary,
+                    isEdit   => $isEdit,
+                    host     => $host,
+                    kind     => $kind,
+                    id       => $uid,
+                    revision => $rev,
+                    name     => $name,
+                    admin    => $admin,
+                };
                 $mintime = $ts if ( $ts < $mintime );
             }
         }
@@ -1239,14 +1250,18 @@ sub DoRc {
 
     # Read rclog data (and oldrclog data if needed)
     @fullrc = &ReadRCLogDB($starttime);
-    if ( @fullrc > 0 && $fullrc[0] =~ /^Internal:Offset:([0-9]+)([+]*)/ ) {
+    if ( @fullrc > 0 && !ref( $fullrc[0] )
+         && $fullrc[0] =~ /^Internal:Offset:([0-9]+)([+]*)/ )
+    {
         $offs       = $1;
         $moretocome = $2;
         shift(@fullrc);
     }
     $lastTs = 0;
     if ( @fullrc > 0 ) {    # Only false if no lines in file
-        ($lastTs) = split( /$FS3/, $fullrc[$#fullrc] );
+        # Stage 5: rows are hashrefs from ReadRCLogDB.
+        my $last = $fullrc[$#fullrc];
+        $lastTs = ref($last) eq 'HASH' ? $last->{ts} : ( split( /$FS3/, $last ) )[0];
     }
     $lastTs++ if ( ( $Now - $lastTs ) > 5 );    # Skip last unless very recent
 
@@ -1300,17 +1315,18 @@ sub GetRc {
     my %changetime = ();
     my %pagecount  = ();
 
-    # Slice minor edits
+    # Slice minor edits. Each rcline is a hashref (Stage 5).
     $showedit = &GetParam( "rcshowedit", $ShowEdits );
     $showedit = &GetParam( "showedit",   $showedit );
     if ( $showedit != 1 ) {
         my @temprc = ();
         foreach $rcline (@outrc) {
-            ( $ts, $pagename, $summary, $isEdit, $host ) = split( /$FS3/, $rcline );
+            my $is = ref($rcline) eq 'HASH' ? $rcline->{isEdit}
+                : ( split( /$FS3/, $rcline ) )[3];
             if ( $showedit == 0 ) {    # 0 = No edits
-                push( @temprc, $rcline ) if ( $isEdit != 1 );
+                push( @temprc, $rcline ) if ( $is != 1 );
             } else {                   # 2 = Only edits
-                push( @temprc, $rcline ) if ($isEdit);
+                push( @temprc, $rcline ) if ($is);
             }
         }
         @outrc = @temprc;
@@ -1331,7 +1347,11 @@ sub GetRc {
     $diffPrefix    = $base . &QuoteHtml("?action=browse\&diff=4\&id=");
     $historyPrefix = $base . &QuoteHtml("?action=history\&id=");
     foreach $rcline (@outrc) {
-        ( $ts, $pagename ) = split( /$FS3/, $rcline );
+        if ( ref($rcline) eq 'HASH' ) {
+            ( $ts, $pagename ) = @{$rcline}{qw(ts pagename)};
+        } else {
+            ( $ts, $pagename ) = split( /$FS3/, $rcline );
+        }
         $pagecount{$pagename}++;
         $changetime{$pagename} = $ts;
     }
@@ -1347,10 +1367,19 @@ sub GetRc {
     @outrc    = reverse @outrc if ($newtop);
 
     foreach $rcline (@outrc) {
-        ( $ts, $pagename, $summary, $isEdit, $host, $kind, $extraTemp ) = split( /$FS3/, $rcline );
+        if ( ref($rcline) eq 'HASH' ) {
+            ( $ts, $pagename, $summary, $isEdit, $host, $kind ) =
+              @{$rcline}{qw(ts pagename summary isEdit host kind)};
+            %extra = ();
+            $extra{$_} = $rcline->{$_} for (qw(id revision name admin));
+        } else {
+            my $extraTemp;
+            ( $ts, $pagename, $summary, $isEdit, $host, $kind, $extraTemp )
+              = split( /$FS3/, $rcline );
+            %extra = split( /$FS2/, $extraTemp, -1 );
+        }
         next if ( ( !$all )         && ( $ts < $changetime{$pagename} ) );
         next if ( ( $idOnly ne "" ) && ( $idOnly ne $pagename ) );
-        %extra = split( /$FS2/, $extraTemp, -1 );
         next if ( $extra{'admin'} && ( &UserPermission() < $extra{'admin'} ) );
         if ( $date ne &CalcDay($ts) ) {
             $date = &CalcDay($ts);
@@ -1657,9 +1686,21 @@ sub GetHistoryLine {
     );
     my ( %sect, %revtext, @textpatch );
 
-    %sect      = split( /$FS2/, $section, -1 );
-    %revtext   = split( /$FS3/, $sect{'data'} );
-    @textpatch = split( /$FS4/, $revtext{'text'} );
+    # Stage 5: callers now pass a hashref (was: FS2-joined string).
+    # Fall back to the legacy split for any caller still passing a
+    # raw string (e.g. an external integration loading kept data).
+    if ( ref($section) eq 'HASH' ) {
+        %sect = %$section;
+        if ( ref( $sect{'data'} ) eq 'HASH' ) {
+            %revtext = %{ $sect{'data'} };
+        } elsif ( defined $sect{'data'} ) {
+            %revtext = split( /$FS3/, $sect{'data'}, -1 );
+        }
+    } else {
+        %sect    = split( /$FS2/, $section,        -1 );
+        %revtext = split( /$FS3/, $sect{'data'},   -1 );
+    }
+    @textpatch = split( /$FS4/, $revtext{'text'} ) if defined $revtext{'text'};
 
     $rev = $sect{'revision'};
     if ( $rev == 0 ) { return ""; }
@@ -3546,14 +3587,22 @@ sub GetCacheDiff {
 # Must be done after minor diff is set and OpenKeptRevisions called
 sub GetKeptDiff {
     my ( $newText, $oldRevision, $lock ) = @_;
-    my ( %sect, %data, $oldText, $inlinerev, $vmajor, $vminor );
+    my ( $oldText, $inlinerev, $vmajor, $vminor );
 
     $oldText = "";
     ( $vmajor, $vminor ) = split( /\./, $oldRevision );
     if ( defined( $KeptRevisions{$vmajor} ) ) {
-        %sect = split( /$FS2/, $KeptRevisions{$vmajor}, -1 );
-        %data = split( /$FS3/, $sect{'data'},           -1 );
-        ( $oldText, $inlinerev ) = &PatchPage( $data{'text'}, $vminor );
+
+        # Stage 5: %KeptRevisions stores hashrefs. The "data" slot
+        # is itself a hashref containing text/minor/newauthor/summary.
+        my $kept = $KeptRevisions{$vmajor};
+        if ( ref($kept) eq 'HASH' ) {
+            my $data = $kept->{data};
+            my $body = ref($data) eq 'HASH'
+                ? $data->{text}
+                : ( split( /$FS3/, $data, -1 ) )[1];    # legacy fallback
+            ( $oldText, $inlinerev ) = &PatchPage( $body, $vminor );
+        }
     }
     return "" if ( $oldText eq "" );    # Old revision not found
     return &GetDiff( $oldText, $newText, $lock );
@@ -3663,7 +3712,14 @@ sub OpenNewSection {
     $$Section{'id'}       = $UserID;
     $$Section{'username'} = &GetParam( "username", "" );
     $$Section{'data'}     = $data;
-    $$Page{$name}         = join( $FS2, %$Section );     # Replace with save?
+
+    # Snapshot the section into the page hash. Stage 5 cleanup: was
+    # join($FS2, %$Section) — replaced with an anonymous-hash COPY so
+    # subsequent edits to %$Section don't propagate to $Page{$name}
+    # until SaveSection runs (same snapshot semantics as the prior
+    # split-on-Open / join-on-Save round-trip, just without the byte
+    # separator).
+    $$Page{$name} = { %$Section };
 }
 
 sub OpenNewText {
@@ -3683,7 +3739,10 @@ sub OpenNewText {
     $$Text{'minor'}     = 0;    # Default as major edit
     $$Text{'newauthor'} = 1;    # Default as new author
     $$Text{'summary'}   = '';
-    &OpenNewSection( $id, "text_$name", join( $FS3, %$Text ) );
+
+    # Pass the text hash directly; SaveSection stores it as a
+    # hashref under $Section{data} (was: FS3-joined string).
+    &OpenNewSection( $id, "text_$name", { %$Text } );
 }
 
 sub GetPageFile {
@@ -3788,8 +3847,9 @@ sub OpenPageDB {
             $$Text{'minor'}     = $minor;
             $$Text{'summary'}   = $summary;
 
-            $$Section{'data'} = join( $FS3, %$Text );
-            $$Page{ $$Section{'name'} } = join( $FS2, %$Section );
+            # Stage 5: snapshot via hashref (was: FS3/FS2-joined string).
+            $$Section{'data'}           = { %$Text };
+            $$Page{ $$Section{'name'} } = { %$Section };
         }
     } else {    # open new page
         &OpenNewPage($id);
@@ -3810,7 +3870,12 @@ sub OpenSection {
 
     if ( !defined( $$Page{$name} ) ) {
         &OpenNewSection( $id, $name, "" );
+    } elsif ( ref( $$Page{$name} ) eq 'HASH' ) {
+        # Stage 5 in-memory shape: hashref. Copy out into $Section.
+        %$Section = %{ $$Page{$name} };
     } else {
+        # Legacy form may show up if some external caller stuffed an
+        # FS2-joined string into the page hash; tolerate it.
         %$Section = split( /$FS2/, $$Page{$name}, -1 );
     }
 }
@@ -3827,7 +3892,11 @@ sub OpenText {
         &OpenNewText( $id, $name );
     } else {
         &OpenSection( $id, "text_$name" );
-        %$Text = split( /$FS3/, $$Section{'data'}, -1 );
+        if ( ref( $$Section{'data'} ) eq 'HASH' ) {
+            %$Text = %{ $$Section{'data'} };
+        } else {
+            %$Text = split( /$FS3/, $$Section{'data'}, -1 );
+        }
     }
 }
 
@@ -3844,8 +3913,15 @@ sub OpenKeptRevision {
     $Section = \%{ $Pages{$id}->{'section'} };
     $Text    = \%{ $Pages{$id}->{'text'} };
 
-    %$Section = split( /$FS2/, $KeptRevisions{$revision}, -1 );
-    %$Text    = split( /$FS3/, $$Section{'data'},         -1 );
+    # Stage 5: %KeptRevisions stores hashrefs (not FS-joined strings).
+    my $kept = $KeptRevisions{$revision};
+    return if ( !defined($kept) || ref($kept) ne 'HASH' );
+    %$Section = %$kept;
+    if ( ref( $$Section{'data'} ) eq 'HASH' ) {
+        %$Text = %{ $$Section{'data'} };
+    } else {
+        %$Text = split( /$FS3/, $$Section{'data'}, -1 );    # legacy form, safety
+    }
     ( $$Text{'text'}, $inlinerev ) = &PatchPage( $$Text{'text'}, $inlinerev );
 }
 
@@ -3954,13 +4030,16 @@ sub SaveSection {
     $$Section{'id'}       = $UserID;
     $$Section{'username'} = &GetParam( "username", "" );
     $$Section{'data'}     = $data;
-    $$Page{$name}         = join( $FS2, %$Section );
+
+    # Hash copy (was: FS2-joined string).
+    $$Page{$name} = { %$Section };
 }
 
 sub SaveText {
     my ( $id, $name ) = @_;
 
-    &SaveSection( "text_$name", join( $FS3, %{ $Pages{$id}->{'text'} } ) );
+    # Pass text hash as a copy (was: FS3-joined string).
+    &SaveSection( "text_$name", { %{ $Pages{$id}->{'text'} } } );
 }
 
 sub SaveDefaultText {
@@ -4028,44 +4107,49 @@ sub OpenKeptListDB {
             # needs to materialize it via the diff chain; for now we
             # pass the diff payload through unchanged (the rendering
             # code will see kind='diff' on the metadata and reject).
-            my %texts;
-            $texts{'text'}      = $text;
-            $texts{'minor'}     = $minor;
-            $texts{'newauthor'} = $newauthor;
-            $texts{'summary'}   = $summary;
-
-            my %sections;
-            $sections{'name'}      = "text_default";
-            $sections{'version'}   = $version;
-            $sections{'revision'}  = $revision;
-            $sections{'tscreate'}  = $tcreate;
-            $sections{'ts'}        = $tupdate;
-            $sections{'ip'}        = $ip;
-            $sections{'host'}      = $host;
-            $sections{'id'}        = $data;
-            $sections{'username'}  = $author;
-            $sections{'kind'}      = $kind;
-            $sections{'data'}      = join( $FS3, %texts );
-            $KeptList[$revision]   = join( $FS2, %sections );
+            # Stage 5 cleanup: emit a hashref per revision instead of
+            # FS2/FS3-joined strings. The 'data' slot points to the
+            # text hash (also a hashref). Snapshot semantics are
+            # preserved via anonymous-hash constructor.
+            $KeptList[$revision] = {
+                name      => "text_default",
+                version   => $version,
+                revision  => $revision,
+                tscreate  => $tcreate,
+                ts        => $tupdate,
+                ip        => $ip,
+                host      => $host,
+                id        => $data,
+                username  => $author,
+                kind      => $kind,
+                data      => {
+                    text      => $text,
+                    minor     => $minor,
+                    newauthor => $newauthor,
+                    summary   => $summary,
+                },
+            };
         }
     }
     return ( "Internal:Offset:$offset$moretocome", @KeptList );
 }
 
 sub OpenKeptRevisions {
-    my ( $id, $name, $nopatch ) = @_;    # Name of section
-    my ( $fname, $data, %tempSection, @KeptList, $rev );
-    @KeptList      = &OpenKeptListDB($nopatch);
+    my ( $id, $name, $nopatch ) = @_;
+    my @KeptList = &OpenKeptListDB($nopatch);
     %KeptRevisions = ();
-    foreach $rev (@KeptList) {
-        next if ( $rev eq '' );
-        if ( $rev =~ /^Internal:Offset:([0-9]+[+]*)/ ) {
+    foreach my $rev (@KeptList) {
+        next if ( !defined($rev) || $rev eq '' );
+
+        # Stage 5: list elements are hashrefs; the offset sentinel is
+        # the only string that can appear (it's the first element).
+        if ( !ref($rev) && $rev =~ /^Internal:Offset:([0-9]+[+]*)/ ) {
             $KeptRevisions{"Internal:Offset"} = $1;
             next;
         }
-        %tempSection = split( /$FS2/, $rev, -1 );
-        next if ( $tempSection{'name'} ne $name );
-        $KeptRevisions{ $tempSection{'revision'} } = $rev;
+        next unless ( ref($rev) eq 'HASH' );
+        next if ( $rev->{name} ne $name );
+        $KeptRevisions{ $rev->{revision} } = $rev;
     }
 }
 
@@ -6714,7 +6798,11 @@ sub SubWikiLink {
     return &StoreRaw($link);
 }
 
-# Rename is mostly copied from expire
+# Legacy flat-file Keep format (FS1/FS2/FS3-separated text in
+# $KeepDir/.../<page>.kp). The wiki has been SQL-backed since
+# Stage 0; this function only fires if someone has an old `.kp`
+# file on disk. New writes never produce one. Leaving the
+# original FS-byte parser intact here is the safest path.
 sub RenameKeepText {
     my ( $page,     $old,    $new ) = @_;
     my ( $fname,    $status, $data, @kplist, %tempSection, $changed );
@@ -6798,13 +6886,20 @@ sub RenameTextLinks {
         foreach $section ( keys %$Page ) {
             if ( $section =~ /^text_/ ) {
                 &OpenSection( $page, $section );
-                %$Text   = split( /$FS3/, $$Section{'data'}, -1 );
+
+                # Stage 5: $$Section{data} is a hashref. Legacy
+                # fallback handles the older FS3-joined form.
+                if ( ref( $$Section{'data'} ) eq 'HASH' ) {
+                    %$Text = %{ $$Section{'data'} };
+                } else {
+                    %$Text = split( /$FS3/, $$Section{'data'}, -1 );
+                }
                 $oldText = $$Text{'text'};
                 $newText = &SubstituteTextLinks( $old, $new, $oldText );
                 if ( $oldText ne $newText ) {
                     $$Text{'text'}    = $newText;
-                    $$Section{'data'} = join( $FS3, %$Text );
-                    $$Page{$section}  = join( $FS2, %$Section );
+                    $$Section{'data'} = { %$Text };
+                    $$Page{$section}  = { %$Section };
                     $changed          = 1;
                 }
             } elsif ( $section =~ /^cache_diff/ ) {
