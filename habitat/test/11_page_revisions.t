@@ -146,4 +146,59 @@ ok( defined $kept[1] && $kept[1] ne '', "kept list has revision 1" );
 ok( defined $kept[2] && $kept[2] ne '', "kept list has revision 2" );
 ok( defined $kept[3] && $kept[3] ne '', "kept list has revision 3" );
 
+# ----------------------------------------------------------------
+# Stage 6: page_revisions historical rows now use reverse-diff
+# storage by default (with snapshot fallback when diff would be
+# larger). Verify the storage shape AND that the reconstructed text
+# is still byte-equal to what was originally saved.
+# ----------------------------------------------------------------
+{
+    no warnings 'once';
+    local $HabitatEngine::UseDiff = 1;
+}
+
+# Set up a fresh page with many small edits — diffs should be smaller
+# than snapshots for each.
+my $base = "The quick brown fox jumps over the lazy dog.\n" x 20;
+HabitatHarness::freeze_time(1_800_000_000);
+save_revision( 'Story', $base );
+
+HabitatHarness::freeze_time(1_800_000_100);
+save_revision( 'Story', $base . "(edit 1)\n" );
+
+HabitatHarness::freeze_time(1_800_000_200);
+save_revision( 'Story', $base . "(edit 1 modified)\n(edit 2)\n" );
+
+my $kinds = $dbh->selectall_arrayref(
+    "SELECT revision, kind FROM page_revisions WHERE page_id='Story' ORDER BY revision"
+);
+ok( scalar(@$kinds) == 2, "Story has 2 historical rows" );
+ok( ( grep { $_->[1] eq 'diff' } @$kinds ),
+    "at least one historical row stored as kind='diff' (diff is smaller than snapshot)" )
+  or diag("kinds: " . join(",", map { "$_->[0]=$_->[1]" } @$kinds));
+
+# Walk the history and verify reconstructed text matches what was originally saved
+$HabitatEngine::OpenPageName = 'Story';
+@kept = HabitatEngine::OpenKeptListDB(1);
+shift @kept;    # discard the Internal:Offset: marker
+
+# Find rev 1's reconstructed body
+my $rev1 = $kept[1];
+ok( defined($rev1) && ref($rev1) eq 'HASH', "rev 1 entry exists" );
+is( $rev1->{data}->{text}, $base,
+    "rev 1 text reconstructed from diff matches the originally-saved body" );
+
+# rev 2
+my $rev2 = $kept[2];
+ok( defined($rev2) && ref($rev2) eq 'HASH', "rev 2 entry exists" );
+is( $rev2->{data}->{text},
+    $base . "(edit 1)\n",
+    "rev 2 text reconstructed from diff matches the originally-saved body" );
+
+# rev 3 is the current — should equal page.text
+my $rev3 = $kept[3];
+my $cur_text_story = $dbh->selectrow_array("SELECT text FROM page WHERE id='Story'");
+is( $rev3->{data}->{text}, $cur_text_story,
+    "rev 3 (current) matches page.text" );
+
 done_testing;

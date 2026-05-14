@@ -3962,9 +3962,26 @@ sub SavePageDB {
         $cur_rev     = $cur_row->[0];
         $cur_tcreate = $cur_row->[4];
 
-        # Archive the previous revision into page_revisions as a
-        # full-text snapshot. Stage 5 ships snapshot-only; a future
-        # commit will swap to reverse-diff for storage compactness.
+        # Archive the previous revision into page_revisions. Stage 6:
+        # store as a REVERSE DIFF against the new current — applying
+        # the diff to the new current's text yields the previous
+        # current's text. Fall back to a full-text snapshot if diff
+        # storage would be larger than the snapshot (radical rewrite
+        # of small content, etc.).
+        my $cur_text = $cur_row->[8];
+        my $new_text = $$Text{'text'};
+        my ( $kind, $body ) = ( 'snapshot', $cur_text );
+
+        if ( $UseDiff && defined($new_text) && defined($cur_text) ) {
+            my $diff = eval {
+                Text::Diff::diff( \$new_text, \$cur_text, { STYLE => 'Unified' } );
+            };
+            if ( !$@ && defined($diff) && length($diff) < length($cur_text) ) {
+                $kind = 'diff';
+                $body = $diff;
+            }
+        }
+
         WriteDBItems(
             $revdb,
             "page_id,revision,version,author,tupdate,tcreate,ip,host,"
@@ -3982,8 +3999,8 @@ sub SavePageDB {
             $cur_row->[9],     # minor
             $cur_row->[10],    # newauthor
             $cur_row->[11],    # data
-            'snapshot',
-            $cur_row->[8],     # text
+            $kind,
+            $body,
         );
     }
 
@@ -4089,6 +4106,15 @@ sub OpenKeptListDB {
     $sql .= " OFFSET $offset" if ( $offset > 0 );
 
     my $sth = $dbh->selectall_arrayref( $sql, undef, $OpenPageName, $OpenPageName );
+
+    # Stage 6: rows can carry kind='diff' (reverse-diff against the
+    # immediately-higher revision's text) or kind='snapshot' (full
+    # text). Walking the result DESC and applying diffs incrementally
+    # reconstructs each revision's text in a single O(n) pass. A
+    # diff that fails to apply (corruption, partial chain) falls back
+    # to its raw body so the row is still listable.
+    my $running_text;
+
     if ( defined $sth->[0] ) {
         if ( @{$sth} == $lim ) {
             pop( @{$sth} );
@@ -4102,15 +4128,23 @@ sub OpenKeptListDB {
             ) = @$rec;
             next if ( !defined($pgid) || $pgid eq "" || !defined($revision) || $revision eq "" );
 
-            # Stage-5 storage is always 'snapshot' for now. If a row
-            # came from a future commit using kind='diff', the caller
-            # needs to materialize it via the diff chain; for now we
-            # pass the diff payload through unchanged (the rendering
-            # code will see kind='diff' on the metadata and reject).
-            # Stage 5 cleanup: emit a hashref per revision instead of
-            # FS2/FS3-joined strings. The 'data' slot points to the
-            # text hash (also a hashref). Snapshot semantics are
-            # preserved via anonymous-hash constructor.
+            # Materialize this revision's text. The first row (highest
+            # revision) is always a snapshot (the current `page.text`).
+            # Subsequent rows are either snapshots or diffs from the
+            # row immediately above.
+            my $resolved;
+            if ( !defined($running_text) ) {
+                $resolved = $text;          # first iteration = current
+            } elsif ( $kind eq 'diff' ) {
+                $resolved = eval {
+                    Text::Patch::patch( $running_text, $text, STYLE => 'Unified' );
+                };
+                $resolved = $text if ( $@ || !defined($resolved) );
+            } else {
+                $resolved = $text;          # snapshot
+            }
+            $running_text = $resolved;
+
             $KeptList[$revision] = {
                 name      => "text_default",
                 version   => $version,
@@ -4123,7 +4157,7 @@ sub OpenKeptListDB {
                 username  => $author,
                 kind      => $kind,
                 data      => {
-                    text      => $text,
+                    text      => $resolved,
                     minor     => $minor,
                     newauthor => $newauthor,
                     summary   => $summary,
