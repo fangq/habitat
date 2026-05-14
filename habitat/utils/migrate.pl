@@ -84,12 +84,15 @@ USAGE
 # (Stage 1 addition; may be absent on older snapshots).
 # Each entry is { source => 'src_name', dest => 'dst_name' }; for tables
 # whose name is unchanged the two are equal.
+#
+# `handler` is an optional code-ref override for tables that need
+# more than a column-by-column copy. The `page` table is a notable
+# example: the legacy schema had one row per (id, revision); the new
+# schema has one row per id in `page` plus historical rows in
+# `page_revisions`. See migrate_page() below.
 my @TABLES = (
-    # The legacy "user" table is reserved in Postgres; we now call it
-    # "users". migrate.pl picks up "user" from the source and writes
-    # to "users" in the destination.
     { source => 'user',           dest => 'users' },
-    { source => 'page',           dest => 'page' },
+    { source => 'page',           dest => 'page',           handler => \&migrate_page },
     { source => 'deletedpage',    dest => 'deletedpage' },
     { source => 'html',           dest => 'html' },
     { source => 'rclog',          dest => 'rclog' },
@@ -194,6 +197,203 @@ sub row_count {
     return defined($n) ? $n : 0;
 }
 
+# Stage 5 page-table migration. Legacy schema: one row per
+# (id, revision) in `page`, possibly with FS4-chained inline diffs in
+# the text column representing minor revisions. New schema: one row
+# per id in `page` (current snapshot) plus one row per historical
+# revision in `page_revisions`.
+#
+# Per page id:
+#   1. Read every row from the source `page` table for that id.
+#   2. For the row with the highest revision number, parse out its
+#      inline-diff chain (if any) and reconstruct each minor revision
+#      as a full-text snapshot.
+#   3. Insert the latest reconstructed snapshot into the new `page`
+#      table.
+#   4. Insert every other reconstructed snapshot, plus every other
+#      legacy major-revision row, into `page_revisions` (kind='snapshot').
+#
+# We don't compute reverse diffs here — Stage 5 ships snapshot
+# storage; a future commit can re-encode for compactness.
+sub migrate_page {
+    my ( $src, $dst, $src_table, $dst_table, $label, $dry_run, $verbose, $report ) = @_;
+
+    # Need PatchText / Text::Patch::patch to walk inline diffs.
+    require Text::Patch;
+
+    # FS chars are package globals in the wiki; replicate them here
+    # so the migration tool is self-contained.
+    my $FS  = "\x1e";
+    my $FS4 = $FS . "4";
+    my $FS5 = $FS . "5";
+
+    my $rev_table = "${dst_table}_revisions";
+    unless ( table_exists( $dst, $rev_table ) ) {
+        log_msg "skip $label (destination missing $rev_table — schema mismatch?)";
+        return;
+    }
+
+    my $src_count = row_count( $src, $src_table );
+    log_msg sprintf( "copy %s : %d rows from legacy multi-row schema", $label, $src_count );
+    return if ( $src_count == 0 );
+
+    # Group all source rows by id.
+    my $sth = $src->prepare(
+        "SELECT id, version, author, revision, tupdate, tcreate, ip, host, "
+          . "summary, text, minor, newauthor, data, tag "
+          . "FROM $src_table ORDER BY id, revision"
+    );
+    $sth->execute;
+
+    my %by_id;    # id => arrayref of row hashrefs
+    while ( my $r = $sth->fetchrow_arrayref ) {
+        my $row = {
+            id        => $r->[0],  version  => $r->[1],
+            author    => $r->[2],  revision => $r->[3],
+            tupdate   => $r->[4],  tcreate  => $r->[5],
+            ip        => $r->[6],  host     => $r->[7],
+            summary   => $r->[8],  text     => $r->[9],
+            minor     => $r->[10], newauthor => $r->[11],
+            data      => $r->[12], tag      => $r->[13],
+        };
+        push @{ $by_id{ $row->{id} } }, $row;
+    }
+
+    my $page_ins = $dst->prepare(
+        "INSERT INTO $dst_table "
+          . "(id, version, author, revision, tupdate, tcreate, ip, host, "
+          . " summary, text, minor, newauthor, data, tag) "
+          . "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+    );
+    my $rev_ins = $dst->prepare(
+        "INSERT INTO $rev_table "
+          . "(page_id, revision, version, author, tupdate, tcreate, ip, host, "
+          . " summary, minor, newauthor, data, kind, text) "
+          . "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+    );
+
+    my $total_pages = 0;
+    my $total_revs  = 0;
+    for my $id ( sort keys %by_id ) {
+        my @rows = @{ $by_id{$id} };
+
+        # Reconstruct all revisions for this page. Each legacy row
+        # represents the current text at its `revision` value plus
+        # optionally an inline FS4-chain of MINOR revisions BELOW
+        # that one (since the wiki's "minor edit" path appended
+        # diffs to the current row's text).
+        my @history;    # ascending list of { revision, text, meta... }
+        for my $row (@rows) {
+            my @patches = split( /$FS4/, $row->{text} );
+            my $base    = $patches[0];   # snapshot for this row's revision
+
+            # First, push the row's snapshot itself.
+            push @history,
+              {
+                revision  => $row->{revision},
+                version   => $row->{version},
+                author    => $row->{author},
+                tupdate   => $row->{tupdate},
+                tcreate   => $row->{tcreate},
+                ip        => $row->{ip},
+                host      => $row->{host},
+                summary   => $row->{summary},
+                minor     => $row->{minor},
+                newauthor => $row->{newauthor},
+                data      => $row->{data},
+                tag       => $row->{tag},
+                text      => $base,
+              };
+
+            # Each subsequent patch reconstructs an EARLIER minor
+            # revision (apply, get progressively older text). The
+            # legacy format encodes "ts|user|host|summary\x1e5diff";
+            # take everything after \x1e5 as the patch payload.
+            my $cur_text = $base;
+            for ( my $i = 1 ; $i < @patches ; $i++ ) {
+                my $part = $patches[$i];
+                next if ( $part =~ /$FS5$/ );    # empty diff
+                my @half = split( /$FS5/, $part );
+                my $diff = $half[-1];
+                next if ( $diff eq '' );
+                $cur_text = eval { Text::Patch::patch( $cur_text, $diff, STYLE => "Unified" ) };
+                last if $@;     # malformed chain; stop
+                push @history,
+                  {
+                    revision  => $row->{revision} - $i,
+                    version   => $row->{version},
+                    author    => $row->{author},
+                    tupdate   => $row->{tupdate},
+                    tcreate   => $row->{tcreate},
+                    ip        => $row->{ip},
+                    host      => $row->{host},
+                    summary   => $row->{summary},
+                    minor     => 1,
+                    newauthor => 0,
+                    data      => $row->{data},
+                    tag       => $row->{tag},
+                    text      => $cur_text,
+                  };
+            }
+        }
+
+        # Sort by revision ascending, dedupe (legacy rows can have
+        # both a major-rev row and an inline-derived row at the same
+        # revision number; prefer the major-rev row, which is the
+        # snapshot, and which we pushed first).
+        my %seen;
+        @history = grep { !$seen{ $_->{revision} }++ } sort { $a->{revision} <=> $b->{revision} } @history;
+
+        next unless @history;
+        my $latest = $history[-1];
+
+        # 1. Write the latest revision to the new `page` table.
+        unless ($dry_run) {
+            $page_ins->execute(
+                $id,                  $latest->{version},
+                $latest->{author},    $latest->{revision},
+                $latest->{tupdate},   $latest->{tcreate},
+                $latest->{ip},        $latest->{host},
+                $latest->{summary},   $latest->{text},
+                $latest->{minor},     $latest->{newauthor},
+                $latest->{data},      $latest->{tag},
+            );
+        }
+        $total_pages++;
+
+        # 2. Write all earlier revisions to `page_revisions`.
+        for my $i ( 0 .. $#history - 1 ) {
+            my $h = $history[$i];
+            unless ($dry_run) {
+                $rev_ins->execute(
+                    $id,            $h->{revision},
+                    $h->{version},  $h->{author},
+                    $h->{tupdate},  $h->{tcreate},
+                    $h->{ip},       $h->{host},
+                    $h->{summary},  $h->{minor},
+                    $h->{newauthor}, $h->{data},
+                    'snapshot',     $h->{text},
+                );
+            }
+            $total_revs++;
+        }
+
+        log_msg sprintf( "  %s: %d revisions (1 current + %d historical)",
+            $id, scalar(@history), scalar(@history) - 1 )
+          if $verbose;
+    }
+    $dst->commit unless $dry_run;
+
+    my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $dst_table );
+    my $rev_count = $dry_run ? '(dry-run)' : row_count( $dst, $rev_table );
+    $report->{$label} =
+      { src => $src_count, dst => "$dst_count page + $rev_count rev" };
+    log_msg sprintf(
+        "done %s : src=%d -> %d current rows + %d historical rows",
+        $label, $src_count, $total_pages, $total_revs
+    );
+}
+
 # ----------------------------------------------------------------
 # Per-table copy
 # ----------------------------------------------------------------
@@ -221,6 +421,13 @@ for my $tbl_spec (@TABLES) {
     }
     if ( !table_exists( $dst, $dst_table ) ) {
         log_msg "skip $label (not present in destination — schema mismatch?)";
+        next;
+    }
+
+    # Custom handler? It owns the entire copy logic for this table
+    # (including any row counts / reporting it wants in $report).
+    if ( my $handler = $tbl_spec->{handler} ) {
+        $handler->( $src, $dst, $src_table, $dst_table, $label, $dry_run, $verbose, \%report );
         next;
     }
 

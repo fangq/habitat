@@ -128,9 +128,15 @@ my $watch_sql = $dst->selectrow_array(
 like( $watch_sql, qr/\busername\b/i, "destination watch table has 'username' column" );
 unlike( $watch_sql, qr/\buser\s+varchar/i, "destination watch table has no 'user' column" );
 
-# Row counts match per migrated table
-is( $dst->selectrow_array("SELECT COUNT(*) FROM page"),   3, "page rows migrated" );
-is( $dst->selectrow_array("SELECT COUNT(*) FROM users"),   2, "user rows migrated" );
+# Stage 5: page table now holds ONE row per id (the current revision).
+# Historical revisions move to page_revisions. The legacy seed had
+# Home/r1 + Home/r2 + Other/r1 = 3 source rows -> 2 current rows +
+# 1 historical row.
+is( $dst->selectrow_array("SELECT COUNT(*) FROM page"), 2,
+    "page table has one row per id (current snapshot)" );
+is( $dst->selectrow_array("SELECT COUNT(*) FROM page_revisions"), 1,
+    "page_revisions has the older Home revision" );
+is( $dst->selectrow_array("SELECT COUNT(*) FROM users"),  2, "user rows migrated" );
 is( $dst->selectrow_array("SELECT COUNT(*) FROM watch"),  2, "watch rows migrated" );
 is( $dst->selectrow_array("SELECT COUNT(*) FROM system"), 1, "system rows migrated" );
 
@@ -140,17 +146,26 @@ is_deeply( $rows,
     [ [ 'Home',  'alice' ], [ 'Other', 'bob' ] ],
     "watch.username data matches source watch.user" );
 
-# Page data integrity
+# Current page rows: just the latest revision per id.
 my $pages = $dst->selectall_arrayref(
-    "SELECT id, revision, author, text FROM page ORDER BY id, revision" );
+    "SELECT id, revision, author, text FROM page ORDER BY id" );
 is_deeply(
     $pages,
     [
-        [ 'Home', 1, 'alice', 'hello v1' ],
-        [ 'Home', 2, 'bob',   'hello v2' ],
-        [ 'Other', 1, 'carol','another' ],
+        [ 'Home',  2, 'bob',   'hello v2' ],
+        [ 'Other', 1, 'carol', 'another' ],
     ],
-    "page row data byte-equal across migration"
+    "page table contains only the current revision per id"
+);
+
+# Historical revisions: older Home/r1 lands in page_revisions.
+my $revs = $dst->selectall_arrayref(
+    "SELECT page_id, revision, author, kind, text FROM page_revisions ORDER BY page_id, revision"
+);
+is_deeply(
+    $revs,
+    [ [ 'Home', 1, 'alice', 'snapshot', 'hello v1' ] ],
+    "page_revisions holds older Home/r1 as a snapshot"
 );
 
 # init_schema created the tables that source didn't have
@@ -161,10 +176,13 @@ ok( $dst->selectrow_array(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='rclog'" ),
     "destination has rclog table (created by init_schema)" );
 
-# UNIQUE(id, revision) on page (additive cleanup)
-ok( $dst->selectrow_array(
-        "SELECT name FROM sqlite_master WHERE type='index' AND name='page_id_rev'" ),
-    "destination has page_id_rev UNIQUE index" );
+# Stage 5: page table now has PRIMARY KEY (id) instead of the old
+# UNIQUE(id, revision) index. The page_id_rev index is gone; verify
+# the new constraint instead.
+my $page_sql = $dst->selectrow_array(
+    "SELECT sql FROM sqlite_master WHERE type='table' AND name='page'" );
+like( $page_sql, qr/PRIMARY KEY/i,
+    "destination page table has a primary key" );
 
 $dst->disconnect;
 unlink $dst_path;
@@ -181,8 +199,8 @@ unlink $dst_path;
     is( $rc, 0, "second migration exit code 0" );
     my $d = DBI->connect( "dbi:SQLite:dbname=$dst_path", "", "",
         { RaiseError => 1, AutoCommit => 1 } );
-    is( $d->selectrow_array("SELECT COUNT(*) FROM page"), 3,
-        "fresh dest also has 3 page rows (deterministic)" );
+    is( $d->selectrow_array("SELECT COUNT(*) FROM page"), 2,
+        "fresh dest also has 2 current page rows (deterministic)" );
     $d->disconnect;
 }
 

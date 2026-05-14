@@ -3851,73 +3851,88 @@ sub GetPageCache {
 
 sub SavePageDB {
     my ($name) = @_;
-    my ( $pagedb, $sth );
-    my (
-        $pgid, $version, $author, $revision, $tupdate,   $tcreate, $ip,
-        $host, $summary, $text,   $minor,    $newauthor, $data
-    );
     my ( $Page, $Text, $Section );
 
     $Page    = \%{ $Pages{$name}->{'page'} };
     $Section = \%{ $Pages{$name}->{'section'} };
     $Text    = \%{ $Pages{$name}->{'text'} };
 
-    $pagedb = &GetPageDB($name);
+    my $pagedb = &GetPageDB($name);
+    my $revdb  = "${pagedb}_revisions";
 
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
     die("SavePageDB: unsafe table name") if ( !SafeIdent($pagedb) );
+    die("SavePageDB: unsafe table name") if ( !SafeIdent($revdb) );
     $$Page{'name'} = $name;
 
-    $sth = $dbh->selectall_arrayref(
-        "SELECT revision, data FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
+    # Read the previous current row (if any) so we can archive it
+    # before we overwrite. The new revision is current_rev + 1.
+    my $cur_row = $dbh->selectrow_arrayref(
+        "SELECT revision, version, author, tupdate, tcreate, ip, host, summary, "
+          . "text, minor, newauthor, data FROM $pagedb WHERE id=?",
         undef, $name );
-    if ( defined $sth->[0] ) {
-        ( $version, $data ) = @{ $sth->[0] };
-        $$Page{'revision'} = $version;
-        if ( $$Text{'minor'} != 1 ) {
-            $$Page{'revision'} = $version + 1;
-        }
-    } else {
-        $$Page{'revision'} = 0;
+
+    my $cur_rev = 0;
+    my $cur_tcreate;
+    if ( defined $cur_row ) {
+        $cur_rev     = $cur_row->[0];
+        $cur_tcreate = $cur_row->[4];
+
+        # Archive the previous revision into page_revisions as a
+        # full-text snapshot. Stage 5 ships snapshot-only; a future
+        # commit will swap to reverse-diff for storage compactness.
+        WriteDBItems(
+            $revdb,
+            "page_id,revision,version,author,tupdate,tcreate,ip,host,"
+              . "summary,minor,newauthor,data,kind,text",
+            0,    # plain insert; (page_id, revision) PK guards dupes
+            $name,
+            $cur_row->[0],     # revision
+            $cur_row->[1],     # version
+            $cur_row->[2],     # author
+            $cur_row->[3],     # tupdate
+            $cur_row->[4],     # tcreate
+            $cur_row->[5],     # ip
+            $cur_row->[6],     # host
+            $cur_row->[7],     # summary
+            $cur_row->[9],     # minor
+            $cur_row->[10],    # newauthor
+            $cur_row->[11],    # data
+            'snapshot',
+            $cur_row->[8],     # text
+        );
     }
 
-    $pgid     = $$Page{'name'};
-    $version  = $$Page{'version'};
-    $revision = $$Page{'revision'};
-    $tcreate  = $$Page{'tscreate'};
-    $tupdate  = $Now;
+    my $new_rev = $cur_rev + 1;
+    $$Page{'revision'}    = $new_rev;
+    $$Section{'revision'} = $new_rev;
 
-    # $$Section{'name'}=$pgid; $$Section{'version'}=$version;
-    if ( $$Text{'minor'} != 1 ) {
-        $$Section{'revision'} += 1;
-    }
+    my $tcreate = $cur_tcreate || $$Page{'tscreate'} || $Now;
+    my $tupdate = $Now;
 
-    # $$Section{'tscreate'}=$tcreate; $$Section{'ts'}=$tupdate;
-    $ip     = $$Section{'ip'};
-    $host   = $$Section{'host'};
-    $data   = $UserData{'id'};
-    $author = $UserData{'username'};
-
-    $text      = $$Text{'text'};
-    $newauthor = $$Text{'newauthor'};
-    $minor     = $$Text{'minor'};
-    $summary   = $$Text{'summary'};
-
-    if ($minor) {
-        DeleteDBItems( $pagedb, "id=? and revision=?", $pgid, $revision );
-    }
-    $sth =
-      $dbh->prepare( "insert into $pagedb (id,version,author,revision,tupdate,"
-          . "tcreate,ip,host,summary,text,minor,newauthor,data) values (?,?,?,?,?,?,?,?,?,?,?,?,?)"
-      ) or die "Couldn't prepare statement: " . $dbh->errstr;
-    $sth->execute(
-        $pgid, $version, $author, $revision, $tupdate,   $tcreate, $ip,
-        $host, $summary, $text,   $minor,    $newauthor, $data
+    # Upsert the current snapshot. UPSERT semantics: REPLACE INTO on
+    # SQLite, INSERT ... ON CONFLICT (id) DO UPDATE on Postgres.
+    WriteDBItems(
+        $pagedb,
+        "id,revision,version,author,tupdate,tcreate,ip,host,"
+          . "summary,text,minor,newauthor,data",
+        1,    # upsert on id
+        $name,
+        $new_rev,
+        $$Page{'version'},
+        $UserData{'username'},
+        $tupdate,
+        $tcreate,
+        $$Section{'ip'},
+        $$Section{'host'},
+        $$Text{'summary'},
+        $$Text{'text'},
+        $$Text{'minor'},
+        $$Text{'newauthor'},
+        $UserData{'id'},
     );
-
-    # need to print log
 }
 
 sub SaveSection {
@@ -3959,25 +3974,36 @@ sub UpdatePageVersion {
 }
 
 sub OpenKeptListDB {
-    my ($nopatch) = @_;    # Name of section
-    my ( $fname, $data, %sections, %texts, $sth, $lim, $offset, $searchcmd, $moretocome );
-    my $pagedb = &GetPageDB($OpenPageName);
-    my (
-        $pgid, $version, $author, $revision, $tupdate,   $tcreate,  $ip,
-        $host, $summary, $text,   $minor,    $newauthor, @KeptList, $inlinerev
-    );
-
-    $lim    = GetParam( 'listc',  $HistoryLimit ) + 1;
-    $offset = GetParam( 'offset', 0 );
-
-    @KeptList = ();
+    my ($nopatch) = @_;
+    my $pagedb    = &GetPageDB($OpenPageName);
+    my $revdb     = "${pagedb}_revisions";
+    my @KeptList;
+    my $moretocome = '';
 
     die("OpenKeptListDB: unsafe table name") if ( !SafeIdent($pagedb) );
-    $lim       = int($lim);
-    $offset    = int($offset);
-    $searchcmd = "select * from $pagedb where id=? limit $lim";
-    $searchcmd .= " offset $offset" if ( $offset > 0 );
-    $sth = $dbh->selectall_arrayref( $searchcmd, undef, $OpenPageName );
+    die("OpenKeptListDB: unsafe table name") if ( !SafeIdent($revdb) );
+
+    my $lim    = int( GetParam( 'listc',  $HistoryLimit ) ) + 1;
+    my $offset = int( GetParam( 'offset', 0 ) );
+
+    # Stage 5: revision history is split across two tables. The
+    # current revision lives in `page`; older revisions in
+    # `page_revisions` (kind='snapshot' or 'diff'). UNION-merge them
+    # ordered by revision and apply the same paging the legacy code
+    # did via LIMIT/OFFSET.
+    my $cur_cols = "id AS page_id, revision, version, author, tupdate, "
+                 . "tcreate, ip, host, summary, minor, newauthor, data, "
+                 . "'snapshot' AS kind, text";
+    my $rev_cols = "page_id, revision, version, author, tupdate, "
+                 . "tcreate, ip, host, summary, minor, newauthor, data, "
+                 . "kind, text";
+    my $sql = "SELECT $cur_cols FROM $pagedb WHERE id=? "
+            . "UNION ALL "
+            . "SELECT $rev_cols FROM $revdb WHERE page_id=? "
+            . "ORDER BY revision DESC LIMIT $lim";
+    $sql .= " OFFSET $offset" if ( $offset > 0 );
+
+    my $sth = $dbh->selectall_arrayref( $sql, undef, $OpenPageName, $OpenPageName );
     if ( defined $sth->[0] ) {
         if ( @{$sth} == $lim ) {
             pop( @{$sth} );
@@ -3985,35 +4011,34 @@ sub OpenKeptListDB {
         }
         foreach my $rec ( @{$sth} ) {
             my (
-                $pgid, $version, $author, $revision, $tupdate,   $tcreate, $ip,
-                $host, $summary, $text,   $minor,    $newauthor, $data
+                $pgid, $revision, $version, $author, $tupdate, $tcreate,
+                $ip,   $host,     $summary, $minor,  $newauthor, $data,
+                $kind, $text
             ) = @$rec;
-            if ( $pgid eq "" or $revision eq "" ) { next; }
+            next if ( !defined($pgid) || $pgid eq "" || !defined($revision) || $revision eq "" );
 
-            %texts = ();
-            if ( $nopatch != 1 ) {
-                ( $texts{'text'}, $inlinerev ) = &PatchPage($text);
-            } else {
-                $texts{'text'} = $text;
-                if ( $text =~ /$FS4/ ) {
-                    $inlinerev = ( split( /$FS4/, $text ) ) - 1;
-                }
-            }
+            # Stage-5 storage is always 'snapshot' for now. If a row
+            # came from a future commit using kind='diff', the caller
+            # needs to materialize it via the diff chain; for now we
+            # pass the diff payload through unchanged (the rendering
+            # code will see kind='diff' on the metadata and reject).
+            my %texts;
+            $texts{'text'}      = $text;
             $texts{'minor'}     = $minor;
             $texts{'newauthor'} = $newauthor;
             $texts{'summary'}   = $summary;
 
-            %sections              = ();
+            my %sections;
             $sections{'name'}      = "text_default";
             $sections{'version'}   = $version;
             $sections{'revision'}  = $revision;
-            $sections{'inlinerev'} = $inlinerev if ( $inlinerev ne '' );
             $sections{'tscreate'}  = $tcreate;
             $sections{'ts'}        = $tupdate;
             $sections{'ip'}        = $ip;
             $sections{'host'}      = $host;
             $sections{'id'}        = $data;
             $sections{'username'}  = $author;
+            $sections{'kind'}      = $kind;
             $sections{'data'}      = join( $FS3, %texts );
             $KeptList[$revision]   = join( $FS2, %sections );
         }
@@ -5990,21 +6015,10 @@ sub DoPost {
     }
     $string .= "\n" if ( !( $string =~ /\n$/ ) );
 
-    if ($UseDiff) {
-        my $diffstr = &GetDiff( $old, $string, 0 );
-        if ( ( $isEdit || length($diffstr) < length($old) * 0.25 ) && $diffstr ne '' ) {
-            my $rawdata = &ReadRawWikiPage( $id, 1 );
-            my @oldrec  = split( /$FS4/, $rawdata );
-            if ( @oldrec <= $InlineDiffLimit ) {
-                my $revstr = "$Now|$user|" . &GetRemoteHost(1) . "|$summary$FS5";
-                $string               = $rawdata . $FS4 . $revstr . $diffstr;
-                $$Section{'revision'} = $oldrev;
-                $isEdit               = 1;
-            } else {
-                $isEdit = 0;
-            }
-        }
-    }
+    # Stage 5: every edit (major or minor) gets its own row in
+    # page_revisions. The legacy inline-diff blob (FS4-chained patch
+    # chain stored inside page.text) is gone; the $isEdit flag is now
+    # just metadata, not a write-path optimization.
     $$Text{'text'}      = $string;
     $$Text{'minor'}     = $isEdit;
     $$Text{'newauthor'} = $newAuthor;
@@ -6560,24 +6574,27 @@ sub DoUpdateLinks {
 
 sub DeletePageRevisionFrom {
     my ( $page, $major, $minor ) = @_;
-    my ( $text, @patches );
     my $pagedb = &GetPageDB($page);
+    my $revdb  = "${pagedb}_revisions";
 
     if ( $dbh eq "" || $pagedb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
     die("DeletePageRevisionFrom: unsafe table name") if ( !SafeIdent($pagedb) );
-    $text = ReadDBItems( $pagedb, 'text', '', '', "id=? and revision=?", $page, $major );
-    if ( $text eq "" ) {
-        die( T('ERROR: specified revision does not exist!') . "$page:$major.$minor" );
+    die("DeletePageRevisionFrom: unsafe table name") if ( !SafeIdent($revdb) );
+
+    # Stage 5: the legacy inline-diff chain is gone; the $minor index
+    # no longer maps to a position inside the text blob. Every
+    # revision is now its own row in either `page` (current) or
+    # `page_revisions` (history). Delete the matching revision row.
+    if ( $minor && $minor > 0 ) {
+
+        # Historical revisions: revision = $major - $minor convention
+        # used to be the inline-diff index; with proper rows we just
+        # delete the page_revisions row at $major. Keep the call
+        # signature for backward source compat; ignore $minor.
     }
-    @patches = split( /$FS4/, $text );
-    if ( $#patches >= $minor ) {
-        my $sth =
-          $dbh->prepare("update $pagedb set text= ? where id=? and revision=?");
-        splice( @patches, $minor, @patches - $minor );
-        $sth->execute( join( $FS4, @patches ), $page, $major );
-    }
+    DeleteDBItems( $revdb, "page_id=? AND revision=?", $page, $major );
 }
 
 # Delete and rename must be done inside locks.
@@ -7133,12 +7150,22 @@ sub ReadRawWikiPage {
         die( T('ERROR: database uninitialized!') );
     }
     die("ReadRawWikiPage: unsafe table name") if ( !SafeIdent($pagedb) );
+
+    # New shape: page table has one row per page (PRIMARY KEY id).
+    # ORDER BY revision DESC LIMIT 1 still works for legacy multi-row
+    # tables that haven't been migrated yet, so the read path is
+    # forward-compatible during a transition.
     $sth = $dbh->selectall_arrayref(
         "SELECT revision, text FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
         undef, $id );
     if ( defined $sth->[0] ) {
         ( $maxversion, $text ) = @{ $sth->[0] };
         if ( defined $maxversion && $maxversion ne "" ) {
+
+            # Stage 5: new writes no longer create inline-diff chains.
+            # Old data may still carry them (FS4-separated patches in
+            # the text column); PatchPage detects the marker and
+            # collapses the chain. On migrated data this is a no-op.
             ( $text, $inlinerev ) = &PatchPage($text)
               if ( !defined($force) || $force eq '' );
             $TextCache{$id} = $text;
