@@ -54,8 +54,11 @@ my $test = Plack::Test->create($app);
 # ----------------------------------------------------------------
 # Browse paths
 # ----------------------------------------------------------------
-for my $url ( '/', '/?Home', '/?action=index', '/?action=edit&id=Home',
-    '/?action=rc', '/?search=test', '/?action=rss' ) {
+for my $url (
+    '/',           '/?Home',        '/?action=index', '/?action=edit&id=Home',
+    '/?action=rc', '/?search=test', '/?action=rss'
+  )
+{
     my $res = $test->request( GET $url );
     is( $res->code, 200, "GET $url -> 200" );
     cmp_ok( length( $res->content ), '>', 100, "GET $url body looks like a page" );
@@ -79,36 +82,42 @@ my $h1 = $r1->content;
 my $h3 = $r3->content;
 $h1 =~ s/name="csrf_token"\s+value="[^"]+"/CSRFSCRUBBED/g;
 $h3 =~ s/name="csrf_token"\s+value="[^"]+"/CSRFSCRUBBED/g;
-is( $h1, $h3,
-    "two /?Home requests with an intervening different request return the same body" );
+is( $h1, $h3, "two /?Home requests with an intervening different request return the same body" );
 
 # ----------------------------------------------------------------
 # CSRF enforcement
 # ----------------------------------------------------------------
 # Without csrf_token: must be 403, must not perform the side effect.
-my $no_csrf = $test->request( POST '/', [
-    edit_ban => 1,
-    banlist  => "evil-net",
-] );
-is(   $no_csrf->code, 403, "POST without csrf_token -> 403" );
-like( $no_csrf->content, qr/CSRF token missing or invalid/i,
-    "403 body contains the CSRF error message" );
+my $no_csrf = $test->request(
+    POST '/',
+    [
+        edit_ban => 1,
+        banlist  => "evil-net",
+    ]
+);
+is( $no_csrf->code, 403, "POST without csrf_token -> 403" );
+like(
+    $no_csrf->content,
+    qr/CSRF token missing or invalid/i,
+    "403 body contains the CSRF error message"
+);
 
 # With a garbage csrf_token
-my $bad_csrf = $test->request( POST '/', [
-    csrf_token => "not-a-real-token",
-    edit_ban   => 1,
-    banlist    => "evil-net",
-] );
+my $bad_csrf = $test->request(
+    POST '/',
+    [
+        csrf_token => "not-a-real-token",
+        edit_ban   => 1,
+        banlist    => "evil-net",
+    ]
+);
 is( $bad_csrf->code, 403, "POST with bad csrf_token -> 403" );
 
 # Verify nothing was written to the ban list. The Stage 1 helper
 # stores the ban list in the `system` table under id='banlist'.
 my $dbh = $HabitatEngine::dbh;
-my ($banned) = $dbh->selectrow_array(
-    "SELECT data FROM system WHERE id='banlist'" );
-ok( !defined($banned) || $banned !~ /evil-net/,
-    "CSRF-blocked POST did not mutate the ban list" );
+my ($banned) = $dbh->selectrow_array("SELECT data FROM system WHERE id='banlist'");
+ok( !defined($banned) || $banned !~ /evil-net/, "CSRF-blocked POST did not mutate the ban list" );
 
 # ----------------------------------------------------------------
 # Login flow — generic error message, throttle row appears
@@ -119,24 +128,29 @@ my ($csrf) = $login_form->content =~ /csrf_token"\s+value="([^"]+)"/;
 ok( $csrf, "got a CSRF token from the login form" );
 
 # Submit a doomed login
-my $fail = $test->request( POST '/', [
-    csrf_token => $csrf,
-    enter_login => 1,
-    p_username  => "definitely_does_not_exist",
-    p_password  => "wrongpass",
-] );
+my $fail = $test->request(
+    POST '/',
+    [
+        csrf_token  => $csrf,
+        enter_login => 1,
+        p_username  => "definitely_does_not_exist",
+        p_password  => "wrongpass",
+    ]
+);
 is( $fail->code, 200, "login attempt completes (200)" );
 like( $fail->content, qr/Login failed/, "generic 'Login failed' message shown" );
-unlike( $fail->content, qr/wrong password|cannot find|not yet been activated/i,
-    "no information-leaking error variant in response" );
+unlike(
+    $fail->content,
+    qr/wrong password|cannot find|not yet been activated/i,
+    "no information-leaking error variant in response"
+);
 
 # Throttle row should now exist for both keys
-my $rows = $dbh->selectall_arrayref(
-    "SELECT key, count FROM login_attempts ORDER BY key" );
+my $rows = $dbh->selectall_arrayref("SELECT key, count FROM login_attempts ORDER BY key");
 ok( scalar(@$rows) >= 2, "throttle table has at least two rows (per-IP and per-name)" );
 my %by_key = map { $_->[0] => $_->[1] } @$rows;
-ok( ( grep { /^name:/ }  keys %by_key ), "per-username throttle row created" );
-ok( ( grep { /^ip:/   }  keys %by_key ), "per-IP throttle row created" );
+ok( ( grep { /^name:/ } keys %by_key ), "per-username throttle row created" );
+ok( ( grep { /^ip:/ } keys %by_key ),   "per-IP throttle row created" );
 
 # Clean up so the next test run starts fresh
 $dbh->do("DELETE FROM login_attempts");
@@ -148,7 +162,7 @@ $dbh->do("DELETE FROM login_attempts");
 # header on the login form GET.)
 # ----------------------------------------------------------------
 my $home = $test->request( GET '/?Home' );
-unlike( $home->header('Set-Cookie') || '', qr/randkey/i,
-    "anonymous browse does not emit the legacy randkey cookie format" );
+unlike( $home->header('Set-Cookie') || '',
+    qr/randkey/i, "anonymous browse does not emit the legacy randkey cookie format" );
 
 done_testing;

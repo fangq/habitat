@@ -22,7 +22,12 @@ i18n:
 		msgfmt -o $$lang/$(PKGNAME).mo $$lang/$(PKGNAME).po;\
 	   fi;\
 	done
+PERLTIDY_OPTS = -ce -b -bext='/' -l=100
 pretty:
-	perltidy -ce -b -bext='/' -l=100 habitat/index.cgi habitat/habitatdb/config habitat/habitatdb/i18n/* utils/*
+	perltidy $(PERLTIDY_OPTS) habitat/index.cgi habitat/habitatdb/config habitat/habitatdb/i18n/* utils/*
+	perltidy $(PERLTIDY_OPTS) habitat/app.psgi
+	perltidy $(PERLTIDY_OPTS) habitat/lib/Habitat/*.pm
+	perltidy $(PERLTIDY_OPTS) habitat/utils/*.pl
+	perltidy $(PERLTIDY_OPTS) habitat/test/*.t habitat/test/*.pm habitat/test/benchmarks/*.pl
 clean:
 	-rm -rf debian rpmroot pkg.info $(PKGNAME)-$(VERSION).deb $(PKGNAME)-$(VERSION)*.rpm

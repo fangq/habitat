@@ -16,8 +16,8 @@ package HabitatHarness;
 use strict;
 use warnings;
 use File::Basename ();
-use Cwd ();
-use File::Spec ();
+use Cwd            ();
+use File::Spec     ();
 
 # Chdir to habitat/ at compile time so any subsequent `use Habitat::*`
 # resolves against habitat/lib/. Done in BEGIN so it happens before
@@ -27,13 +27,14 @@ use File::Spec ();
 # than $Bin (the loader's $0). This makes the harness work from any
 # loader location — test/*.t, test/benchmarks/*.pl, ad-hoc scripts.
 BEGIN {
-    my $here   = Cwd::abs_path( File::Basename::dirname(__FILE__) );  # habitat/test/
+    my $here    = Cwd::abs_path( File::Basename::dirname(__FILE__) );                # habitat/test/
     my $wikidir = Cwd::abs_path( File::Spec->catdir( $here, File::Spec->updir ) );
     chdir $wikidir or die "HabitatHarness: cannot chdir to $wikidir: $!";
     unshift @INC, File::Spec->catdir( $wikidir, 'lib' );
 }
 
 sub load_wiki {
+
     # Idempotent: if a previous load (e.g. via app.psgi + CGI::Compile)
     # already defined the package, skip. Avoids "Subroutine redefined"
     # warnings when one test loads both the bare script and the PSGI
@@ -58,8 +59,8 @@ sub load_wiki {
 sub fresh_test_db {
     require DBI;
     require Habitat::Store;
-    my $dbh = DBI->connect( 'dbi:SQLite:dbname=:memory:', '', '',
-        { RaiseError => 1, AutoCommit => 1 } );
+    my $dbh =
+      DBI->connect( 'dbi:SQLite:dbname=:memory:', '', '', { RaiseError => 1, AutoCommit => 1 } );
     $dbh->func(
         'regexp', 2,
         sub {

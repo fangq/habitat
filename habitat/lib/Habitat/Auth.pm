@@ -28,12 +28,12 @@ use Crypt::Bcrypt qw(bcrypt bcrypt_check);
 use Habitat::Store ();
 
 our @EXPORT_OK = qw(
-    RandomBytes RandomHex GetSiteSecret Hmac ConstantEq
-    SignSessionToken VerifySessionToken BuildSessionCookie IsRequestSecure
-    GenCSRFToken VerifyCSRFToken CSRFCheckOrDie
-    PrintCaptcha VerifyCaptcha
-    EnsureLoginThrottleTable LoginThrottleBlocked LoginThrottleHit LoginThrottleClear
-    HashPassword VerifyPassword IsLegacyPasswordHash UpgradePasswordHashDB
+  RandomBytes RandomHex GetSiteSecret Hmac ConstantEq
+  SignSessionToken VerifySessionToken BuildSessionCookie IsRequestSecure
+  GenCSRFToken VerifyCSRFToken CSRFCheckOrDie
+  PrintCaptcha VerifyCaptcha
+  EnsureLoginThrottleTable LoginThrottleBlocked LoginThrottleHit LoginThrottleClear
+  HashPassword VerifyPassword IsLegacyPasswordHash UpgradePasswordHashDB
 );
 
 # ----------------------------------------------------------------
@@ -53,7 +53,8 @@ sub RandomBytes {
             die("RandomBytes: short read from /dev/urandom")
               if ( !defined($got) || $got != $n );
         } else {
-            die("RandomBytes: no CSPRNG available (install Crypt::URandom or provide /dev/urandom)");
+            die("RandomBytes: no CSPRNG available (install Crypt::URandom or provide /dev/urandom)"
+            );
         }
     }
     return $bytes;
@@ -137,7 +138,7 @@ sub VerifySessionToken {
 }
 
 sub IsRequestSecure {
-    return 1 if ( defined $ENV{HTTPS}       && $ENV{HTTPS}       =~ /^on$/i );
+    return 1 if ( defined $ENV{HTTPS}       && $ENV{HTTPS} =~ /^on$/i );
     return 1 if ( defined $ENV{SERVER_PORT} && $ENV{SERVER_PORT} == 443 );
     no warnings 'once';
     my $tp = $HabitatEngine::TrustedProxies;
@@ -209,11 +210,9 @@ sub CSRFCheckOrDie {
     print "<h2>", HabitatEngine::T('CSRF token missing or invalid'), "</h2>";
     print "<p>",
       HabitatEngine::T(
-        'The form you submitted is missing a valid CSRF token. Reload the page and try again.'
-      ),
+        'The form you submitted is missing a valid CSRF token. Reload the page and try again.'),
       "</p>";
-    warn( "CSRF check failed for action: "
-          . HabitatEngine::GetParam( 'action', '?' ) );
+    warn( "CSRF check failed for action: " . HabitatEngine::GetParam( 'action', '?' ) );
     exit 0;
 }
 
@@ -260,24 +259,21 @@ sub EnsureLoginThrottleTable {
     my $dbh = _dbh();
     return if ( !$dbh );
     eval {
-        $dbh->do(
-            'CREATE TABLE IF NOT EXISTS login_attempts ('
+        $dbh->do( 'CREATE TABLE IF NOT EXISTS login_attempts ('
               . 'key TEXT PRIMARY KEY,'
               . 'count INTEGER NOT NULL,'
               . 'first_ts INTEGER NOT NULL,'
               . 'last_ts INTEGER NOT NULL'
-              . ')'
-        );
+              . ')' );
     };
 }
 
 sub LoginThrottleBlocked {
     my ($key) = @_;
-    my $dbh   = _dbh();
+    my $dbh = _dbh();
     return 0 if ( !defined($key) || $key eq '' || !$dbh );
     EnsureLoginThrottleTable();
-    my $row = $dbh->selectrow_arrayref(
-        'SELECT count, first_ts FROM login_attempts WHERE key=?',
+    my $row = $dbh->selectrow_arrayref( 'SELECT count, first_ts FROM login_attempts WHERE key=?',
         undef, $key );
     return 0 if ( !$row );
     my ( $count, $first ) = @$row;
@@ -288,29 +284,28 @@ sub LoginThrottleBlocked {
 
 sub LoginThrottleHit {
     my ($key) = @_;
-    my $dbh   = _dbh();
+    my $dbh = _dbh();
     return if ( !defined($key) || $key eq '' || !$dbh );
     EnsureLoginThrottleTable();
-    my $row = $dbh->selectrow_arrayref(
-        'SELECT count, first_ts FROM login_attempts WHERE key=?',
+    my $row = $dbh->selectrow_arrayref( 'SELECT count, first_ts FROM login_attempts WHERE key=?',
         undef, $key );
     no warnings 'once';
     my $now = $HabitatEngine::Now;
     my $win = $HabitatEngine::LoginThrottleWindow;
+
     if ( !$row || $now - $row->[1] > $win ) {
         $dbh->do(
             'INSERT OR REPLACE INTO login_attempts (key,count,first_ts,last_ts) VALUES (?,1,?,?)',
             undef, $key, $now, $now );
     } else {
-        $dbh->do(
-            'UPDATE login_attempts SET count=count+1, last_ts=? WHERE key=?',
+        $dbh->do( 'UPDATE login_attempts SET count=count+1, last_ts=? WHERE key=?',
             undef, $now, $key );
     }
 }
 
 sub LoginThrottleClear {
     my ($key) = @_;
-    my $dbh   = _dbh();
+    my $dbh = _dbh();
     return if ( !defined($key) || $key eq '' || !$dbh );
     eval { $dbh->do( 'DELETE FROM login_attempts WHERE key=?', undef, $key ); };
 }

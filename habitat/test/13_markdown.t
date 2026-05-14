@@ -22,21 +22,22 @@ HabitatEngine::InitLinkPatterns();
 
 # Fake $q stub; required by some code paths reached from WikiToHTML.
 {
+
     package FakeCGI13;
-    sub new { bless {}, shift }
+    sub new   { bless {}, shift }
     sub param { return }
 }
 no warnings 'once';
-$HabitatEngine::q = FakeCGI13->new;
+$HabitatEngine::q            = FakeCGI13->new;
 $HabitatEngine::OpenPageName = 'MdPage';
 
 # Stage out a tiny page record so WikiToHTML doesn't trip over missing
 # permission rules / section data.
 $HabitatEngine::Pages{'MdPage'} = {
-    page    => { name => 'MdPage', version => 3, tscreate => 0, ts => 0 },
+    page    => { name => 'MdPage',       version  => 3, tscreate => 0, ts => 0 },
     section => { name => 'text_default', revision => 1 },
-    text    => { text => '', minor => 0, newauthor => 0, summary => '' },
-    rules   => 1,   # short-circuit BuildRuleStack
+    text    => { text => '',             minor    => 0, newauthor => 0, summary => '' },
+    rules   => 1,    # short-circuit BuildRuleStack
 };
 
 # ----------------------------------------------------------------
@@ -44,8 +45,7 @@ $HabitatEngine::Pages{'MdPage'} = {
 # ----------------------------------------------------------------
 my $wiki_in  = "== Wiki Heading ==\n\nplain paragraph\n";
 my $wiki_out = HabitatEngine::WikiToHTML( 'MdPage', $wiki_in );
-unlike( $wiki_out, qr|<h1>Wiki Heading</h1>|i,
-    "without marker: not rendered as Markdown" );
+unlike( $wiki_out, qr|<h1>Wiki Heading</h1>|i, "without marker: not rendered as Markdown" );
 
 # ----------------------------------------------------------------
 # Page with the marker: Markdown pipeline.
@@ -66,11 +66,11 @@ MD
 
 my $md_out = HabitatEngine::WikiToHTML( 'MdPage', $md_in );
 
-like( $md_out, qr|<h1[^>]*>Hello</h1>|i,        "# Hello -> <h1>" );
-like( $md_out, qr|<strong>bold</strong>|,        "**bold** -> <strong>" );
-like( $md_out, qr|<em>italic</em>|,              "*italic* -> <em>" );
-like( $md_out, qr|<ul>.*<li>item 1</li>|is,      "bulleted list rendered" );
-like( $md_out, qr|<code>|i,                       "code block rendered" );
+like( $md_out, qr|<h1[^>]*>Hello</h1>|i,    "# Hello -> <h1>" );
+like( $md_out, qr|<strong>bold</strong>|,   "**bold** -> <strong>" );
+like( $md_out, qr|<em>italic</em>|,         "*italic* -> <em>" );
+like( $md_out, qr|<ul>.*<li>item 1</li>|is, "bulleted list rendered" );
+like( $md_out, qr|<code>|i,                 "code block rendered" );
 
 # ----------------------------------------------------------------
 # Marker tolerates whitespace variations and case.
@@ -80,10 +80,11 @@ for my $marker (
     "<!--markdown-->\n",
     "<!-- Markdown -->\n",
     "  <!-- markdown -->  \n",
-) {
+  )
+{
     my $out = HabitatEngine::WikiToHTML( 'MdPage', $marker . "# H\n" );
     like( $out, qr|<h1[^>]*>H</h1>|i,
-        sprintf("marker variant %s recognized", $marker =~ s/\n.*//rs ) );
+        sprintf( "marker variant %s recognized", $marker =~ s/\n.*//rs ) );
 }
 
 # ----------------------------------------------------------------
@@ -100,8 +101,8 @@ my $xss_in = <<'MD';
 MD
 
 my $xss_out = HabitatEngine::WikiToHTML( 'MdPage', $xss_in );
-unlike( $xss_out, qr|<script|i,        "<script> tag stripped from Markdown output" );
-unlike( $xss_out, qr|javascript:|i,     "javascript: URLs stripped from Markdown links" );
-like(   $xss_out, qr|<h1[^>]*>Heading</h1>|i, "safe markup survives the scrub" );
+unlike( $xss_out, qr|<script|i,     "<script> tag stripped from Markdown output" );
+unlike( $xss_out, qr|javascript:|i, "javascript: URLs stripped from Markdown links" );
+like( $xss_out, qr|<h1[^>]*>Heading</h1>|i, "safe markup survives the scrub" );
 
 done_testing;

@@ -21,8 +21,9 @@ HabitatEngine::InitLinkPatterns();
 
 # GetParam reaches into $q->param; stub it for any path that needs it.
 {
+
     package FakeCGI3;
-    sub new { bless {}, shift }
+    sub new     { bless {}, shift }
     sub param   { return }
     sub charset { return }
     sub url     { return '' }
@@ -30,8 +31,8 @@ HabitatEngine::InitLinkPatterns();
 $HabitatEngine::q = FakeCGI3->new;
 
 # Seed a page so the wiki has something to cache.
-$HabitatEngine::OpenPageName = '';
-$HabitatEngine::UserID       = 1001;
+$HabitatEngine::OpenPageName         = '';
+$HabitatEngine::UserID               = 1001;
 $HabitatEngine::UserData{'id'}       = 1001;
 $HabitatEngine::UserData{'username'} = 'alice';
 {
@@ -67,17 +68,13 @@ HabitatEngine::UpdateHtmlCacheDB( 'Cached', '<html>still cached</html>' );
 $dbh->do( "INSERT OR REPLACE INTO html (id, time, text) VALUES (?, ?, ?)",
     undef, 'Cached[zh]', 100, '<html>zh</html>' );
 
-is(
-    $dbh->selectrow_array("SELECT COUNT(*) FROM html WHERE id LIKE 'Cached[%]'"),
-    2, "two cache rows present pre-rename (en and zh)"
-);
+is( $dbh->selectrow_array("SELECT COUNT(*) FROM html WHERE id LIKE 'Cached[%]'"),
+    2, "two cache rows present pre-rename (en and zh)" );
 
 HabitatEngine::RenamePage( 'Cached', 'Renamed', 0, 0 );
 
-is(
-    $dbh->selectrow_array("SELECT COUNT(*) FROM html WHERE id LIKE 'Cached[%]'"),
-    0, "after RenamePage: zero cache rows for old id (all lang variants invalidated)"
-);
+is( $dbh->selectrow_array("SELECT COUNT(*) FROM html WHERE id LIKE 'Cached[%]'"),
+    0, "after RenamePage: zero cache rows for old id (all lang variants invalidated)" );
 
 # ----------------------------------------------------------------
 # DoCacheBrowse cookie-bypass guard
@@ -88,8 +85,9 @@ $dbh->do( "INSERT INTO html (id, time, text) VALUES (?, ?, ?)",
 
 # Stub $q so InitParam can run; DoCacheBrowse reads from it.
 {
+
     package FakeCGI2;
-    sub new { bless {}, shift }
+    sub new     { bless {}, shift }
     sub param   { return }
     sub charset { return }
     sub url     { return '' }
@@ -124,7 +122,7 @@ local $HabitatEngine::HomePage = 'Renamed';
     );
     my $r = HabitatEngine::DoCacheBrowse();
     is( $r, 0,
-        "request with Cookie header bypasses cache (would serve admin-stripped HTML to authed user otherwise)"
+"request with Cookie header bypasses cache (would serve admin-stripped HTML to authed user otherwise)"
     );
 }
 

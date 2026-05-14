@@ -50,27 +50,23 @@ HabitatEngine::LoginThrottleHit($k);
 is( HabitatEngine::LoginThrottleBlocked($k), 0, "2 hits < limit" );
 
 HabitatEngine::LoginThrottleHit($k);
-is( HabitatEngine::LoginThrottleBlocked($k), 1,
-    "3 hits at limit -> blocked" );
+is( HabitatEngine::LoginThrottleBlocked($k), 1, "3 hits at limit -> blocked" );
 
 HabitatEngine::LoginThrottleHit($k);
 is( HabitatEngine::LoginThrottleBlocked($k), 1, "overshoot stays blocked" );
 
 # Independent keys do not interfere
 my $k2 = 'ip:10.0.0.1';
-is( HabitatEngine::LoginThrottleBlocked($k2), 0,
-    "different IP unaffected by another's failures" );
+is( HabitatEngine::LoginThrottleBlocked($k2), 0, "different IP unaffected by another's failures" );
 
 # ----------------------------------------------------------------
 # Clear resets the counter
 # ----------------------------------------------------------------
 HabitatEngine::LoginThrottleClear($k);
-is( HabitatEngine::LoginThrottleBlocked($k), 0,
-    "successful login clears the throttle window" );
+is( HabitatEngine::LoginThrottleBlocked($k), 0, "successful login clears the throttle window" );
 
 HabitatEngine::LoginThrottleHit($k);
-is( HabitatEngine::LoginThrottleBlocked($k), 0,
-    "first failure after clear is counted from zero" );
+is( HabitatEngine::LoginThrottleBlocked($k), 0, "first failure after clear is counted from zero" );
 
 # ----------------------------------------------------------------
 # Window expiry: hits older than $LoginThrottleWindow get a fresh start
@@ -82,14 +78,13 @@ HabitatEngine::LoginThrottleHit($k);
 is( HabitatEngine::LoginThrottleBlocked($k), 1, "blocked after 3 failures in window" );
 
 # Advance clock past the window
-HabitatHarness::freeze_time(1_700_000_000 + 61);
-is( HabitatEngine::LoginThrottleBlocked($k), 0,
-    "block lifts after the window has elapsed" );
+HabitatHarness::freeze_time( 1_700_000_000 + 61 );
+is( HabitatEngine::LoginThrottleBlocked($k), 0, "block lifts after the window has elapsed" );
 
 # A fresh hit after window expiry restarts the count, doesn't add to old
 HabitatEngine::LoginThrottleHit($k);
-is( HabitatEngine::LoginThrottleBlocked($k), 0,
-    "new hit after window starts fresh count, not at 4" );
+is( HabitatEngine::LoginThrottleBlocked($k),
+    0, "new hit after window starts fresh count, not at 4" );
 
 # ----------------------------------------------------------------
 # Empty / undef inputs are no-ops (safety guards)
