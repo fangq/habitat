@@ -119,7 +119,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber
-  $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow);
+  $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -315,6 +315,7 @@ if ($RepInterMap) {
 # space, caches, header-emitted flags, and language state.
 sub ResetRequestState {
     %TextCache       = ();
+    %RuleDirCache    = ();
     $LocalTree       = undef;
     $TableOfContents = '';
     @HeadingNumbers  = ();
@@ -815,7 +816,6 @@ sub BuildRuleStack {
     my ( @dirs, $toptree, $fname, $ff, $dirname, $rules, $i, $j, $levelcount );
     my %rulefiles =
       ( 'v0' => 'preview', 'v1' => 'postview', 'e0' => 'preedit', 'e1' => 'postedit' );
-    my %pgprop = ();
 
     if ( $id =~ /\/\.[^\/]+$/ ) { return; }
 
@@ -837,10 +837,25 @@ sub BuildRuleStack {
             if   ( $j == $levelcount ) { $dirname .= $dirs[$j]; }
             else                       { $dirname .= "/" . $dirs[$j]; }
         }
+
+        # Stage 6: cache rule-file content by ancestor directory. When
+        # rendering multiple sibling pages in one request (nested
+        # embeds, history view, etc.) the ancestors' rule files are
+        # shared; doing 4 lookups per page × N pages × D depth is
+        # wasteful. %RuleDirCache memoizes per-directory, reset in
+        # ResetRequestState. Cache hit = zero DB / zero $TextCache work.
+        my $cached = $RuleDirCache{$dirname};
+        if ( !defined $cached ) {
+            $cached = {};
+            foreach my $f ( keys %rulefiles ) {
+                $cached->{$f} = &ReadRawWikiPage( $dirname . "/.$f" );
+            }
+            $RuleDirCache{$dirname} = $cached;
+        }
+
         foreach $ff ( keys %rulefiles ) {
-            $fname = $dirname . "/.$ff";
-            $rules = &ReadRawWikiPage($fname);
-            if ( $rules ne "" ) {
+            $rules = $cached->{$ff};
+            if ( defined($rules) && $rules ne "" ) {
                 if ( $rules =~ /=/ ) {
                     $Pages{$id}->{'clearance'} = max( $Pages{$id}->{'clearance'}, 100 )
                       if ( $rules =~ /\bADMIN=1\b/ );
