@@ -153,10 +153,16 @@ sub init_schema {
         # Renamed from "user" (which is a reserved keyword in Postgres
         # and yields CURRENT_USER unless double-quoted). The migration
         # script handles the rename for existing SQLite installs.
+        # Stage 5 dropped the legacy `randkey` column: the per-IP
+        # randkey map it carried was retired in Stage 1 when sessions
+        # moved to HMAC-signed cookies. migrate.pl picks up old rows
+        # via column-intersection logic, so existing data carrying the
+        # column is preserved correctly during migration but the
+        # column itself never appears in the new schema.
         q{CREATE TABLE IF NOT EXISTS users (
             id integer PRIMARY KEY,
             name varchar(32), pass varchar(255),
-            randkey varchar(255), groupid varchar(255), lang varchar(8),
+            groupid varchar(255), lang varchar(8),
             email varchar(64), param varchar(32), createtime integer,
             stylesheet varchar(128), createip varchar(32), tzoffset integer,
             pagecreate varchar(512), pagemodify varchar(512)
