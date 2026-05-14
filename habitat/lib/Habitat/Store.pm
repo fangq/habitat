@@ -150,7 +150,10 @@ sub init_schema {
             minor integer, newauthor integer, data varchar(32), tag varchar(32)
         )},
 
-        q{CREATE TABLE IF NOT EXISTS user (
+        # Renamed from "user" (which is a reserved keyword in Postgres
+        # and yields CURRENT_USER unless double-quoted). The migration
+        # script handles the rename for existing SQLite installs.
+        q{CREATE TABLE IF NOT EXISTS users (
             id integer PRIMARY KEY,
             name varchar(32), pass varchar(255),
             randkey varchar(255), groupid varchar(255), lang varchar(8),

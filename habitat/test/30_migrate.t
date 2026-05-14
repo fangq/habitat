@@ -130,7 +130,7 @@ unlike( $watch_sql, qr/\buser\s+varchar/i, "destination watch table has no 'user
 
 # Row counts match per migrated table
 is( $dst->selectrow_array("SELECT COUNT(*) FROM page"),   3, "page rows migrated" );
-is( $dst->selectrow_array("SELECT COUNT(*) FROM user"),   2, "user rows migrated" );
+is( $dst->selectrow_array("SELECT COUNT(*) FROM users"),   2, "user rows migrated" );
 is( $dst->selectrow_array("SELECT COUNT(*) FROM watch"),  2, "watch rows migrated" );
 is( $dst->selectrow_array("SELECT COUNT(*) FROM system"), 1, "system rows migrated" );
 

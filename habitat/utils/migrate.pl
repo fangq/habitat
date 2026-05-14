@@ -82,16 +82,34 @@ USAGE
 
 # Tables migrated, in safe-load order. login_attempts is optional
 # (Stage 1 addition; may be absent on older snapshots).
-my @TABLES = qw(
-    user
-    page deletedpage
-    html rclog lock watch
-    system pagelog userlog
-    login_attempts
+# Each entry is { source => 'src_name', dest => 'dst_name' }; for tables
+# whose name is unchanged the two are equal.
+my @TABLES = (
+    # The legacy "user" table is reserved in Postgres; we now call it
+    # "users". migrate.pl picks up "user" from the source and writes
+    # to "users" in the destination.
+    { source => 'user',           dest => 'users' },
+    { source => 'page',           dest => 'page' },
+    { source => 'deletedpage',    dest => 'deletedpage' },
+    { source => 'html',           dest => 'html' },
+    { source => 'rclog',          dest => 'rclog' },
+    { source => 'lock',           dest => 'lock' },
+    { source => 'watch',          dest => 'watch' },
+    { source => 'system',         dest => 'system' },
+    { source => 'pagelog',        dest => 'pagelog' },
+    { source => 'userlog',        dest => 'userlog' },
+    { source => 'login_attempts', dest => 'login_attempts' },
+);
+
+# Also accept new-style sources that already have the renamed tables.
+# Walk both source candidates per logical table.
+my %ALIAS_SOURCES = (
+    'users' => [ 'users', 'user' ],
 );
 
 # Per-table column-name remaps from the legacy schema to the current
-# one. Map { source_col => dest_col } or undef to drop the column.
+# one. Keyed by DESTINATION table name. Map { src_col => dst_col };
+# undef value would drop a column.
 my %COLUMN_RENAME = (
     watch => { user => 'username' },
 );
@@ -157,23 +175,38 @@ sub row_count {
 # ----------------------------------------------------------------
 my %report;
 
-for my $table (@TABLES) {
-    if ( !table_exists( $src, $table ) ) {
-        log_msg "skip $table (not present in source)";
+for my $tbl_spec (@TABLES) {
+    my $src_table = $tbl_spec->{source};
+    my $dst_table = $tbl_spec->{dest};
+
+    # Source may carry either the legacy or the new table name (e.g.
+    # "user" or "users"). Prefer the one that exists.
+    if ( my $aliases = $ALIAS_SOURCES{$dst_table} ) {
+        my $found;
+        for my $cand (@$aliases) {
+            if ( table_exists( $src, $cand ) ) { $found = $cand; last; }
+        }
+        $src_table = $found if defined $found;
+    }
+
+    my $label = $src_table eq $dst_table ? $dst_table : "$src_table -> $dst_table";
+
+    if ( !table_exists( $src, $src_table ) ) {
+        log_msg "skip $label (not present in source)";
         next;
     }
-    if ( !table_exists( $dst, $table ) ) {
-        log_msg "skip $table (not present in destination — schema mismatch?)";
+    if ( !table_exists( $dst, $dst_table ) ) {
+        log_msg "skip $label (not present in destination — schema mismatch?)";
         next;
     }
 
-    my @src_cols = get_columns( $src, $table );
-    my @dst_cols = get_columns( $dst, $table );
+    my @src_cols = get_columns( $src, $src_table );
+    my @dst_cols = get_columns( $dst, $dst_table );
     my %dst_set  = map { $_ => 1 } @dst_cols;
 
     # For each source column, decide where its value should go in dest.
-    # Apply per-table renames first.
-    my $rename = $COLUMN_RENAME{$table} || {};
+    # Apply per-(dest-table) column renames first.
+    my $rename = $COLUMN_RENAME{$dst_table} || {};
     my ( @src_keep, @dst_keep );
     for my $col (@src_cols) {
         my $dest_col = exists $rename->{$col} ? $rename->{$col} : $col;
@@ -183,13 +216,14 @@ for my $table (@TABLES) {
         push @dst_keep, $dest_col;
     }
     if ( !@src_keep ) {
-        log_msg "skip $table (no overlapping columns after renames)";
+        log_msg "skip $label (no overlapping columns after renames)";
         next;
     }
 
-    my $src_count = row_count( $src, $table );
+    my $src_count = row_count( $src, $src_table );
     log_msg sprintf( "copy %s : %d rows, columns: %s",
-        $table, $src_count, join( ",", map { $src_keep[$_] . ($src_keep[$_] eq $dst_keep[$_] ? "" : "->$dst_keep[$_]") } 0 .. $#src_keep ) );
+        $label, $src_count,
+        join( ",", map { $src_keep[$_] . ($src_keep[$_] eq $dst_keep[$_] ? "" : "->$dst_keep[$_]") } 0 .. $#src_keep ) );
 
     next if ( $src_count == 0 );
 
@@ -197,10 +231,10 @@ for my $table (@TABLES) {
     my $dst_col_list = join( ",", @dst_keep );
     my $placeholders = join( ",", ("?") x scalar(@src_keep) );
 
-    my $select = $src->prepare("SELECT $src_col_list FROM $table");
+    my $select = $src->prepare("SELECT $src_col_list FROM $src_table");
     my $insert;
     unless ($dry_run) {
-        $insert = $dst->prepare("INSERT INTO $table ($dst_col_list) VALUES ($placeholders)");
+        $insert = $dst->prepare("INSERT INTO $dst_table ($dst_col_list) VALUES ($placeholders)");
     }
     $select->execute;
 
@@ -214,26 +248,25 @@ for my $table (@TABLES) {
         $batched++;
         if ( $batched >= $batch_size ) {
             $dst->commit unless $dry_run;
-            log_msg "  $table: ${total}/${src_count}..." if $verbose;
+            log_msg "  $label: ${total}/${src_count}..." if $verbose;
             $batched = 0;
         }
     }
     $dst->commit unless $dry_run;
 
-    my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $table );
-    $report{$table} = { src => $src_count, dst => $dst_count };
-    log_msg sprintf( "done %s : src=%d dst=%s", $table, $src_count, $dst_count );
+    my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $dst_table );
+    $report{$label} = { src => $src_count, dst => $dst_count };
+    log_msg sprintf( "done %s : src=%d dst=%s", $label, $src_count, $dst_count );
 }
 
 # ----------------------------------------------------------------
 # Summary
 # ----------------------------------------------------------------
 print "\n--- migration summary ---\n";
-printf "%-20s %-12s %-12s\n", "table", "source", "dest";
-for my $table (@TABLES) {
-    next unless exists $report{$table};
-    printf "%-20s %-12s %-12s\n",
-        $table, $report{$table}{src}, $report{$table}{dst};
+printf "%-30s %-12s %-12s\n", "table", "source", "dest";
+for my $label ( sort keys %report ) {
+    printf "%-30s %-12s %-12s\n",
+        $label, $report{$label}{src}, $report{$label}{dst};
 }
 
 $src->disconnect;

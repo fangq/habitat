@@ -284,7 +284,7 @@ $TrustedProxies  = '';                             # Comma-separated list of tru
 $IndentLimit = 20;                             # Maximum depth of nested lists
 $PageDir     = "$DataDir/page";                # Stores page data
 $HtmlDir     = "$DataDir/html";                # Stores HTML versions
-$UserDir     = "$DataDir/user";                # Stores user data
+$UserDir     = "$DataDir/users";               # Stores user data (table named "users" -- "user" is reserved in PG)
 $KeepDir     = "$DataDir/keep";                # Stores kept (old) page data
 $TempDir     = "$DataDir/temp";                # Temporary files and locks
 $LockDir     = "$TempDir/lock";                # DB is locked if this exists
@@ -1126,7 +1126,12 @@ sub ReadRCLogDB {
 
     $lim = GetParam( 'listc', $RCHistoryLimit ) + 1;
 
-    $offset = GetParam( 'offset', 1e10 );
+    # 0x7fffffff (~2038-01-19 in unix-time) is the max value the
+    # `time integer` column accepts on Postgres; 1e10 (~2286) used to
+    # be the "unbounded future" sentinel under SQLite where INTEGER is
+    # 64-bit. Clamp to Pg's INT4 limit so the query binds cleanly on
+    # both dialects.
+    $offset = GetParam( 'offset', 0x7fffffff );
 
     $rclogdb = ( split( /\//, $RcFile ) )[-1];
     if ( $dbh eq "" || $rclogdb eq "" ) {
@@ -1135,13 +1140,17 @@ sub ReadRCLogDB {
     die("ReadRCLogDB: unsafe table name") if ( !SafeIdent($rclogdb) );
     $stime  = int($stime);
     $offset = int($offset);
+    $offset = 0x7fffffff if ( $offset > 0x7fffffff );
     $lim    = int($lim);
+    # `LIMIT off, count` is SQLite/MySQL syntax; Postgres requires
+    # `LIMIT count OFFSET off`. Both dialects accept the LIMIT-then-
+    # OFFSET form below.
     if ( $offset > 0 ) {
         $searchcmd =
-"select * from $rclogdb where time>? and time<? order by time desc limit 0,$lim";
+"select * from $rclogdb where time>? and time<? order by time desc limit $lim";
         $sth = $dbh->selectall_arrayref( $searchcmd, undef, $stime, $offset );
     } else {
-        $searchcmd = "select * from $rclogdb where time>? order by time desc limit 0,$lim";
+        $searchcmd = "select * from $rclogdb where time>? order by time desc limit $lim";
         $sth       = $dbh->selectall_arrayref( $searchcmd, undef, $stime );
     }
     $mintime = 1e10;
