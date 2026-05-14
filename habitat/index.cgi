@@ -2475,6 +2475,27 @@ sub WikiToHTML {
 
     $pageText = &RemoveFS($pageText);
 
+    # Stage 6: per-page Markdown opt-in. A page whose first line is
+    #   <!-- markdown -->
+    # gets rendered by Text::Markdown::Discount instead of the wiki
+    # rule pipeline. Output is scrubbed through ScrubRawHtml so
+    # Markdown's raw-HTML passthrough can't introduce XSS. The marker
+    # is per-page; pages without it render exactly as before.
+    if ( $pageText =~ s/\A\s*<!--\s*markdown\s*-->\s*\n//i ) {
+        my $body = $pageText;
+        my $html = eval {
+            require Text::Markdown::Discount;
+            Text::Markdown::Discount::markdown($body);
+        };
+        if ( $@ || !defined($html) ) {
+            return "<div class='wikimsg'>"
+              . T('Markdown renderer not available: ')
+              . QuoteHtml( $@ // '?' )
+              . "</div>";
+        }
+        return ScrubRawHtml($html);
+    }
+
     #  if($id=~ /\//) { $pageText .= "<localtree>";}
 
     $pageText =~ s/<nowiki>((.|\n)*?)<\/nowiki>/&StoreRaw($1)/ige;
