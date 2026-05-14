@@ -147,14 +147,40 @@ sub init_schema {
     # ids manually via GetNewUserIdDB, so neither dialect needs a
     # serial/autoincrement.
     my @ddl = (
+        # Stage 5: page table now holds ONLY the current revision per
+        # page. Historical revisions live in page_revisions. Legacy
+        # installs (where the page table has multiple rows per id +
+        # inline FS4-chained diffs in the text column) must run
+        # utils/migrate.pl to convert; init_schema's CREATE IF NOT
+        # EXISTS doesn't touch the existing table shape.
         q{CREATE TABLE IF NOT EXISTS page (
             id varchar(512), version integer,
-            author varchar(32), revision integer, tupdate integer, tcreate integer,
+            author varchar(32), revision integer NOT NULL,
+            tupdate integer, tcreate integer,
             ip varchar(32), host varchar(64), summary varchar(128), text text,
-            minor integer, newauthor integer, data varchar(32), tag varchar(32)
+            minor integer, newauthor integer, data varchar(32), tag varchar(32),
+            PRIMARY KEY (id)
         )},
         q{CREATE INDEX IF NOT EXISTS page_id ON page (id)},
-        q{CREATE UNIQUE INDEX IF NOT EXISTS page_id_rev ON page (id, revision)},
+
+        # One row per historical revision. `kind` distinguishes
+        # 'snapshot' (full revision text) from 'diff' (a Text::Diff
+        # output that, when applied to revision+1's text via
+        # Text::Patch::patch, reproduces this revision's text). Stage
+        # 5 always writes 'snapshot'; the 'diff' encoding is a follow-
+        # up storage optimization that the read path will already
+        # support transparently.
+        q{CREATE TABLE IF NOT EXISTS page_revisions (
+            page_id varchar(512) NOT NULL, revision integer NOT NULL,
+            version integer,
+            author varchar(32), tupdate integer, tcreate integer,
+            ip varchar(32), host varchar(64), summary varchar(128),
+            minor integer, newauthor integer, data varchar(32),
+            kind varchar(16) NOT NULL DEFAULT 'snapshot',
+            text text,
+            PRIMARY KEY (page_id, revision)
+        )},
+        q{CREATE INDEX IF NOT EXISTS page_revisions_page ON page_revisions (page_id)},
 
         q{CREATE TABLE IF NOT EXISTS deletedpage (
             id varchar(512), version integer,
