@@ -137,4 +137,46 @@ like( $@, qr/unsafe table name/, "CopyDBItems rejects unsafe destination table" 
     like( $@, qr/database uninitialized/, "uninitialized DB triggers descriptive die" );
 }
 
+# ----------------------------------------------------------------
+# Dialect helpers
+# ----------------------------------------------------------------
+is( Habitat::Store::dialect(), 'sqlite',
+    "dialect detection on the in-memory test handle reports sqlite" );
+
+is( Habitat::Store::regex_op(), 'REGEXP',
+    "regex_op() returns REGEXP for sqlite (matching the UDF registered at connect)" );
+
+# Upsert SQL generation — peek at the internal builder so we can
+# verify both dialect branches without spinning up a real Postgres.
+{
+    my $sql_sqlite = Habitat::Store::_build_upsert_sql( $dbh, 'system', 'id,data,time' );
+    like( $sql_sqlite, qr/^REPLACE INTO system/i,
+        "sqlite upsert SQL uses REPLACE INTO" );
+    like( $sql_sqlite, qr/\(\?,\?,\?\)/,
+        "sqlite upsert SQL has 3 placeholders for 3 columns" );
+
+    # Fake a Pg handle: the only thing _build_upsert_sql checks is
+    # $dbh->{Driver}{Name} eq 'Pg'.
+    my $fake_pg = bless { Driver => { Name => 'Pg' } }, 'DBI::db';
+    my $sql_pg  = Habitat::Store::_build_upsert_sql( $fake_pg, 'system', 'id,data,time' );
+    like( $sql_pg, qr/^INSERT INTO system.*ON CONFLICT \(id\) DO UPDATE SET/i,
+        "pg upsert SQL uses INSERT ... ON CONFLICT (first-col) DO UPDATE" );
+    like( $sql_pg, qr/data = EXCLUDED\.data/i,
+        "pg upsert references EXCLUDED.col for non-key fields" );
+    unlike( $sql_pg, qr/id = EXCLUDED\.id/i,
+        "pg upsert does NOT include the conflict-key column in the SET clause" );
+
+    # Explicit multi-column key
+    my $sql_pg_multi = Habitat::Store::_build_upsert_sql(
+        $fake_pg, 'page_revision', 'id,revision,text', 'id,revision' );
+    like( $sql_pg_multi, qr/ON CONFLICT \(id,revision\) DO UPDATE SET text = EXCLUDED\.text/i,
+        "pg multi-column conflict key honored" );
+
+    # All-key (no non-key cols): emits DO NOTHING instead of DO UPDATE SET
+    my $sql_pg_allkey = Habitat::Store::_build_upsert_sql(
+        $fake_pg, 'thing', 'a,b', 'a,b' );
+    like( $sql_pg_allkey, qr/ON CONFLICT \(a,b\) DO NOTHING/i,
+        "pg upsert with all-key columns becomes ON CONFLICT DO NOTHING" );
+}
+
 done_testing;
