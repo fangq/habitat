@@ -18,17 +18,17 @@ use Habitat::Store qw(SafeIdent ReadDBItems WriteDBItems DeleteDBItems CopyDBIte
 # ----------------------------------------------------------------
 # SafeIdent
 # ----------------------------------------------------------------
-ok(  SafeIdent("page"),         "lowercase ident accepted" );
-ok(  SafeIdent("RcLog_2"),      "mixed case + digit + underscore accepted" );
-ok(  SafeIdent("_under"),       "leading underscore accepted" );
-ok( !SafeIdent(""),             "empty rejected" );
-ok( !SafeIdent(undef),          "undef rejected" );
-ok( !SafeIdent("1page"),        "leading digit rejected" );
-ok( !SafeIdent("page;drop"),    "semicolon rejected" );
-ok( !SafeIdent("page-1"),       "hyphen rejected" );
-ok( !SafeIdent("page name"),    "space rejected" );
-ok( !SafeIdent("page'"),        "quote rejected" );
-ok( !SafeIdent("page\nrow"),    "newline rejected" );
+ok( SafeIdent("page"),       "lowercase ident accepted" );
+ok( SafeIdent("RcLog_2"),    "mixed case + digit + underscore accepted" );
+ok( SafeIdent("_under"),     "leading underscore accepted" );
+ok( !SafeIdent(""),          "empty rejected" );
+ok( !SafeIdent(undef),       "undef rejected" );
+ok( !SafeIdent("1page"),     "leading digit rejected" );
+ok( !SafeIdent("page;drop"), "semicolon rejected" );
+ok( !SafeIdent("page-1"),    "hyphen rejected" );
+ok( !SafeIdent("page name"), "space rejected" );
+ok( !SafeIdent("page'"),     "quote rejected" );
+ok( !SafeIdent("page\nrow"), "newline rejected" );
 
 # ----------------------------------------------------------------
 # WriteDBItems — insert and replace
@@ -63,11 +63,9 @@ WriteDBItems( "system", "id,data,time", 0, ( "a", "1", 10 ) );
 WriteDBItems( "system", "id,data,time", 0, ( "b", "2", 20 ) );
 WriteDBItems( "system", "id,data,time", 0, ( "c", "3", 30 ) );
 
-is( ReadDBItems( "system", "data", "", "", "id=?", "a" ),
-    "1", "single value lookup with bind" );
+is( ReadDBItems( "system", "data", "", "", "id=?", "a" ), "1", "single value lookup with bind" );
 
-is( ReadDBItems( "system", "data", ",", "", "" ),
-    "1,2,3", "no where clause, no glue, glue1 only" );
+is( ReadDBItems( "system", "data", ",", "", "" ), "1,2,3", "no where clause, no glue, glue1 only" );
 
 is( ReadDBItems( "system", "id,data", "\n", "=", "" ),
     "a=1\nb=2\nc=3", "multi-column with both glues" );
@@ -90,13 +88,12 @@ like( $@, qr/unsafe table name/, "ReadDBItems rejects unsafe table name" );
 my $n_before = $dbh->selectrow_array("SELECT COUNT(*) FROM system");
 DeleteDBItems( "system", "" );
 my $n_after = $dbh->selectrow_array("SELECT COUNT(*) FROM system");
-is( $n_after, $n_before,
-    "empty conditions intentionally refuses to wipe table (safety guard)" );
+is( $n_after, $n_before, "empty conditions intentionally refuses to wipe table (safety guard)" );
 
 DeleteDBItems( "system", "id=?", "b" );
 is( $dbh->selectrow_array("SELECT COUNT(*) FROM system"), 2, "delete with bind removed one row" );
 is( $dbh->selectrow_array("SELECT data FROM system WHERE id='b'"), undef, "specific row gone" );
-is( $dbh->selectrow_array("SELECT data FROM system WHERE id='a'"), "1", "other rows intact" );
+is( $dbh->selectrow_array("SELECT data FROM system WHERE id='a'"), "1",   "other rows intact" );
 
 eval { DeleteDBItems( "drop table page; --", "id=?", "x" ) };
 like( $@, qr/unsafe table name/, "DeleteDBItems rejects unsafe table name" );
@@ -106,8 +103,8 @@ like( $@, qr/unsafe table name/, "DeleteDBItems rejects unsafe table name" );
 # ----------------------------------------------------------------
 $dbh->do("DELETE FROM page");
 $dbh->do("DELETE FROM deletedpage");
-$dbh->do( "INSERT INTO page (id, revision, text) VALUES ('PageA', 1, 'hello')" );
-$dbh->do( "INSERT INTO page (id, revision, text) VALUES ('PageB', 1, 'world')" );
+$dbh->do("INSERT INTO page (id, revision, text) VALUES ('PageA', 1, 'hello')");
+$dbh->do("INSERT INTO page (id, revision, text) VALUES ('PageB', 1, 'world')");
 
 CopyDBItems( "page", "deletedpage", "id=?", "PageA" );
 my $copied = $dbh->selectrow_array("SELECT text FROM deletedpage WHERE id='PageA'");
@@ -143,40 +140,53 @@ like( $@, qr/unsafe table name/, "CopyDBItems rejects unsafe destination table" 
 is( Habitat::Store::dialect(), 'sqlite',
     "dialect detection on the in-memory test handle reports sqlite" );
 
-is( Habitat::Store::regex_op(), 'REGEXP',
-    "regex_op() returns REGEXP for sqlite (matching the UDF registered at connect)" );
+is( Habitat::Store::regex_op(),
+    'REGEXP', "regex_op() returns REGEXP for sqlite (matching the UDF registered at connect)" );
 
 # Upsert SQL generation — peek at the internal builder so we can
 # verify both dialect branches without spinning up a real Postgres.
 {
     my $sql_sqlite = Habitat::Store::_build_upsert_sql( $dbh, 'system', 'id,data,time' );
-    like( $sql_sqlite, qr/^REPLACE INTO system/i,
-        "sqlite upsert SQL uses REPLACE INTO" );
-    like( $sql_sqlite, qr/\(\?,\?,\?\)/,
-        "sqlite upsert SQL has 3 placeholders for 3 columns" );
+    like( $sql_sqlite, qr/^REPLACE INTO system/i, "sqlite upsert SQL uses REPLACE INTO" );
+    like( $sql_sqlite, qr/\(\?,\?,\?\)/, "sqlite upsert SQL has 3 placeholders for 3 columns" );
 
     # Fake a Pg handle: the only thing _build_upsert_sql checks is
     # $dbh->{Driver}{Name} eq 'Pg'.
     my $fake_pg = bless { Driver => { Name => 'Pg' } }, 'DBI::db';
     my $sql_pg  = Habitat::Store::_build_upsert_sql( $fake_pg, 'system', 'id,data,time' );
-    like( $sql_pg, qr/^INSERT INTO system.*ON CONFLICT \(id\) DO UPDATE SET/i,
-        "pg upsert SQL uses INSERT ... ON CONFLICT (first-col) DO UPDATE" );
-    like( $sql_pg, qr/data = EXCLUDED\.data/i,
-        "pg upsert references EXCLUDED.col for non-key fields" );
-    unlike( $sql_pg, qr/id = EXCLUDED\.id/i,
-        "pg upsert does NOT include the conflict-key column in the SET clause" );
+    like(
+        $sql_pg,
+        qr/^INSERT INTO system.*ON CONFLICT \(id\) DO UPDATE SET/i,
+        "pg upsert SQL uses INSERT ... ON CONFLICT (first-col) DO UPDATE"
+    );
+    like(
+        $sql_pg,
+        qr/data = EXCLUDED\.data/i,
+        "pg upsert references EXCLUDED.col for non-key fields"
+    );
+    unlike(
+        $sql_pg,
+        qr/id = EXCLUDED\.id/i,
+        "pg upsert does NOT include the conflict-key column in the SET clause"
+    );
 
     # Explicit multi-column key
-    my $sql_pg_multi = Habitat::Store::_build_upsert_sql(
-        $fake_pg, 'page_revision', 'id,revision,text', 'id,revision' );
-    like( $sql_pg_multi, qr/ON CONFLICT \(id,revision\) DO UPDATE SET text = EXCLUDED\.text/i,
-        "pg multi-column conflict key honored" );
+    my $sql_pg_multi =
+      Habitat::Store::_build_upsert_sql( $fake_pg, 'page_revision', 'id,revision,text',
+        'id,revision' );
+    like(
+        $sql_pg_multi,
+        qr/ON CONFLICT \(id,revision\) DO UPDATE SET text = EXCLUDED\.text/i,
+        "pg multi-column conflict key honored"
+    );
 
     # All-key (no non-key cols): emits DO NOTHING instead of DO UPDATE SET
-    my $sql_pg_allkey = Habitat::Store::_build_upsert_sql(
-        $fake_pg, 'thing', 'a,b', 'a,b' );
-    like( $sql_pg_allkey, qr/ON CONFLICT \(a,b\) DO NOTHING/i,
-        "pg upsert with all-key columns becomes ON CONFLICT DO NOTHING" );
+    my $sql_pg_allkey = Habitat::Store::_build_upsert_sql( $fake_pg, 'thing', 'a,b', 'a,b' );
+    like(
+        $sql_pg_allkey,
+        qr/ON CONFLICT \(a,b\) DO NOTHING/i,
+        "pg upsert with all-key columns becomes ON CONFLICT DO NOTHING"
+    );
 }
 
 done_testing;

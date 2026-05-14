@@ -28,10 +28,10 @@ HabitatHarness::freeze_time(1_700_000_000);
 }
 
 # Rejection cases
-is( HabitatEngine::VerifyCSRFToken(undef),    0, "undef rejected" );
-is( HabitatEngine::VerifyCSRFToken(""),       0, "empty rejected" );
-is( HabitatEngine::VerifyCSRFToken("xx"),     0, "garbage rejected" );
-is( HabitatEngine::VerifyCSRFToken({}),       0, "ref rejected" );
+is( HabitatEngine::VerifyCSRFToken(undef), 0, "undef rejected" );
+is( HabitatEngine::VerifyCSRFToken(""),    0, "empty rejected" );
+is( HabitatEngine::VerifyCSRFToken("xx"),  0, "garbage rejected" );
+is( HabitatEngine::VerifyCSRFToken( {} ),  0, "ref rejected" );
 
 # ----------------------------------------------------------------
 # Tampering
@@ -48,8 +48,8 @@ is( HabitatEngine::VerifyCSRFToken({}),       0, "ref rejected" );
 
     # Expiry tampering -- changes the signed content
     my ( $exp, $sig ) = split /\|/, $tok;
-    is( HabitatEngine::VerifyCSRFToken( ( $exp + 1 ) . "|$sig" ), 0,
-        "expiry tampering invalidates" );
+    is( HabitatEngine::VerifyCSRFToken( ( $exp + 1 ) . "|$sig" ),
+        0, "expiry tampering invalidates" );
 }
 
 # ----------------------------------------------------------------
@@ -60,14 +60,13 @@ my $tok_alice;
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
     $tok_alice = HabitatEngine::GenCSRFToken();
-    is( HabitatEngine::VerifyCSRFToken($tok_alice), 1,
-        "alice can verify alice's token" );
+    is( HabitatEngine::VerifyCSRFToken($tok_alice), 1, "alice can verify alice's token" );
 }
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1002;
-    is( HabitatEngine::VerifyCSRFToken($tok_alice), 0,
-        "bob cannot verify alice's token (uid bound into signature)" );
+    is( HabitatEngine::VerifyCSRFToken($tok_alice),
+        0, "bob cannot verify alice's token (uid bound into signature)" );
 }
 
 # ----------------------------------------------------------------
@@ -82,13 +81,13 @@ my $tok_with_known_exp;
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
-    HabitatHarness::freeze_time(1_700_000_000 + 86399);
+    HabitatHarness::freeze_time( 1_700_000_000 + 86399 );
     is( HabitatEngine::VerifyCSRFToken($tok_with_known_exp), 1,
         "token valid 1s before 24h expiry" );
 
-    HabitatHarness::freeze_time(1_700_000_000 + 86401);
-    is( HabitatEngine::VerifyCSRFToken($tok_with_known_exp), 0,
-        "token rejected 1s after 24h expiry" );
+    HabitatHarness::freeze_time( 1_700_000_000 + 86401 );
+    is( HabitatEngine::VerifyCSRFToken($tok_with_known_exp),
+        0, "token rejected 1s after 24h expiry" );
 }
 HabitatHarness::freeze_time(1_700_000_000);
 
@@ -101,14 +100,14 @@ my $anon_tok;
     no warnings 'once';
     local $HabitatEngine::UserID = 111;    # anonymous
     $anon_tok = HabitatEngine::GenCSRFToken();
-    is( HabitatEngine::VerifyCSRFToken($anon_tok), 1,
-        "anonymous uid (111) can issue and verify its own token" );
+    is( HabitatEngine::VerifyCSRFToken($anon_tok),
+        1, "anonymous uid (111) can issue and verify its own token" );
 }
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 111;
-    is( HabitatEngine::VerifyCSRFToken($anon_tok), 1,
-        "anonymous tokens are consistent across the anon session" );
+    is( HabitatEngine::VerifyCSRFToken($anon_tok),
+        1, "anonymous tokens are consistent across the anon session" );
 }
 
 # ----------------------------------------------------------------
@@ -123,9 +122,9 @@ my $tok_rotate;
 {
     no warnings 'once';
     local $HabitatEngine::SiteSecret = "rotated" x 10;
-    local $HabitatEngine::UserID = 1001;
-    is( HabitatEngine::VerifyCSRFToken($tok_rotate), 0,
-        "rotating site secret invalidates outstanding CSRF tokens" );
+    local $HabitatEngine::UserID     = 1001;
+    is( HabitatEngine::VerifyCSRFToken($tok_rotate),
+        0, "rotating site secret invalidates outstanding CSRF tokens" );
 }
 
 done_testing;

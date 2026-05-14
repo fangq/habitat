@@ -27,15 +27,16 @@ HabitatEngine::InitLinkPatterns();
 # don't blow up. We don't render HTML; we just need GetParam to return
 # the defaults the caller passes in.
 {
+
     package FakeCGI;
     sub new   { bless {}, shift }
-    sub param { return; }    # always undef -> GetParam returns its default
+    sub param { return; }           # always undef -> GetParam returns its default
 }
 
 no warnings 'once';
-$HabitatEngine::q            = FakeCGI->new;
-$HabitatEngine::OpenPageName = '';
-$HabitatEngine::UserID       = 1001;
+$HabitatEngine::q                    = FakeCGI->new;
+$HabitatEngine::OpenPageName         = '';
+$HabitatEngine::UserID               = 1001;
 $HabitatEngine::UserData{'id'}       = 1001;
 $HabitatEngine::UserData{'username'} = 'alice';
 
@@ -44,15 +45,15 @@ sub save_revision {
     my $P = \%{ $HabitatEngine::Pages{$name}{'page'} };
     my $S = \%{ $HabitatEngine::Pages{$name}{'section'} };
     my $T = \%{ $HabitatEngine::Pages{$name}{'text'} };
-    $P->{name}     = $name;
-    $P->{version}  = 3;
-    $P->{tscreate} = $HabitatEngine::Now;
-    $S->{name}     = 'text_default';
-    $S->{ip}       = '127.0.0.1';
-    $S->{host}     = 'localhost';
-    $T->{text}     = $text;
-    $T->{summary}  = '';
-    $T->{minor}    = $minor || 0;
+    $P->{name}      = $name;
+    $P->{version}   = 3;
+    $P->{tscreate}  = $HabitatEngine::Now;
+    $S->{name}      = 'text_default';
+    $S->{ip}        = '127.0.0.1';
+    $S->{host}      = 'localhost';
+    $T->{text}      = $text;
+    $T->{summary}   = '';
+    $T->{minor}     = $minor || 0;
     $T->{newauthor} = 0;
     HabitatEngine::SavePageDB($name);
 }
@@ -61,16 +62,13 @@ sub save_revision {
 # First save: page table gets the row, page_revisions stays empty.
 # ----------------------------------------------------------------
 save_revision( 'Welcome', "hello world\n" );
-my ( $row_count, $rev, $text ) = $dbh->selectrow_array(
-    "SELECT COUNT(*), MAX(revision), MAX(text) FROM page WHERE id='Welcome'" );
-is( $row_count, 1, "first save: page has 1 row" );
-is( $rev,       1, "first save: revision = 1" );
+my ( $row_count, $rev, $text ) =
+  $dbh->selectrow_array("SELECT COUNT(*), MAX(revision), MAX(text) FROM page WHERE id='Welcome'");
+is( $row_count, 1,               "first save: page has 1 row" );
+is( $rev,       1,               "first save: revision = 1" );
 is( $text,      "hello world\n", "first save: text matches" );
-is(
-    $dbh->selectrow_array("SELECT COUNT(*) FROM page_revisions"),
-    0,
-    "first save: page_revisions empty"
-);
+is( $dbh->selectrow_array("SELECT COUNT(*) FROM page_revisions"),
+    0, "first save: page_revisions empty" );
 
 # ----------------------------------------------------------------
 # Second save: revision bumps to 2; page has the new text;
@@ -78,31 +76,29 @@ is(
 # ----------------------------------------------------------------
 HabitatHarness::freeze_time(1_700_000_100);
 save_revision( 'Welcome', "hello world v2\n" );
-( $row_count, $rev, $text ) = $dbh->selectrow_array(
-    "SELECT COUNT(*), MAX(revision), MAX(text) FROM page WHERE id='Welcome'" );
-is( $row_count, 1, "second save: still 1 page row" );
-is( $rev,       2, "second save: revision bumped to 2" );
+( $row_count, $rev, $text ) =
+  $dbh->selectrow_array("SELECT COUNT(*), MAX(revision), MAX(text) FROM page WHERE id='Welcome'");
+is( $row_count, 1,                  "second save: still 1 page row" );
+is( $rev,       2,                  "second save: revision bumped to 2" );
 is( $text,      "hello world v2\n", "second save: text is the new version" );
 
-my $rev_row = $dbh->selectrow_hashref(
-    "SELECT * FROM page_revisions WHERE page_id='Welcome' AND revision=1" );
-is( $rev_row->{kind},    'snapshot',     "historical row has kind='snapshot'" );
-is( $rev_row->{text},    "hello world\n", "historical row preserves the old text" );
-is( $rev_row->{author},  'alice',        "historical row keeps the author" );
+my $rev_row =
+  $dbh->selectrow_hashref("SELECT * FROM page_revisions WHERE page_id='Welcome' AND revision=1");
+is( $rev_row->{kind},   'snapshot',      "historical row has kind='snapshot'" );
+is( $rev_row->{text},   "hello world\n", "historical row preserves the old text" );
+is( $rev_row->{author}, 'alice',         "historical row keeps the author" );
 
 # ----------------------------------------------------------------
 # Third save: a deeper history with rev 3; rev 2 moves to page_revisions
 # ----------------------------------------------------------------
 HabitatHarness::freeze_time(1_700_000_200);
 save_revision( 'Welcome', "hello world v3\n" );
-my $cur = $dbh->selectrow_hashref(
-    "SELECT * FROM page WHERE id='Welcome'" );
-is( $cur->{revision}, 3,                "third save: page rev=3" );
+my $cur = $dbh->selectrow_hashref("SELECT * FROM page WHERE id='Welcome'");
+is( $cur->{revision}, 3,                  "third save: page rev=3" );
 is( $cur->{text},     "hello world v3\n", "third save: page has v3 text" );
 
 my $hist = $dbh->selectall_arrayref(
-    "SELECT revision, text FROM page_revisions WHERE page_id='Welcome' ORDER BY revision"
-);
+    "SELECT revision, text FROM page_revisions WHERE page_id='Welcome' ORDER BY revision");
 is_deeply(
     $hist,
     [ [ 1, "hello world\n" ], [ 2, "hello world v2\n" ] ],
@@ -113,15 +109,10 @@ is_deeply(
 # Different pages don't bleed into each other
 # ----------------------------------------------------------------
 save_revision( 'OtherPage', "different content\n" );
-is(
-    $dbh->selectrow_array("SELECT revision FROM page WHERE id='OtherPage'"),
-    1, "OtherPage starts at rev 1 independent of Welcome"
-);
-is(
-    $dbh->selectrow_array(
-        "SELECT COUNT(*) FROM page_revisions WHERE page_id='OtherPage'"),
-    0, "OtherPage has no history yet"
-);
+is( $dbh->selectrow_array("SELECT revision FROM page WHERE id='OtherPage'"),
+    1, "OtherPage starts at rev 1 independent of Welcome" );
+is( $dbh->selectrow_array("SELECT COUNT(*) FROM page_revisions WHERE page_id='OtherPage'"),
+    0, "OtherPage has no history yet" );
 
 # ----------------------------------------------------------------
 # ReadRawWikiPage returns the current text (no inline-diff splitting)
@@ -136,6 +127,7 @@ is( $cur_text, "hello world v3\n", "ReadRawWikiPage returns the current text" );
 # ----------------------------------------------------------------
 $HabitatEngine::OpenPageName = 'Welcome';
 my @kept = HabitatEngine::OpenKeptListDB(1);
+
 # First element is "Internal:Offset:..." marker. Subsequent are
 # $FS2-joined section blobs indexed by revision number.
 my $first = shift @kept;
@@ -170,35 +162,35 @@ HabitatHarness::freeze_time(1_800_000_200);
 save_revision( 'Story', $base . "(edit 1 modified)\n(edit 2)\n" );
 
 my $kinds = $dbh->selectall_arrayref(
-    "SELECT revision, kind FROM page_revisions WHERE page_id='Story' ORDER BY revision"
-);
+    "SELECT revision, kind FROM page_revisions WHERE page_id='Story' ORDER BY revision");
 ok( scalar(@$kinds) == 2, "Story has 2 historical rows" );
 ok( ( grep { $_->[1] eq 'diff' } @$kinds ),
     "at least one historical row stored as kind='diff' (diff is smaller than snapshot)" )
-  or diag("kinds: " . join(",", map { "$_->[0]=$_->[1]" } @$kinds));
+  or diag( "kinds: " . join( ",", map { "$_->[0]=$_->[1]" } @$kinds ) );
 
 # Walk the history and verify reconstructed text matches what was originally saved
 $HabitatEngine::OpenPageName = 'Story';
-@kept = HabitatEngine::OpenKeptListDB(1);
+@kept                        = HabitatEngine::OpenKeptListDB(1);
 shift @kept;    # discard the Internal:Offset: marker
 
 # Find rev 1's reconstructed body
 my $rev1 = $kept[1];
 ok( defined($rev1) && ref($rev1) eq 'HASH', "rev 1 entry exists" );
-is( $rev1->{data}->{text}, $base,
-    "rev 1 text reconstructed from diff matches the originally-saved body" );
+is( $rev1->{data}->{text},
+    $base, "rev 1 text reconstructed from diff matches the originally-saved body" );
 
 # rev 2
 my $rev2 = $kept[2];
 ok( defined($rev2) && ref($rev2) eq 'HASH', "rev 2 entry exists" );
-is( $rev2->{data}->{text},
+is(
+    $rev2->{data}->{text},
     $base . "(edit 1)\n",
-    "rev 2 text reconstructed from diff matches the originally-saved body" );
+    "rev 2 text reconstructed from diff matches the originally-saved body"
+);
 
 # rev 3 is the current — should equal page.text
-my $rev3 = $kept[3];
+my $rev3           = $kept[3];
 my $cur_text_story = $dbh->selectrow_array("SELECT text FROM page WHERE id='Story'");
-is( $rev3->{data}->{text}, $cur_text_story,
-    "rev 3 (current) matches page.text" );
+is( $rev3->{data}->{text}, $cur_text_story, "rev 3 (current) matches page.text" );
 
 done_testing;
