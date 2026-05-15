@@ -169,4 +169,38 @@ my $with_fs = "before " . $HabitatEngine::FS . "5 after";
 is( HabitatEngine::RemoveFS($with_fs),
     "before 5 after", "RemoveFS strips lone FS-digit sequences" );
 
+# ----------------------------------------------------------------
+# Phase 2 surface: CommonMarkup inline quotes, ParseParagraph wrap,
+# GetSiteUrl lookup. Most of the syntax pipeline is exercised end-
+# to-end via WikiToHTML in 14_admin_html.t / 13_markdown.t; the
+# tests here are direct unit smoke tests at the module boundary.
+# ----------------------------------------------------------------
+
+# Inline quote rules: only the line-oriented half runs (doLines=2).
+$HabitatEngine::TableMode   = 0;
+$HabitatEngine::UseHeadings = 0;
+my $cm = HabitatEngine::CommonMarkup( "say '''bold''' and ''em''", 1, 2 );
+like( $cm, qr|<strong>bold</strong>|, "CommonMarkup: '''x''' -> <strong>x</strong>" );
+like( $cm, qr|<em>em</em>|,           "CommonMarkup: ''x''   -> <em>x</em>" );
+
+my $cm_code = HabitatEngine::CommonMarkup( "use `code` inline", 1, 2 );
+like( $cm_code, qr|<code>code</code>|, "CommonMarkup: \\`x\\`    -> <code>x</code>" );
+
+# ParseParagraph wraps the rendered output in <p>...</p>.
+my $par = HabitatEngine::ParseParagraph("Hello world\n");
+like( $par, qr|^<p>|,    "ParseParagraph: emits opening <p>" );
+like( $par, qr|</p>\n$|, "ParseParagraph: emits closing </p>" );
+
+# GetSiteUrl: unknown site returns '' once %InterSite is primed.
+# We prime InterSiteInit so the lazy ReadFile path is skipped — the
+# file-I/O behavior is integration-tested elsewhere.
+$HabitatEngine::InterSiteInit = 1;
+%HabitatEngine::InterSite     = ( "Wikipedia" => "https://en.wikipedia.org/wiki/" );
+is(
+    HabitatEngine::GetSiteUrl("Wikipedia"),
+    "https://en.wikipedia.org/wiki/",
+    "GetSiteUrl: known site returns mapped URL"
+);
+is( HabitatEngine::GetSiteUrl("Unknown"), '', "GetSiteUrl: unknown site returns ''" );
+
 done_testing;
