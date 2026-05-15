@@ -34,6 +34,11 @@ local $SIG{__WARN__} = sub {
     return if $_[0] =~ /Use of uninitialized value/;
     return if $_[0] =~ /Subroutine .* redefined/;
     return if $_[0] =~ /Argument .* isn't numeric/;
+
+    # CSRFCheckOrDie warns on rejection — that IS the production
+    # security-log signal, not a test bug. The CSRF subtests here
+    # deliberately submit unsigned POSTs to exercise that path.
+    return if $_[0] =~ /CSRF check failed/;
     warn $_[0];
 };
 

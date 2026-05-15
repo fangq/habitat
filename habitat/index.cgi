@@ -541,6 +541,9 @@ sub InitParam {
         @pairs  = split( /&/, $buffer );
         foreach $pair (@pairs) {
             ( $name, $value ) = split( /=/, $pair );
+
+            # Bare keys like "?foo&bar" leave $value undef.
+            $value //= '';
             $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
             $param{$name} = $value;
         }
@@ -561,10 +564,17 @@ sub DoCacheBrowse {
     # cache". Conservative — anonymous requests carrying stale cookies
     # also skip — but never leaks per-user content to other users.
     return 0 if ( defined( $ENV{HTTP_COOKIE} ) && $ENV{HTTP_COOKIE} ne '' );
-    $query = $ENV{'QUERY_STRING'};
+    $query = $ENV{'QUERY_STRING'} // '';
     %param = &InitParam();
 
-    if ( ( $query eq "" ) && ( $ENV{'REQUEST_METHOD'} eq "GET" ) ) {
+    # Default the params we test below so missing-key reads don't
+    # trigger uninit warnings. The function is called on every
+    # request so most lookups have no matching query-string key.
+    for my $k (qw(action keywords format raw revision embed diff lang id)) {
+        $param{$k} //= '';
+    }
+
+    if ( ( $query eq "" ) && ( ( $ENV{'REQUEST_METHOD'} // '' ) eq "GET" ) ) {
         $query = $HomePage;    # Allow caching of home page.
     }
     if ( !( $query =~ /^$LinkPattern$/ ) && $param{ 'action' ne 'browse' } ) {
@@ -4518,7 +4528,7 @@ sub UserPermission {
         $up = -100;
     } elsif ( UserIsEditor() ) {
         $up = 50;
-    } elsif ( $UserID > 1000 && $UserData{'id'} ne '' ) {
+    } elsif ( $UserID > 1000 && defined( $UserData{'id'} ) && $UserData{'id'} ne '' ) {
         $up = 1;
     } else {
         $up = -1;
@@ -4687,7 +4697,7 @@ sub AllPagesList {
 sub CalcDay {
     my ($ts) = @_;
 
-    $ts += $TimeZoneOffset;
+    $ts += ( $TimeZoneOffset || 0 );
     my ( $sec, $min, $hour, $mday, $mon, $year ) = localtime($ts);
     if ($NumberDates) {
         return ( $year + 1900 ) . '-' . ( $mon + 1 ) . '-' . $mday;
@@ -4704,7 +4714,7 @@ sub CalcDay {
 sub CalcDayNum {
     my ($ts) = @_;
 
-    $ts += $TimeZoneOffset;
+    $ts += ( $TimeZoneOffset || 0 );
     my ( $sec, $min, $hour, $mday, $mon, $year ) = localtime($ts);
     return ( $year + 1900 ) . '-' . ( $mon + 1 ) . '-' . $mday;
 }
@@ -4713,10 +4723,11 @@ sub CalcTime {
     my ($ts) = @_;
     my ( $ampm, $mytz );
 
-    $ts += $TimeZoneOffset;
+    my $tzoff = $TimeZoneOffset || 0;
+    $ts += $tzoff;
     my ( $sec, $min, $hour, $mday, $mon, $year ) = localtime($ts);
     $mytz = "";
-    if ( ( $TimeZoneOffset == 0 ) && ( $ScriptTZ ne "" ) ) {
+    if ( ( $tzoff == 0 ) && ( ( $ScriptTZ // '' ) ne "" ) ) {
         $mytz = " " . $ScriptTZ;
     }
     $ampm = "";
@@ -4764,12 +4775,23 @@ sub GetRemoteHost {
     my ($doMask) = @_;
     my ( $rhost, $iaddr );
 
-    $rhost = $ENV{REMOTE_HOST};
-    if ( $UseLookup && ( $rhost eq "" ) ) {
+    $rhost = $ENV{REMOTE_HOST} // '';
 
-        # Catch errors (including bad input) without aborting the script
-        eval 'use Socket; $iaddr = inet_aton(&RemoteAddr);'
-          . '$rhost = gethostbyaddr($iaddr, AF_INET)';
+    # Reverse-DNS lookup only when (a) configured on AND (b) we
+    # actually have a non-empty IP. inet_aton('') returns undef, and
+    # gethostbyaddr(undef, AF_INET) used to warn under -w with
+    # "Use of uninitialized value in subroutine entry".
+    if ( $UseLookup && $rhost eq '' ) {
+        my $addr = RemoteAddr();
+        if ( defined($addr) && $addr ne '' ) {
+            eval {
+                require Socket;
+                $iaddr = Socket::inet_aton($addr);
+                $rhost = gethostbyaddr( $iaddr, Socket::AF_INET() )
+                  if defined $iaddr;
+            };
+            $rhost = '' if ( !defined($rhost) );
+        }
     }
     if ( $rhost eq "" ) {
         $rhost = &RemoteAddr;
