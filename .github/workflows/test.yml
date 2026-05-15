@@ -1,0 +1,110 @@
+name: test
+
+# Quoted because YAML 1.1 parses bare `on` as a boolean; GitHub
+# Actions accepts either form, but quoting keeps generic YAML
+# validators happy.
+"on":
+  push:
+    branches: [master, "stage*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ----------------------------------------------------------------
+  # Default backend (SQLite, in-memory), matrix across Perl versions
+  # to catch incompatibilities between the historical 5.32 floor and
+  # the current 5.38. cpanfile drives the install set.
+  # ----------------------------------------------------------------
+  sqlite:
+    name: sqlite / perl ${{ matrix.perl }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        perl: ["5.32", "5.36", "5.38"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Perl ${{ matrix.perl }}
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+          install-modules-with: cpanm
+          install-modules-args: --notest --no-man-pages
+
+      - name: Install dependencies
+        run: cpanm --notest --no-man-pages --installdeps .
+
+      - name: Show Perl + module versions
+        run: |
+          perl -V | head -8
+          perl -MDBI -MDBD::SQLite -MCrypt::Bcrypt -MHTML::Scrubber \
+               -MText::Diff -MText::Patch -MPlack -e '
+            for my $m (qw(DBI DBD::SQLite Crypt::Bcrypt HTML::Scrubber
+                          Text::Diff Text::Patch Plack)) {
+              no strict "refs";
+              printf "  %-22s %s\n", $m, ${$m."::VERSION"} // "?";
+            }'
+
+      - name: Run test suite
+        working-directory: habitat
+        run: prove -j4 test/*.t
+
+  # ----------------------------------------------------------------
+  # Postgres job: one Perl version, real Pg backend via service
+  # container. Exercises 40_pg.t end-to-end (which skips on the
+  # sqlite job because DBD::Pg isn't installed there). Keeps the
+  # cross-dialect coverage Stage 4 set up from drifting.
+  # ----------------------------------------------------------------
+  postgres:
+    name: postgres / perl 5.38
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: habitat_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Perl 5.38
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+
+      - name: Install dependencies + DBD::Pg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+          cpanm --notest --no-man-pages --installdeps .
+          cpanm --notest --no-man-pages DBD::Pg
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 && exit 0
+            sleep 1
+          done
+          echo "Postgres never became ready"; exit 1
+
+      - name: Run test suite
+        working-directory: habitat
+        env:
+          HABITAT_PG_DSN:  "dbi:Pg:host=localhost;dbname=habitat_test"
+          HABITAT_PG_USER: postgres
+          HABITAT_PG_PASS: postgres
+        run: prove -j4 test/*.t
