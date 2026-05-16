@@ -4,9 +4,8 @@
 
 import posixpath, sys, os, urllib, select
 
-from BaseHTTPServer import HTTPServer
-from CGIHTTPServer import CGIHTTPRequestHandler
-from SocketServer import ThreadingMixIn
+from http.server import HTTPServer, CGIHTTPRequestHandler
+from socketserver import ThreadingMixIn
 
 class ThreadingServer(ThreadingMixIn, HTTPServer):
     pass
