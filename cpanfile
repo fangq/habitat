@@ -44,3 +44,6 @@ on 'test' => sub {
 recommends 'Text::Markdown::Discount'; # <!-- markdown --> rendering (Stage 6)
 recommends 'DBD::Pg';                  # Postgres backend (Stage 4); test/40_pg.t
                                        # skips when not installed or no server
+recommends 'DBD::MariaDB';             # MariaDB/MySQL backend; test/41_mariadb.t
+                                       # falls back to DBD::mysql if MariaDB is
+                                       # missing — either driver works
