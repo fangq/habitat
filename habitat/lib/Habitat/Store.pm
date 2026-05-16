@@ -54,27 +54,33 @@ sub _commit_if_needed {
 # Dialect detection
 # ----------------------------------------------------------------
 #
-# Two supported drivers: SQLite (the historical default) and Pg.
-# dialect() returns 'sqlite' or 'pg'; everything dialect-specific
-# branches off this single inspection.
+# Three supported drivers, returned as short tokens used throughout:
+#   sqlite  -> DBD::SQLite
+#   pg      -> DBD::Pg
+#   mysql   -> DBD::mysql or DBD::MariaDB (one token covers both —
+#              the SQL we emit is identical for MySQL ≥5.7 and
+#              MariaDB ≥10.2)
+# dialect() returns the token; everything dialect-specific branches
+# off this single inspection.
 #
 # Callers in index.cgi that need a dialect-aware piece of SQL pull
 # it from one of these helpers rather than embedding the SQL inline.
 # The point is to keep the dialect surface small and centralized so
-# adding a third driver (or fixing a portability bug) only touches
+# adding a fourth driver (or fixing a portability bug) only touches
 # Store.pm.
 
 sub dialect {
     my $dbh = $_[0] || _dbh();
     return 'sqlite' if ( !defined($dbh) );
     my $name = eval { $dbh->{Driver}{Name} } || '';
-    return 'pg' if ( $name eq 'Pg' );
+    return 'pg'    if ( $name eq 'Pg' );
+    return 'mysql' if ( $name eq 'mysql' || $name eq 'MariaDB' );
     return 'sqlite';
 }
 
 # Regex match operator. SQLite has no built-in; the wiki registers a
-# custom REGEXP UDF at connect time (see InitWikiEnv). Postgres uses
-# the `~` infix operator.
+# custom REGEXP UDF at connect time (see InitWikiEnv). MySQL/MariaDB
+# have REGEXP natively. Postgres uses the `~` infix operator.
 sub regex_op {
     return ( dialect() eq 'pg' ) ? '~' : 'REGEXP';
 }
@@ -97,7 +103,7 @@ sub json_column_type {
 #   $keys  : conflict-key list (defaults to the FIRST column of $fields,
 #            which matches the wiki's convention for all REPLACE INTO
 #            call sites).
-# SQLite path uses REPLACE INTO (delete + insert, available since 3.0).
+# SQLite + MySQL/MariaDB path uses REPLACE INTO (delete + insert).
 # Postgres path uses INSERT ... ON CONFLICT ... DO UPDATE SET col=EXCLUDED.col
 # for each non-key column.
 sub _build_upsert_sql {
@@ -263,9 +269,28 @@ sub init_schema {
         )},
     );
 
+    my $d = dialect($dbh);
     for my $stmt (@ddl) {
-        eval { $dbh->do($stmt) };
-        die("init_schema: $@\n  while executing:\n$stmt\n") if $@;
+        my $s = $stmt;
+
+        # MySQL (any version) and MariaDB <10.6 don't accept
+        # `CREATE INDEX IF NOT EXISTS` — it's a syntax error, not a
+        # silent no-op. Strip the IF NOT EXISTS token for mysql and
+        # let the run-twice case land in the eval-swallow below.
+        if ( $d eq 'mysql' ) {
+            $s =~ s/^\s*CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS/CREATE INDEX/i;
+        }
+
+        eval { $dbh->do($s) };
+        my $err = $@;
+        next if ( !$err );
+
+        # Re-running init_schema on a populated DB is supported; a
+        # bare CREATE INDEX on an existing index throws an "already
+        # exists" / "Duplicate key name" message that's safe to ignore.
+        next if ( $err =~ /already exists|Duplicate key name/i );
+
+        die("init_schema: $err\n  while executing:\n$s\n");
     }
 
     # Additive column upgrades for existing installs. CREATE TABLE IF

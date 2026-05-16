@@ -108,3 +108,58 @@ jobs:
           HABITAT_PG_USER: postgres
           HABITAT_PG_PASS: postgres
         run: prove -j4 test/*.t
+
+  # ----------------------------------------------------------------
+  # MariaDB job: same shape as the postgres job. Exercises 41_mariadb.t
+  # end-to-end with a real server, so the mysql dialect's REPLACE INTO
+  # upsert path and the stripped-CREATE-INDEX-IF-NOT-EXISTS logic
+  # don't silently regress.
+  # ----------------------------------------------------------------
+  mariadb:
+    name: mariadb / perl 5.38
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: habitat
+          MARIADB_DATABASE: habitat_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Perl 5.38
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+
+      - name: Install dependencies + DBD::MariaDB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmariadb-dev
+          cpanm --notest --no-man-pages --installdeps .
+          cpanm --notest --no-man-pages DBD::MariaDB
+
+      - name: Wait for MariaDB
+        run: |
+          for i in $(seq 1 30); do
+            mysqladmin ping -h 127.0.0.1 -uroot -phabitat --silent && exit 0
+            sleep 1
+          done
+          echo "MariaDB never became ready"; exit 1
+
+      - name: Run test suite
+        working-directory: habitat
+        env:
+          HABITAT_MARIADB_DSN:  "dbi:MariaDB:database=habitat_test;host=127.0.0.1"
+          HABITAT_MARIADB_USER: root
+          HABITAT_MARIADB_PASS: habitat
+        run: prove -j4 test/*.t
