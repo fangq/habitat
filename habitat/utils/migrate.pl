@@ -95,7 +95,7 @@ my @TABLES = (
     { source => 'deletedpage',    dest => 'deletedpage' },
     { source => 'html',           dest => 'html' },
     { source => 'rclog',          dest => 'rclog' },
-    { source => 'lock',           dest => 'lock' },
+    { source => 'lock',           dest => 'pagelock' },         # MariaDB reserved word rename
     { source => 'watch',          dest => 'watch' },
     { source => 'system',         dest => 'system' },
     { source => 'pagelog',        dest => 'pagelog' },
@@ -105,7 +105,10 @@ my @TABLES = (
 
 # Also accept new-style sources that already have the renamed tables.
 # Walk both source candidates per logical table.
-my %ALIAS_SOURCES = ( 'users' => [ 'users', 'user' ], );
+my %ALIAS_SOURCES = (
+    'users'    => [ 'users',    'user' ],
+    'pagelock' => [ 'pagelock', 'lock' ],
+);
 
 # Per-table column-name remaps from the legacy schema to the current
 # one. Keyed by DESTINATION table name. Map { src_col => dst_col };
@@ -117,6 +120,13 @@ my %COLUMN_RENAME = (
     # map (below) handles the FS-joined -> JSON conversion of the
     # value itself.
     users => { stylesheet => 'prefs' },
+
+    # MariaDB-portability rename: `key` and `count` are reserved
+    # words on MariaDB/MySQL. Old SQLite/Pg installs of the Stage 1
+    # login throttle used the reserved names; the new schema uses
+    # attempt_key / attempts so the same SQL works unquoted across
+    # all three dialects.
+    login_attempts => { key => 'attempt_key', count => 'attempts' },
 );
 
 # Per-table per-column value transforms applied during row copy.

@@ -294,10 +294,11 @@ $TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs
 $IndentLimit = 20;                             # Maximum depth of nested lists
 $PageDir     = "$DataDir/page";                # Stores page data
 $HtmlDir     = "$DataDir/html";                # Stores HTML versions
-$UserDir    = "$DataDir/users"; # Stores user data (table named "users" -- "user" is reserved in PG)
-$KeepDir    = "$DataDir/keep";  # Stores kept (old) page data
-$TempDir    = "$DataDir/temp";  # Temporary files and locks
-$LockDir    = "$TempDir/lock";  # DB is locked if this exists
+$UserDir = "$DataDir/users";    # Stores user data (table named "users" -- "user" is reserved in PG)
+$KeepDir = "$DataDir/keep";     # Stores kept (old) page data
+$TempDir = "$DataDir/temp";     # Temporary files and locks
+$LockDir = "$TempDir/pagelock"
+  ;    # DB is locked if this exists (table renamed from "lock" — MariaDB reserved word)
 $InterFile  = "$DataDir/intermap";    # Interwiki site->url map
 $RcFile     = "$DataDir/rclog";       # New RecentChanges logfile
 $RcOldFile  = "$DataDir/oldrclog";    # Old RecentChanges logfile

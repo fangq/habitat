@@ -258,10 +258,15 @@ sub _dbh {
 sub EnsureLoginThrottleTable {
     my $dbh = _dbh();
     return if ( !$dbh );
+
+    # Columns renamed from key/count (both MariaDB reserved words)
+    # to attempt_key/attempts. init_schema creates the table with
+    # the new shape; this lazy-create is a safety net for code
+    # paths that bypass init_schema.
     eval {
         $dbh->do( 'CREATE TABLE IF NOT EXISTS login_attempts ('
-              . 'key TEXT PRIMARY KEY,'
-              . 'count INTEGER NOT NULL,'
+              . 'attempt_key TEXT PRIMARY KEY,'
+              . 'attempts INTEGER NOT NULL,'
               . 'first_ts INTEGER NOT NULL,'
               . 'last_ts INTEGER NOT NULL'
               . ')' );
@@ -273,7 +278,8 @@ sub LoginThrottleBlocked {
     my $dbh = _dbh();
     return 0 if ( !defined($key) || $key eq '' || !$dbh );
     EnsureLoginThrottleTable();
-    my $row = $dbh->selectrow_arrayref( 'SELECT count, first_ts FROM login_attempts WHERE key=?',
+    my $row =
+      $dbh->selectrow_arrayref( 'SELECT attempts, first_ts FROM login_attempts WHERE attempt_key=?',
         undef, $key );
     return 0 if ( !$row );
     my ( $count, $first ) = @$row;
@@ -287,18 +293,22 @@ sub LoginThrottleHit {
     my $dbh = _dbh();
     return if ( !defined($key) || $key eq '' || !$dbh );
     EnsureLoginThrottleTable();
-    my $row = $dbh->selectrow_arrayref( 'SELECT count, first_ts FROM login_attempts WHERE key=?',
+    my $row =
+      $dbh->selectrow_arrayref( 'SELECT attempts, first_ts FROM login_attempts WHERE attempt_key=?',
         undef, $key );
     no warnings 'once';
     my $now = $HabitatEngine::Now;
     my $win = $HabitatEngine::LoginThrottleWindow;
 
     if ( !$row || $now - $row->[1] > $win ) {
-        $dbh->do(
-            'INSERT OR REPLACE INTO login_attempts (key,count,first_ts,last_ts) VALUES (?,1,?,?)',
-            undef, $key, $now, $now );
+
+        # Portable upsert: REPLACE INTO works on SQLite + MariaDB;
+        # Habitat::Store::WriteDBItems handles the Postgres ON
+        # CONFLICT dialect.
+        Habitat::Store::WriteDBItems( 'login_attempts', 'attempt_key,attempts,first_ts,last_ts',
+            1, $key, 1, $now, $now );
     } else {
-        $dbh->do( 'UPDATE login_attempts SET count=count+1, last_ts=? WHERE key=?',
+        $dbh->do( 'UPDATE login_attempts SET attempts=attempts+1, last_ts=? WHERE attempt_key=?',
             undef, $now, $key );
     }
 }
@@ -307,7 +317,7 @@ sub LoginThrottleClear {
     my ($key) = @_;
     my $dbh = _dbh();
     return if ( !defined($key) || $key eq '' || !$dbh );
-    eval { $dbh->do( 'DELETE FROM login_attempts WHERE key=?', undef, $key ); };
+    eval { $dbh->do( 'DELETE FROM login_attempts WHERE attempt_key=?', undef, $key ); };
 }
 
 # ----------------------------------------------------------------

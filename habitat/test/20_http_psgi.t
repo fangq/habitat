@@ -151,7 +151,8 @@ unlike(
 );
 
 # Throttle row should now exist for both keys
-my $rows = $dbh->selectall_arrayref("SELECT key, count FROM login_attempts ORDER BY key");
+my $rows =
+  $dbh->selectall_arrayref("SELECT attempt_key, attempts FROM login_attempts ORDER BY attempt_key");
 ok( scalar(@$rows) >= 2, "throttle table has at least two rows (per-IP and per-name)" );
 my %by_key = map { $_->[0] => $_->[1] } @$rows;
 ok( ( grep { /^name:/ } keys %by_key ), "per-username throttle row created" );

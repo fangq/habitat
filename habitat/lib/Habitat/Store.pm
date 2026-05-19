@@ -232,7 +232,12 @@ sub init_schema {
         q{CREATE INDEX IF NOT EXISTS rclog_time ON rclog (time)},
         q{CREATE INDEX IF NOT EXISTS rclog_id   ON rclog (id)},
 
-        q{CREATE TABLE IF NOT EXISTS lock (
+        # Renamed from "lock" (Stage 5+: reserved word in MariaDB
+        # and stricter MySQL versions; an unquoted `lock` table
+        # name is a CREATE-TABLE syntax error). The wiki's $LockDir
+        # config picks the basename of this table at runtime, so a
+        # rename here automatically lines up index.cgi's lookups.
+        q{CREATE TABLE IF NOT EXISTS pagelock (
             id varchar(512) PRIMARY KEY, tag varchar(32)
         )},
 
@@ -261,9 +266,13 @@ sub init_schema {
         )},
 
         # Stage 1 throttle table; previously auto-created lazily.
+        # `key` and `count` are MariaDB reserved words and need
+        # quoting in every reference there. Renamed to attempt_key
+        # / attempts so the same SQL works unquoted across all
+        # three dialects.
         q{CREATE TABLE IF NOT EXISTS login_attempts (
-            key text PRIMARY KEY,
-            count integer NOT NULL,
+            attempt_key text PRIMARY KEY,
+            attempts integer NOT NULL,
             first_ts integer NOT NULL,
             last_ts integer NOT NULL
         )},
@@ -307,22 +316,42 @@ sub init_schema {
     # would, without disturbing the caller's transaction shape.
     my $jt = json_column_type( dialect($dbh) );
     for my $alter (
+
+        # Stage 5 column additions.
         "ALTER TABLE users       ADD COLUMN prefs $jt",
         "ALTER TABLE page        ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
         "ALTER TABLE deletedpage ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
+
+        # MariaDB-portability renames. Each ALTER is no-op-on-rerun:
+        # if the source name doesn't exist (already renamed) or the
+        # destination already exists, the eval-swallow below ignores
+        # the resulting error.
+        "ALTER TABLE lock RENAME TO pagelock",
+        "ALTER TABLE login_attempts RENAME COLUMN key TO attempt_key",
+        "ALTER TABLE login_attempts RENAME COLUMN count TO attempts",
       )
     {
         my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
 
         # Silence DBI's PrintError noise specifically for this attempt;
-        # we expect either success or "column already exists" and report
-        # the latter as a no-op rather than a warning to stderr.
+        # we expect either success or an "already renamed" outcome
+        # and report the latter as a no-op rather than a warning.
         local $dbh->{PrintError} = 0;
 
         eval { $dbh->do("SAVEPOINT $sp") };
         eval { $dbh->do($alter) };
         my $err = $@;
-        if ( $err && $err !~ /duplicate column|already exists/i ) {
+
+        # All the "this rename has already happened" shapes across
+        # the three dialects:
+        #   - duplicate column / already exists      (dest exists)
+        #   - no such column / Unknown column        (source missing)
+        #   - no such table  / Unknown table         (table-rename source missing)
+        #   - does not exist / doesn't exist         (Pg phrasing)
+        my $ok_to_skip =
+qr/duplicate column|already exists|no such column|Unknown column|no such table|Unknown table|does not exist|doesn't exist/i;
+
+        if ( $err && $err !~ $ok_to_skip ) {
             eval { $dbh->do("ROLLBACK TO SAVEPOINT $sp") };
             eval { $dbh->do("RELEASE SAVEPOINT $sp") };
             die("init_schema (ALTER): $err\n  while executing:\n$alter\n");
