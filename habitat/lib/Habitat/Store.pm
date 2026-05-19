@@ -319,23 +319,32 @@ sub init_schema {
     # transaction is rolled back. SAVEPOINT / ROLLBACK TO SAVEPOINT
     # gives us the same statement-level isolation that autocommit
     # would, without disturbing the caller's transaction shape.
-    my $jt = json_column_type( dialect($dbh) );
-    for my $alter (
+    my $jt     = json_column_type( dialect($dbh) );
+    my @alters = (
 
         # Stage 5 column additions.
         "ALTER TABLE users       ADD COLUMN prefs $jt",
         "ALTER TABLE page        ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
         "ALTER TABLE deletedpage ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
+    );
 
-        # MariaDB-portability renames. Each ALTER is no-op-on-rerun:
-        # if the source name doesn't exist (already renamed) or the
-        # destination already exists, the eval-swallow below ignores
-        # the resulting error.
-        "ALTER TABLE lock RENAME TO pagelock",
-        "ALTER TABLE login_attempts RENAME COLUMN key TO attempt_key",
-        "ALTER TABLE login_attempts RENAME COLUMN count TO attempts",
-      )
-    {
+    # MariaDB-portability renames for installs that already have the
+    # old reserved-name shapes. Only sqlite and pg need these —
+    # MariaDB never could have created those old shapes in the first
+    # place (the original CREATE TABLE would have parse-errored on
+    # `lock` / `key` / `count`), so on mysql these ALTERs would
+    # always be no-ops AND would themselves parse-error before
+    # reaching the not-found check. Skip them for mysql entirely.
+    if ( $d ne 'mysql' ) {
+        push @alters,
+          (
+            "ALTER TABLE lock RENAME TO pagelock",
+            "ALTER TABLE login_attempts RENAME COLUMN key TO attempt_key",
+            "ALTER TABLE login_attempts RENAME COLUMN count TO attempts",
+          );
+    }
+
+    for my $alter (@alters) {
         my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
 
         # Silence DBI's PrintError noise specifically for this attempt;
