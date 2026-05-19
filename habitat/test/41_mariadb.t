@@ -58,7 +58,7 @@ local $SIG{__WARN__} = sub {
 sub _reset_tables {
     my ($h) = @_;
     my @t = qw(
-      login_attempts userlog pagelog system watch lock rclog html users
+      login_attempts userlog pagelog system watch pagelock rclog html users
       deletedpage page_revisions page
     );
     eval { $h->do("SET FOREIGN_KEY_CHECKS=0") };
@@ -90,7 +90,7 @@ Habitat::Store::init_schema($dbh);
 Habitat::Store::init_schema($dbh);    # idempotency check
 
 my @expected = qw(
-  page page_revisions deletedpage users html rclog lock watch
+  page page_revisions deletedpage users html rclog pagelock watch
   system pagelog userlog login_attempts
 );
 for my $tbl (@expected) {

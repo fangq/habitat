@@ -43,7 +43,8 @@ local $SIG{__WARN__} = sub {
 # the previous run hadn't bootstrapped yet.
 sub _reset_pg_tables {
     my ($dbh) = @_;
-    my @t = qw(login_attempts userlog pagelog system watch lock rclog html users deletedpage page);
+    my @t =
+      qw(login_attempts userlog pagelog system watch pagelock rclog html users deletedpage page);
     for my $tbl (@t) {
         eval { $dbh->do("DROP TABLE IF EXISTS $tbl CASCADE") };
     }
@@ -67,7 +68,7 @@ is( Habitat::Store::regex_op(),   '~',  "regex_op() returns '~' for pg" );
 Habitat::Store::init_schema($pg);
 
 my @expected = qw(
-  page deletedpage users html rclog lock watch system pagelog userlog login_attempts
+  page deletedpage users html rclog pagelock watch system pagelog userlog login_attempts
 );
 for my $tbl (@expected) {
     my ($ok) = $pg->selectrow_array(

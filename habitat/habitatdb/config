@@ -140,18 +140,19 @@ $MaxTreeDepth = 20;                   # maximum number of nested subpage depth
 @HtmlPairs  = ( @HtmlPairs, @HtmlSingle );     # All singles can also be pairs
 
 # == You should not have to change anything below this line. =============
-$IndentLimit = 20;                             # Maximum depth of nested lists
-$PageDir     = "$DataDir/page";                # Stores page data
-$HtmlDir     = "$DataDir/html";                # Stores HTML versions
-$UserDir     = "$DataDir/users";               # Stores user data (Stage 5: renamed from "user", reserved in PG)
-$KeepDir     = "$DataDir/keep";                # Stores kept (old) page data
-$TempDir     = "$DataDir/temp";                # Temporary files and locks
-$LockDir     = "$TempDir/lock";                # DB is locked if this exists
-$InterFile   = "$DataDir/intermap";            # Interwiki site->url map
-$RcFile      = "$DataDir/rclog";               # New RecentChanges logfile
-$RcOldFile   = "$DataDir/oldrclog";            # Old RecentChanges logfile
-$IndexFile   = "$DataDir/pageidx";             # List of all pages
-$EmailFile   = "$DataDir/watch";               # Email notification lists
+$IndentLimit = 20;                 # Maximum depth of nested lists
+$PageDir     = "$DataDir/page";    # Stores page data
+$HtmlDir     = "$DataDir/html";    # Stores HTML versions
+$UserDir     = "$DataDir/users";   # Stores user data (Stage 5: renamed from "user", reserved in PG)
+$KeepDir     = "$DataDir/keep";    # Stores kept (old) page data
+$TempDir     = "$DataDir/temp";    # Temporary files and locks
+$LockDir     = "$TempDir/pagelock"
+  ;    # DB is locked if this exists (table renamed: "lock" is MariaDB reserved word)
+$InterFile = "$DataDir/intermap";    # Interwiki site->url map
+$RcFile    = "$DataDir/rclog";       # New RecentChanges logfile
+$RcOldFile = "$DataDir/oldrclog";    # Old RecentChanges logfile
+$IndexFile = "$DataDir/pageidx";     # List of all pages
+$EmailFile = "$DataDir/watch";       # Email notification lists
 
 %NameSpaceV0 = (
     "$DiscussPage\$", "plugin/wiki2bugzilla/discuss.preview",
