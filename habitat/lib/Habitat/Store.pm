@@ -287,12 +287,25 @@ sub init_schema {
     for my $stmt (@ddl) {
         my $s = $stmt;
 
-        # MySQL (any version) and MariaDB <10.6 don't accept
-        # `CREATE INDEX IF NOT EXISTS` — it's a syntax error, not a
-        # silent no-op. Strip the IF NOT EXISTS token for mysql and
-        # let the run-twice case land in the eval-swallow below.
         if ( $d eq 'mysql' ) {
+
+            # MySQL (any version) and MariaDB <10.6 don't accept
+            # `CREATE INDEX IF NOT EXISTS` — it's a syntax error, not
+            # a silent no-op. Strip IF NOT EXISTS and let the run-twice
+            # case land in the eval-swallow below.
             $s =~ s/^\s*CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS/CREATE INDEX/i;
+
+            # MariaDB's default collation is utf8mb4_general_ci (or the
+            # server's configured ci variant) — case-insensitive byte
+            # comparison. SQLite + Postgres are case-sensitive by
+            # default, so legacy wiki data with mixed-case page ids
+            # (e.g. both "wiki" and "Wiki") will collide in MariaDB
+            # PRIMARY KEY indexes during migration. Pin tables to
+            # utf8mb4_bin (binary, case-sensitive) so ID semantics
+            # match what the wiki has always assumed.
+            if ( $s =~ /^\s*CREATE\s+TABLE\b/i ) {
+                $s .= " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin";
+            }
         }
 
         eval { $dbh->do($s) };
