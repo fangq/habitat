@@ -270,8 +270,13 @@ sub init_schema {
         # quoting in every reference there. Renamed to attempt_key
         # / attempts so the same SQL works unquoted across all
         # three dialects.
+        #
+        # `attempt_key` is varchar(255), not TEXT: MariaDB/InnoDB
+        # refuses TEXT PRIMARY KEY without an explicit key prefix
+        # length. Real throttle keys (e.g. "ip:1.2.3.4" or
+        # "name:alice") are well under 255 chars.
         q{CREATE TABLE IF NOT EXISTS login_attempts (
-            attempt_key text PRIMARY KEY,
+            attempt_key varchar(255) PRIMARY KEY,
             attempts integer NOT NULL,
             first_ts integer NOT NULL,
             last_ts integer NOT NULL

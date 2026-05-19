@@ -263,9 +263,12 @@ sub EnsureLoginThrottleTable {
     # to attempt_key/attempts. init_schema creates the table with
     # the new shape; this lazy-create is a safety net for code
     # paths that bypass init_schema.
+    #
+    # varchar(255) (not TEXT) for the PK so MariaDB/InnoDB accepts
+    # it without an explicit key prefix length.
     eval {
         $dbh->do( 'CREATE TABLE IF NOT EXISTS login_attempts ('
-              . 'attempt_key TEXT PRIMARY KEY,'
+              . 'attempt_key varchar(255) PRIMARY KEY,'
               . 'attempts INTEGER NOT NULL,'
               . 'first_ts INTEGER NOT NULL,'
               . 'last_ts INTEGER NOT NULL'
