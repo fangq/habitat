@@ -351,11 +351,15 @@ sub ResetRequestState {
 # The "main" program, called at the end of this script file.
 sub DoWikiRequest {
     ResetRequestState();
-    if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ ) {    # running a local wiki
+
+    # Server-Software-based dispatch. Empty when invoked from a CLI
+    # smoke test (`perl index.cgi`) — guard so we don't warn.
+    my $server = $ENV{'SERVER_SOFTWARE'} // '';
+    if ( $server =~ /^SimpleHTTP/ ) {    # running a local wiki
         $DataDir = $ENV{'PWD'} . "/$DataDir" if ( $DataDir =~ /^[^\/]/ );
     }
     if ( $UseConfig && ( -f $ConfigFile ) ) {
-        if ( !do $ConfigFile ) {                         # Some error occurred
+        if ( !do $ConfigFile ) {         # Some error occurred
             $ConfigError = $@;
             if ( $ConfigError eq '' ) {
 
@@ -367,7 +371,7 @@ sub DoWikiRequest {
                 $ConfigError = T('Unknown Error (no error text)');
             }
         }
-        if ( $ENV{'SERVER_SOFTWARE'} =~ /^SimpleHTTP/ ) {    # running a local wiki
+        if ( ( $ENV{'SERVER_SOFTWARE'} // '' ) =~ /^SimpleHTTP/ ) {    # running a local wiki
             $LogoUrl    = "/$LogoUrl"    if ( $LogoUrl    =~ /^[^\/]/ );
             $StyleSheet = "/$StyleSheet" if ( $StyleSheet =~ /^[^\/]/ );
             $FavIcon    = "/$FavIcon"    if ( $FavIcon    =~ /^[^\/]/ );
@@ -593,7 +597,10 @@ use CGI;
 use CGI::Carp qw(fatalsToBrowser);
 
 sub InitRequest {
-    my @ScriptPath = split( '/', "$ENV{SCRIPT_NAME}" );
+
+    # SCRIPT_NAME is empty on CLI runs; default to '' to keep the
+    # split call quiet under -w.
+    my @ScriptPath = split( '/', ( $ENV{SCRIPT_NAME} // '' ) );
 
     $CGI::POST_MAX = $MaxPost;
     if ($PermUseUpload) {
@@ -2095,8 +2102,8 @@ sub GetHtmlHeader {
         '<link rel="alternate" type="application/rss+xml" title="'
       . $SiteName
       . '" HREF="http://'
-      . $ENV{SERVER_NAME}
-      . $ENV{SCRIPT_NAME}
+      . ( $ENV{SERVER_NAME} // '' )
+      . ( $ENV{SCRIPT_NAME} // '' )
       . &ScriptLinkChar()
       . 'action=rss"/>';
 
