@@ -35,6 +35,7 @@ use Habitat::Store ();
 my (
     $source_dsn, $source_user, $source_pass, $dest_dsn, $dest_user,
     $dest_pass,  $dry_run,     $batch_size,  $verbose,  $help,
+    @page_tables, $skip_core,
 );
 $batch_size  = 500;
 $dest_user   = '';
@@ -53,6 +54,8 @@ GetOptions(
     "batch=i"       => \$batch_size,
     "verbose|v"     => \$verbose,
     "help|h"        => \$help,
+    "page-table=s"  => \@page_tables,
+    "skip-core"     => \$skip_core,
 ) or usage(2);
 
 usage(0) if $help;
@@ -72,6 +75,12 @@ options:
   --dry-run           open dest read-only; report intended actions only
   --batch N           rows per INSERT batch (default $batch_size)
   --verbose | -v      print every table's per-row count
+  --page-table T      also migrate legacy page-shaped table T (a %DBPrefix
+                      table such as a glyph store) into T + T_revisions;
+                      repeatable. T is created in the destination even when
+                      the source lacks it, so the wiki can save to it.
+  --skip-core         migrate only the --page-table tables (e.g. to take
+                      them from a different source than the wiki tables)
 DSN examples:
   dbi:SQLite:dbname=/path/to/habitatdb.db
   dbi:Pg:dbname=habitat;host=localhost;port=5432
@@ -179,7 +188,15 @@ my $dst =
 unless ($dry_run) {
     log_msg "applying schema to destination via Habitat::Store::init_schema";
     Habitat::Store::init_schema($dst);
+    for my $t (@page_tables) {
+        Habitat::Store::init_page_table( $dst, $t );
+    }
     $dst->commit;
+}
+@TABLES = () if $skip_core;
+for my $t (@page_tables) {
+    die "unsafe --page-table name '$t'\n" unless Habitat::Store::SafeIdent($t);
+    push @TABLES, { source => $t, dest => $t, handler => \&migrate_page };
 }
 
 # ----------------------------------------------------------------

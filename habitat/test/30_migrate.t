@@ -357,4 +357,43 @@ unlink $dst_path;
     $d->disconnect;
 }
 
+# --page-table: a %DBPrefix table (e.g. a glyph store) migrates into
+# T + T_revisions; a named table absent from the source is still
+# created (so the wiki can save to it); --skip-core leaves the core
+# tables alone.
+{
+    my ( undef, $gsrc ) = tempfile( "habitat-glyph-src-XXXX", SUFFIX => '.db', UNLINK => 1, OPEN => 0, TMPDIR => 1 );
+    my ( undef, $gdst ) = tempfile( "habitat-glyph-dst-XXXX", SUFFIX => '.db', UNLINK => 1, OPEN => 0, TMPDIR => 1 );
+    unlink $gdst;
+    my $s = DBI->connect( "dbi:SQLite:dbname=$gsrc", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    for my $t (qw(page bmpdb8)) {
+        $s->do(
+            qq{CREATE TABLE $t (
+            id varchar(512), version integer,
+            author varchar(32), revision integer, tupdate integer, tcreate integer,
+            ip varchar(32), host varchar(64), summary varchar(128), text text,
+            minor integer, newauthor integer, data varchar(32), tag varchar(32)
+        )}
+        );
+    }
+    $s->do( "INSERT INTO page (id, revision, author, text) VALUES (?,?,?,?)", undef, 'Home', 1, 'a', 'home' );
+    $s->do( "INSERT INTO bmpdb8 (id, revision, author, text) VALUES (?,?,?,?)", undef, 'U4E00_8pt', 1, 'a', "g1\n" );
+    $s->do( "INSERT INTO bmpdb8 (id, revision, author, text) VALUES (?,?,?,?)", undef, 'U4E00_8pt', 2, 'b', "g2\n" );
+    $s->disconnect;
+
+    my ( $rc, $out ) = run_migrate( "--source", "dbi:SQLite:dbname=$gsrc", "--dest", "dbi:SQLite:dbname=$gdst",
+        "--skip-core", "--page-table", "bmpdb8", "--page-table", "draft" );
+    is( $rc, 0, "page-table migration: exit code 0" );
+    my $d = DBI->connect( "dbi:SQLite:dbname=$gdst", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    is_deeply( [ $d->selectrow_array("SELECT text, revision, admin_saved FROM bmpdb8 WHERE id='U4E00_8pt'") ],
+        [ "g2\n", 2, 0 ], "page-table: current row in T" );
+    is( $d->selectrow_array("SELECT text FROM bmpdb8_revisions WHERE page_id='U4E00_8pt' AND revision=1"),
+        "g1\n", "page-table: earlier revision in T_revisions" );
+    for my $t (qw(draft draft_revisions deleteddraft deletedbmpdb8)) {
+        ok( defined eval { $d->selectrow_array("SELECT COUNT(*) FROM $t") }, "page-table: $t created" );
+    }
+    is( $d->selectrow_array("SELECT COUNT(*) FROM page"), 0, "--skip-core: core page table not copied" );
+    $d->disconnect;
+}
+
 done_testing;

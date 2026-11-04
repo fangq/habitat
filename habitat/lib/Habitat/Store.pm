@@ -331,12 +331,12 @@ sub _schema_alters {
     return @alters;
 }
 
-sub init_schema {
-    my $dbh = $_[0] || _dbh();
-    die("init_schema: no \$dbh") if ( !defined($dbh) );
-
-    my @ddl = _schema_ddl($dbh);
-    my $d   = dialect($dbh);
+# Apply CREATE statements with the per-dialect adjustments (mysql:
+# no CREATE INDEX IF NOT EXISTS, LONGTEXT, binary collation) and
+# tolerate re-runs.
+sub _run_ddl {
+    my ( $dbh, @ddl ) = @_;
+    my $d = dialect($dbh);
     for my $stmt (@ddl) {
         my $s = $stmt;
 
@@ -385,6 +385,46 @@ sub init_schema {
 
         die("init_schema: $err\n  while executing:\n$s\n");
     }
+}
+
+# init_page_table($dbh, $name)
+#   Create an additional page-shaped table set: $name (current
+#   revision per id), ${name}_revisions and deleted$name. Used for the
+#   %DBPrefix tables a wiki routes some page names to (GetPageDB), which
+#   init_schema does not know about. Safe to re-run.
+sub init_page_table {
+    my ( $dbh, $name ) = @_;
+    die("init_page_table: unsafe table name '$name'\n") if ( !SafeIdent($name) || !SafeIdent("deleted$name") );
+    my %want = (
+        'page'           => $name,
+        'page_revisions' => "${name}_revisions",
+        'deletedpage'    => "deleted$name",
+    );
+    my @ddl;
+    for my $stmt ( _schema_ddl($dbh) ) {
+        next unless $stmt =~ /^\s*CREATE\s+(?:TABLE|INDEX)\s+IF\s+NOT\s+EXISTS\s+(\w+)(?:\s+ON\s+(\w+))?/i;
+        my ( $obj, $on ) = ( $1, $2 );
+        my $tbl = defined $on ? $on : $obj;
+        next unless exists $want{$tbl};
+        my $s = $stmt;
+        if ( defined $on ) {
+            ( my $idx = $obj ) =~ s/^\Q$tbl\E/$want{$tbl}/;
+            $s =~ s/(EXISTS\s+)\Q$obj\E(\s+ON\s+)\Q$on\E\b/$1$idx$2$want{$tbl}/i;
+        } else {
+            $s =~ s/(EXISTS\s+)\Q$obj\E\b/$1$want{$tbl}/i;
+        }
+        push @ddl, $s;
+    }
+    _run_ddl( $dbh, @ddl );
+    return 1;
+}
+
+sub init_schema {
+    my $dbh = $_[0] || _dbh();
+    die("init_schema: no \$dbh") if ( !defined($dbh) );
+
+    my $d = dialect($dbh);
+    _run_ddl( $dbh, _schema_ddl($dbh) );
 
     for my $alter ( _schema_alters($dbh) ) {
         my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
