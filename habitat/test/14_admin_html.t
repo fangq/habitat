@@ -151,6 +151,50 @@ SKIP: {
 }
 
 # ----------------------------------------------------------------
+# Regression: the real browse path (OpenPageDB -> WikiToHTML) must
+# keep admin_saved. WikiToHTML calls BuildRuleStack, which used to
+# reset the whole %{$Pages{$id}} hash and wipe {'page'}{'admin_saved'}
+# loaded by OpenPageDB, so every page was scrubbed regardless of who
+# saved it. The blocks above pre-set {'rules'}=1 and skip
+# BuildRuleStack; these do not.
+# ----------------------------------------------------------------
+sub render_fresh {
+    my ($id) = @_;
+    delete $HabitatEngine::Pages{$id};
+    %HabitatEngine::RuleDirCache = ();
+    local $HabitatEngine::OpenPageName = '';
+    HabitatEngine::OpenDefaultPage($id);
+    return HabitatEngine::WikiToHTML( $id, $HabitatEngine::Pages{$id}{'text'}{'text'} );
+}
+
+seed_page( 'AdminPage', $body, 1 );
+seed_page( 'UserPage',  $body, 0 );
+{
+    my $out = render_fresh('AdminPage');
+    is( $HabitatEngine::Pages{'AdminPage'}{'page'}{'admin_saved'},
+        1, "BuildRuleStack keeps admin_saved loaded by OpenPageDB" );
+    like( $out, qr|<script>|i, "fresh render, admin-trusted page: <script> survives" );
+    like( $out, qr|onclick=|i, "fresh render, admin-trusted page: onclick survives" );
+}
+{
+    my $out = render_fresh('UserPage');
+    unlike( $out, qr|<script|i, "fresh render, untrusted page: <script> stripped" );
+    unlike( $out, qr|onclick=|i, "fresh render, untrusted page: onclick stripped" );
+}
+
+# Same, for a subpage whose ancestor has a postview (.v1) rule, so
+# BuildRuleStack actually populates the rule stack.
+seed_page( 'RuleTop/.v1',   "\$/<!--postview-rule-->", 1 );
+seed_page( 'RuleTop/Child', $body,                     1 );
+{
+    my $out = render_fresh('RuleTop/Child');
+    is( $HabitatEngine::Pages{'RuleTop/Child'}{'page'}{'admin_saved'},
+        1, "subpage with ancestor rules: admin_saved kept" );
+    like( $out, qr|<script>|i,           "subpage with ancestor rules: <script> survives" );
+    like( $out, qr|<!--postview-rule-->|, "subpage with ancestor rules: .v1 rule still applied" );
+}
+
+# ----------------------------------------------------------------
 # A non-admin save on an admin-trusted page revokes trust.
 # ----------------------------------------------------------------
 seed_page( 'AdminPage', "follow-up\n", 0 );

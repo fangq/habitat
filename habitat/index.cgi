@@ -764,7 +764,11 @@ sub BuildRuleStack {
 
     $levelcount = ( $toptree =~ tr/\/// ) + 1;
 
-    %{ $Pages{$id} } = ( 'preview' => (), 'postview' => (), 'preedit' => (), 'postedit' => () );
+    # Reset only the rule slots. Assigning the whole %{$Pages{$id}}
+    # hash here would also wipe {'page'} / {'text'} / {'section'}
+    # loaded by OpenPageDB -- notably {'page'}{'admin_saved'}, which
+    # made WikiToHTML scrub raw HTML on every page.
+    $Pages{$id}->{$_} = [] for qw(preview postview preedit postedit);
     $Pages{$id}->{'rules'} = 1;
 
     for ( $i = $levelcount ; $i < @dirs ; $i++ ) {
