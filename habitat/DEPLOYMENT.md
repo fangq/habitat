@@ -328,8 +328,11 @@ Perl at all.
      on every CSRF-verified POST (all state-changing actions), because
      pages embed other pages and inherit rule pages.
    - It is also purged automatically when the config, the language file
-     or the engine (`index.cgi`, `lib/Habitat/*.pm`) changes (mtime
-     stamp checked on each CGI request). Other changes that alter the
+     or the engine (`index.cgi`, `lib/Habitat/*.pm`) changes. The mtime
+     stamp is checked by the CGI, so the purge happens on the **next
+     request that reaches the CGI**; cached pages are served by Apache
+     without it. After such a change, open any uncached URL once (for
+     example `index.cgi?action=index`) or purge by hand. Other changes that alter the
      generated HTML, such as a plugin file whose text pages include,
      need a manual purge: `rm -rf cache/p cache/front.html`. Stylesheets
      and scripts are separate files, so editing them needs no purge.
