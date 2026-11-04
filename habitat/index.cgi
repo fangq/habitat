@@ -4046,12 +4046,34 @@ sub PurgeStaticCache {
     unlink("$StaticCacheDir/front.html");
     if ( -d "$StaticCacheDir/p" ) {
         my $trash = "$StaticCacheDir/.trash-$$-" . RandomHex(4);
-        if ( rename( "$StaticCacheDir/p", $trash ) ) {
-            require File::Path;
-            File::Path::remove_tree($trash);
-        }
+        rename( "$StaticCacheDir/p", $trash );
+    }
+
+    # Delete this purge's trash and any left behind by an earlier purge
+    # that was interrupted. (File::Path::remove_tree chdir()s while it
+    # works and silently left whole trees behind under Apache CGI on the
+    # NeuroJSON host; _StaticCacheRmTree uses absolute paths only.)
+    if ( opendir( my $dh, $StaticCacheDir ) ) {
+        my @trash = grep { /\A\.trash-[\w-]+\z/ } readdir($dh);
+        closedir($dh);
+        &_StaticCacheRmTree("$StaticCacheDir/$_") for @trash;
     }
     $StaticCacheGen = '';    # this request no longer has a valid generation
+}
+
+# Recursive delete without chdir: absolute paths, never follows symlinks.
+sub _StaticCacheRmTree {
+    my ($path) = @_;
+    if ( -l $path || !-d _ ) {
+        unlink($path) or warn "static cache: cannot delete $path: $!\n";
+        return;
+    }
+    if ( opendir( my $dh, $path ) ) {
+        my @e = grep { $_ ne '.' && $_ ne '..' } readdir($dh);
+        closedir($dh);
+        &_StaticCacheRmTree("$path/$_") for @e;
+    }
+    rmdir($path) or warn "static cache: cannot remove $path: $!\n";
 }
 
 # Purge when the config, translation file or engine changed since the

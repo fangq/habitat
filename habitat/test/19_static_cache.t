@@ -176,6 +176,26 @@ ok( !defined cached('p/TestPage.html'), "a verified CSRF POST purges the cache" 
     ok( !defined cached('p/TestPage.html'), "config modified: cache purged" );
 }
 
+# Regression: trash left behind by an interrupted purge (seen under
+# Apache CGI with File::Path::remove_tree) is removed by the next purge;
+# deletion uses absolute paths and never follows symlinks.
+{
+    my $c = $HabitatEngine::StaticCacheDir;
+    my $t = "$c/.trash-12345-deadbeef";
+    mkdir $_ or die "$_: $!" for $t, "$t/Doc", "$t/Doc/Sub";
+    for my $f ( "$t/Home.html", "$t/Doc/A.html", "$t/Doc/Sub/B.html" ) {
+        open( my $fh, '>', $f ) or die; print $fh "old\n"; close $fh;
+    }
+    my $outside = "$dir/must_survive.txt";
+    open( my $fh, '>', $outside ) or die; print $fh "keep\n"; close $fh;
+    symlink( $outside, "$t/link.html" ) or die;
+    browse('TestPage');    # something to purge now, too
+    HabitatEngine::PurgeStaticCache();
+    ok( !-e $t, "leftover trash from an earlier purge is removed" );
+    ok( !glob("$c/.trash-*"), "  ... and this purge's own trash too" );
+    ok( -f $outside, "  ... a symlink inside the trash is removed without following it" );
+}
+
 # Disabled by default.
 {
     local $HabitatEngine::StaticCacheDir = '';
