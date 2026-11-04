@@ -221,7 +221,13 @@ sub VerifyCSRFToken {
 # traps exit). Calls back into HabitatEngine::T / GetParam for i18n +
 # parameter access; those stay in the main script.
 sub CSRFCheckOrDie {
-    return if ( VerifyCSRFToken( HabitatEngine::GetParam( 'csrf_token', '' ) ) );
+    if ( VerifyCSRFToken( HabitatEngine::GetParam( 'csrf_token', '' ) ) ) {
+
+        # Every state-changing action passes through here, so this is
+        # the catch-all invalidation point for the static page cache.
+        HabitatEngine::PurgeStaticCache() if ( defined &HabitatEngine::PurgeStaticCache );
+        return;
+    }
     no warnings 'once';
     print $HabitatEngine::q->header( -status => '403 Forbidden' );
     print "<h2>", HabitatEngine::T('CSRF token missing or invalid'), "</h2>";

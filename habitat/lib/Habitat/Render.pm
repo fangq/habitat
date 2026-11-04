@@ -475,6 +475,7 @@ sub WikiToHTML {
         || ( ( $pp ne '' ) && &UserPermission() < $pp ) )
     {
         $UseCache = 0;
+        $StaticCacheOK = 0;    # permission-restricted view
         return "";
     }
     %$SaveUrl         = ();
@@ -518,6 +519,8 @@ s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiP
         $pageText =~ s/&lt;origpagename&gt;/$truepage/gi;
     }
     $pageText =~ s/&lt;fullpagename&gt;/$id/gi;
+    # Per-request values: such a page must not go to the static cache.
+    $StaticCacheOK = 0 if ( $pageText =~ /&lt;(?:userip|datenow|timenow)&gt;/i );
     $pageText =~ s/&lt;userip&gt;/$ENV{'REMOTE_ADDR'}/gi;
 
     $pagename = ( split( /\//, $id ) )[-1];

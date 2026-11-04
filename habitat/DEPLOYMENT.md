@@ -251,6 +251,89 @@ sudo apt install libapache2-mod-fcgid libplack-handler-fcgi-perl
 
 ---
 
+## 6. Static page cache with mod_rewrite (plain CGI, shared hosting)
+
+Under plain CGI every request starts Perl, compiles the wiki and opens a
+database connection (~100+ ms on shared hosting). When a persistent
+process (sections 2–5) is not available, Apache can instead serve the
+anonymous view of pages as static files, so most page views never start
+Perl at all.
+
+1. Pick a directory **inside the wiki's web directory** and set it in the
+   config. The wiki creates `p/` and the bookkeeping files in it:
+
+   ```perl
+   # habitatdb/config
+   $StaticCacheDir = "/abs/path/to/wiki/cache";   # '' (default) = off
+   ```
+
+   Create it once and make it readable by Apache: `mkdir cache; chmod 705 cache`.
+
+2. Add the rules to the wiki directory's `.htaccess`, before anything
+   else that rewrites. Replace the three placeholders: the URL path of the
+   wiki directory (`RewriteBase`), the absolute cache path (both `-f`
+   tests), and `$CookieName` from the config.
+
+   ```apache
+   RewriteEngine On
+   RewriteBase /wiki/
+
+   # front page: GET /wiki/ or /wiki/index.cgi with no query
+   RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+   RewriteCond %{HTTP_COOKIE} !(^|;\s*)HabitatCookie=
+   RewriteCond %{QUERY_STRING} ^$
+   RewriteCond /abs/path/to/wiki/cache/front.html -f
+   RewriteRule ^(index\.cgi)?$ cache/front.html [L]
+
+   # pages: GET /wiki/index.cgi?Page/Name
+   RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+   RewriteCond %{HTTP_COOKIE} !(^|;\s*)HabitatCookie=
+   RewriteCond %{QUERY_STRING} ^([A-Za-z0-9][A-Za-z0-9_.,()'-]*(/[A-Za-z0-9][A-Za-z0-9_.,()'-]*)*)$
+   RewriteCond /abs/path/to/wiki/cache/p/%1.html -f
+   RewriteRule ^(index\.cgi)?$ cache/p/%1.html [L]
+   ```
+
+   and a `cache/.htaccess`:
+
+   ```apache
+   Options -Indexes
+   AddDefaultCharset UTF-8
+   Header set Cache-Control "no-cache"
+   RewriteEngine On
+   RewriteRule (^|/)\. - [F]
+   ```
+
+   How it works: for each request Apache tests the `RewriteRule` pattern
+   (`index.cgi` or the bare directory), then its `RewriteCond`s (all must
+   hold): a plain GET/HEAD, no wiki login cookie (analytics cookies do
+   not matter), a query string that is a safe page id (captured as `%1`),
+   and an existing cache file. If all match, the request is internally
+   served from the file; otherwise it falls through to `index.cgi`
+   unchanged. `RewriteBase` is required: in `.htaccess` a relative
+   substitution is otherwise prefixed with the *filesystem* path, which
+   on many hosts is not the URL path (symptom: 404 for cached pages).
+   The page-id pattern must stay identical to `$StaticCachePageRe` in
+   `index.cgi`.
+
+3. What is cached and when it is invalidated:
+
+   - Written by the CGI when it renders exactly the request the rules
+     answer (GET, query string equal to the page id or empty for the
+     home page, no wiki cookie, anonymous). Never cached: logged-in or
+     cookie-carrying views, `action=…`/extra parameters, revisions and
+     diffs, permission-restricted pages, pages with an `EXPIRE` rule,
+     pages rendering `datenow`/`timenow`/`userip`, `%ExtViewer` pages,
+     missing pages, ids outside the safe pattern.
+   - The whole cache is purged on every page save, delete or rename and
+     on every CSRF-verified POST (all state-changing actions), because
+     pages embed other pages and inherit rule pages.
+   - It is also purged automatically when the config, the language file
+     or the engine (`index.cgi`, `lib/Habitat/*.pm`) changes (mtime
+     stamp checked on each CGI request). Other changes that alter the
+     generated HTML, such as a plugin file whose text pages include,
+     need a manual purge: `rm -rf cache/p cache/front.html`. Stylesheets
+     and scripts are separate files, so editing them needs no purge.
+
 ## Config knobs that matter behind a reverse proxy
 
 ```perl

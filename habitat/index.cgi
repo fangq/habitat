@@ -125,6 +125,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
+  $StaticCacheDir $StaticCacheOK $StaticCacheGen
   $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache);
 
 # == Configuration =====================================================
@@ -253,6 +254,7 @@ $DiscussSuffix       = '..discuss';
 $DBName              = "";
 $UseActivation       = 0;
 $DocType             = q(<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">);    # first line of every page; e.g. "<!DOCTYPE HTML>" for HTML5 standards mode
+$StaticCacheDir      = '';    # absolute dir for the mod_rewrite static page cache (DEPLOYMENT.md); '' = off
 $UseDetailedLog      = 0;
 $PageItemCount       = 20;
 $ListItemCount       = 100;
@@ -322,6 +324,8 @@ if ($RepInterMap) {
 # NOT duplicated here. This sub catches the rest: render scratch
 # space, caches, header-emitted flags, and language state.
 sub ResetRequestState {
+    $StaticCacheOK   = 1;     # cleared when this response must not be cached statically
+    $StaticCacheGen  = '';
     %TextCache       = ();
     %RuleDirCache    = ();
     $LocalTree       = undef;
@@ -381,6 +385,7 @@ sub DoWikiRequest {
 
     &InitLinkPatterns();
     &InitWikiEnv();
+    &StaticCacheCheckStamp();
     if ( !&DoCacheBrowse() ) {
         eval $BrowseCode;
         &InitRequest() or return;
@@ -869,7 +874,12 @@ sub BrowsePage {
     my @vv;
     my $pagelogdb = ( split( /\//, $PageLog ) )[-1];
 
+    # Static cache: remember the cache generation before rendering, so a
+    # purge that happens while we render prevents writing a stale copy.
+    $StaticCacheGen = &StaticCacheGeneration();
+
     $extviewer = ReadPagePermissions( $id, \%ExtViewer );
+    $StaticCacheOK = 0 if ( $extviewer ne '' );    # computed or redirected content
     if ( $extviewer ne '' ) {
         if ( ref($extviewer) ne "CODE" ) {
             &ReBrowsePage( "$extviewer#$id", "", 0 );
@@ -1025,6 +1035,7 @@ sub BrowsePage {
             if ( $vv[$i] =~ /$kstr\s*<\/$kfid>/ ) {
                 $$Text{'text'} = $vv[$i] . "\n</$kid>";
                 $UseCache = 0;
+                $StaticCacheOK = 0;
                 last;
             }
         }
@@ -1075,6 +1086,10 @@ sub BrowsePage {
     if ( $UseCache && $oldId eq '' && $UserID == 111 ) {
         &UpdateHtmlCacheDB( $id, $fullHtml );
     }
+
+    # Static page cache (no-op unless $StaticCacheDir is set; it checks
+    # that this is exactly the anonymous request the rewrite serves).
+    &WriteStaticCache( $id, $fullHtml ) if ( $oldId eq '' );
 }
 
 sub ReBrowsePage {
@@ -3416,6 +3431,7 @@ sub SavePageDB {
         $UserData{'id'},
         $admin_saved,
     );
+    &PurgeStaticCache();    # any page change can alter pages that embed or inherit it
 }
 
 sub SaveSection {
@@ -3924,6 +3940,137 @@ sub UpdateHtmlCacheDB {
     # need to print log
 }
 
+# ----------------------------------------------------------------
+# Static page cache (served by Apache via mod_rewrite, no Perl).
+#
+# When $StaticCacheDir is set, the anonymous rendering of a plain page
+# view is also written to
+#     $StaticCacheDir/p/<PageId>.html   for  GET index.cgi?PageId
+#     $StaticCacheDir/front.html        for  GET index.cgi  (home page)
+# and .htaccess rewrite rules (see DEPLOYMENT.md) serve those files
+# directly when the visitor has no wiki cookie. Under plain CGI that
+# skips process start, compiling and the database entirely.
+#
+# Correctness rules:
+#  - only the exact request the rewrite answers is written (GET, query
+#    string == page id or empty, no wiki cookie, anonymous), so a file
+#    never holds another language, revision or user's view;
+#  - any write to the wiki purges the whole cache (SavePageDB,
+#    DeletePage, RenamePage, every CSRF-verified POST): pages embed
+#    other pages and inherit rule pages, so per-page invalidation
+#    would miss dependents;
+#  - a change to the config, translation file or engine purges it too
+#    (StaticCacheCheckStamp, a few stat() calls per request);
+#  - a generation counter stops a render that began before a purge
+#    from writing its stale result after it.
+# ----------------------------------------------------------------
+
+# Page ids eligible for the static cache. Must accept exactly what the
+# QUERY_STRING pattern of the .htaccess rules accepts. Every segment
+# starts with a letter or digit, so ".." and rule pages (".v0") can
+# never form a path.
+our $StaticCachePageRe = qr{\A[A-Za-z0-9][A-Za-z0-9_.,()'-]*(?:/[A-Za-z0-9][A-Za-z0-9_.,()'-]*)*\z};
+
+# Cache file for page $id if *this request* is one the rewrite serves.
+sub StaticCacheFile {
+    my ($id) = @_;
+    return '' if ( !defined($StaticCacheDir) || $StaticCacheDir eq '' || !defined($id) );
+    my $qs = $ENV{'QUERY_STRING'} // '';
+    if ( $qs eq '' ) {
+        return ( $id eq $HomePage ) ? "$StaticCacheDir/front.html" : '';
+    }
+    return '' if ( $qs ne $id || $id !~ $StaticCachePageRe );
+    return "$StaticCacheDir/p/$id.html";
+}
+
+sub StaticCacheGeneration {
+    return '' if ( !defined($StaticCacheDir) || $StaticCacheDir eq '' );
+    my $fh;
+    open( $fh, '<', "$StaticCacheDir/.gen" ) or return '';
+    my $g = <$fh>;
+    close($fh);
+    return defined($g) ? $g : '';
+}
+
+sub _StaticCacheWriteAtomic {
+    my ( $file, $content ) = @_;
+    my $tmp = "$file.tmp$$";
+    my $fh;
+    open( $fh, '>', $tmp ) or return 0;
+    binmode($fh);
+    print $fh $content;
+    close($fh) or do { unlink $tmp; return 0 };
+    chmod( 0604, $tmp );
+    rename( $tmp, $file ) or do { unlink $tmp; return 0 };
+    return 1;
+}
+
+sub WriteStaticCache {
+    my ( $id, $html ) = @_;
+    return if ( !defined($StaticCacheDir) || $StaticCacheDir eq '' || !$StaticCacheOK );
+    return if ( ( $ENV{'REQUEST_METHOD'} // '' ) ne 'GET' );
+    return if ( $UserID != 111 || ( defined( $UserData{'username'} ) && $UserData{'username'} ne '' ) );
+    return if ( ( $ENV{'HTTP_COOKIE'} // '' ) =~ /(?:^|;\s*)\Q$CookieName\E=/ );
+    return if ( $ConfigError ne '' );
+    return if ( defined( $Pages{$id}->{'expire'} ) && $Pages{$id}->{'expire'} ne '' );
+    return if ( !&PageExists($id) && !( defined $BuildinPages{$id} && $BuildinPages{$id} ne '' ) );
+    my $file = &StaticCacheFile($id);
+    return if ( $file eq '' );
+
+    # $html normally starts with the CGI header block (absent if headers
+    # were already printed earlier in the request); the file is the body
+    # only. Never store a response that sets a cookie.
+    if ( $html =~ s/\A((?:[A-Za-z][\w-]*:[^\r\n]*\r?\n)+)\r?\n//s ) {
+        return if ( $1 =~ /^Set-Cookie:/mi );
+    }
+    return if ( $html !~ /\A\s*<!DOCTYPE/i );
+
+    my $gen = $StaticCacheGen // '';
+    return if ( &StaticCacheGeneration() ne $gen );    # purged since rendering began
+    require File::Path;
+    my ($dir) = $file =~ m{\A(.*)/[^/]+\z};
+    eval { File::Path::make_path( $dir, { mode => 0705 } ) };
+    return if ( !-d $dir );
+    &_StaticCacheWriteAtomic( $file, $html ) or return;
+
+    # A purge between the check above and the rename would leave a stale
+    # file behind; re-check and drop it if so.
+    unlink($file) if ( &StaticCacheGeneration() ne $gen );
+}
+
+sub PurgeStaticCache {
+    return if ( !defined($StaticCacheDir) || $StaticCacheDir eq '' || !-d $StaticCacheDir );
+
+    # New generation first, so renders already in flight won't write.
+    &_StaticCacheWriteAtomic( "$StaticCacheDir/.gen", RandomHex(8) );
+    unlink("$StaticCacheDir/front.html");
+    if ( -d "$StaticCacheDir/p" ) {
+        my $trash = "$StaticCacheDir/.trash-$$-" . RandomHex(4);
+        if ( rename( "$StaticCacheDir/p", $trash ) ) {
+            require File::Path;
+            File::Path::remove_tree($trash);
+        }
+    }
+    $StaticCacheGen = '';    # this request no longer has a valid generation
+}
+
+# Purge when the config, translation file or engine changed since the
+# cache was built (they change the HTML of every page).
+sub StaticCacheCheckStamp {
+    return if ( !defined($StaticCacheDir) || $StaticCacheDir eq '' || !-d $StaticCacheDir );
+    my @files = ( $ConfigFile, "$DataDir/i18n/lang.$LangID", __FILE__,
+        grep { defined } map { $INC{"Habitat/$_.pm"} } qw(Render Store Auth) );
+    my $stamp = join( ',', map { ( stat($_) )[9] // 0 } @files );
+    my $old   = '';
+    if ( open( my $fh, '<', "$StaticCacheDir/.stamp" ) ) {
+        $old = <$fh> // '';
+        close($fh);
+    }
+    return if ( $old eq $stamp );
+    &PurgeStaticCache();
+    &_StaticCacheWriteAtomic( "$StaticCacheDir/.stamp", $stamp );
+}
+
 sub GenerateAllPagesListDB {
     my @pages;
     my $pagedb = GetParam( "dbprefix", "" ) . ( split( /\//, $PageDir ) )[-1];
@@ -4318,6 +4465,7 @@ name=\"myform\">";
           )
         {
             $UseCache = 0;
+            $StaticCacheOK = 0;    # permission-restricted view
             return "";
         }
     }
@@ -5534,6 +5682,7 @@ sub DoPost {
         || ( ( $pp ne '' ) && &UserPermission() < $pp ) )
     {
         $UseCache = 0;
+        $StaticCacheOK = 0;
         PrintMsg( T("no permission"), T("Error"), 1 );
     }
     $string = &ApplyRegExp( $id, $string, \%NameSpaceE1, $Pages{$id}->{'postedit'} ); # fangq 061206
@@ -6267,6 +6416,8 @@ sub DeletePage {
     my ( $page, $doRC, $doText, $rev ) = @_;
     my ( $fname, $status, $res );
 
+    &PurgeStaticCache();
+
     $page =~ s/ /_/g;
     $page =~ s/\[+//;
     $page =~ s/\]+//;
@@ -6495,6 +6646,8 @@ sub RenameTextLinks {
 sub RenamePage {
     my ( $old, $new, $doRC, $doText ) = @_;
     my ( $oldfname, $newfname, $oldkeep, $newkeep, $status );
+
+    &PurgeStaticCache();
 
     $old =~ s/ /_/g;
     $new    = &FreeToNormal($new);
