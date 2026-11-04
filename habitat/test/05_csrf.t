@@ -19,6 +19,7 @@ HabitatHarness::freeze_time(1_700_000_000);
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
+    local $HabitatEngine::UserData{username} = q(alice);    # a loaded account
     my $tok = HabitatEngine::GenCSRFToken();
     like( $tok, qr/\A\d+\|[0-9a-f]{64}\z/, "token shape: <exp>|<64-hex sig>" );
     is( HabitatEngine::VerifyCSRFToken($tok), 1, "fresh token verifies" );
@@ -39,6 +40,7 @@ is( HabitatEngine::VerifyCSRFToken( {} ),  0, "ref rejected" );
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
+    local $HabitatEngine::UserData{username} = q(alice);    # a loaded account
     my $tok = HabitatEngine::GenCSRFToken();
 
     # Signature tampering
@@ -59,12 +61,14 @@ my $tok_alice;
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
+    local $HabitatEngine::UserData{username} = q(alice);    # a loaded account
     $tok_alice = HabitatEngine::GenCSRFToken();
     is( HabitatEngine::VerifyCSRFToken($tok_alice), 1, "alice can verify alice's token" );
 }
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1002;
+    local $HabitatEngine::UserData{username} = q(bob);
     is( HabitatEngine::VerifyCSRFToken($tok_alice),
         0, "bob cannot verify alice's token (uid bound into signature)" );
 }
@@ -76,11 +80,13 @@ my $tok_with_known_exp;
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
+    local $HabitatEngine::UserData{username} = q(alice);    # a loaded account
     $tok_with_known_exp = HabitatEngine::GenCSRFToken();
 }
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
+    local $HabitatEngine::UserData{username} = q(alice);    # a loaded account
     HabitatHarness::freeze_time( 1_700_000_000 + 86399 );
     is( HabitatEngine::VerifyCSRFToken($tok_with_known_exp), 1,
         "token valid 1s before 24h expiry" );
@@ -117,6 +123,7 @@ my $tok_rotate;
 {
     no warnings 'once';
     local $HabitatEngine::UserID = 1001;
+    local $HabitatEngine::UserData{username} = q(alice);    # a loaded account
     $tok_rotate = HabitatEngine::GenCSRFToken();
 }
 {
@@ -125,6 +132,43 @@ my $tok_rotate;
     local $HabitatEngine::UserID     = 1001;
     is( HabitatEngine::VerifyCSRFToken($tok_rotate),
         0, "rotating site secret invalidates outstanding CSRF tokens" );
+}
+
+# ----------------------------------------------------------------
+# Regression: visitors without an account share one identity.
+# DoEditPrefs (registration) and DoLogout call DoNewLoginDB before
+# rendering their form, giving the visitor a fresh id with no users
+# row; on submit InitCookie resets that to 113. The token must still
+# verify, or registration and login-after-logout always get a 403.
+# ----------------------------------------------------------------
+HabitatHarness::freeze_time(1_700_000_000);
+{
+    no warnings 'once';
+    my $tok;
+    {
+        local $HabitatEngine::UserID   = 1002;    # fresh id from DoNewLoginDB
+        local %HabitatEngine::UserData = ( id => 1002 );    # no username: no account yet
+        $tok = HabitatEngine::GenCSRFToken();
+    }
+    {
+        local $HabitatEngine::UserID   = 113;    # "user row vanished" on submit
+        local %HabitatEngine::UserData = ();
+        is( HabitatEngine::VerifyCSRFToken($tok), 1, "pre-account form token verifies after id reset (113)" );
+    }
+    {
+        local $HabitatEngine::UserID   = 111;    # plain anonymous
+        local %HabitatEngine::UserData = ();
+        is( HabitatEngine::VerifyCSRFToken($tok), 1, "  ... and for a plain anonymous visitor (111)" );
+    }
+    {
+        local $HabitatEngine::UserID   = 1001;
+        local %HabitatEngine::UserData = ( username => 'alice' );
+        is( HabitatEngine::VerifyCSRFToken($tok), 0, "anonymous token does not verify for a logged-in account" );
+        my $alice = HabitatEngine::GenCSRFToken();
+        local $HabitatEngine::UserID   = 113;
+        local %HabitatEngine::UserData = ();
+        is( HabitatEngine::VerifyCSRFToken($alice), 0, "an account's token does not verify for anonymous visitors" );
+    }
 }
 
 done_testing;

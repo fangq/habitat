@@ -179,10 +179,25 @@ sub BuildSessionCookie {
 # CSRF
 # ----------------------------------------------------------------
 
+# The identity a CSRF token is bound to: the account id for a real,
+# loaded account, else 0 for everyone without one. Binding to the raw
+# $UserID broke every pre-account flow: DoEditPrefs (registration) and
+# DoLogout allocate a fresh id (DoNewLoginDB) before rendering the form,
+# but that id has no users row yet, so on submit InitCookie resets the
+# visitor to 113 and the token never verified (registration and
+# login-after-logout always got a 403). Sharing one anonymous identity is
+# no weaker than before: all anonymous visitors already shared id 111.
+sub _csrf_identity {
+    no warnings 'once';
+    my $uid  = $HabitatEngine::UserID;
+    my $name = $HabitatEngine::UserData{'username'};
+    return ( defined($uid) && $uid >= 1000 && defined($name) && $name ne '' ) ? $uid : 0;
+}
+
 sub GenCSRFToken {
     no warnings 'once';
     my $exp = $HabitatEngine::Now + 86400;
-    my $uid = defined($HabitatEngine::UserID) ? $HabitatEngine::UserID : 0;
+    my $uid = _csrf_identity();
     my $sig = Hmac("csrf|$uid|$exp");
     return "$exp|$sig";
 }
@@ -194,7 +209,7 @@ sub VerifyCSRFToken {
     my ( $exp, $sig ) = ( $1, $2 );
     no warnings 'once';
     return 0 if ( $exp < $HabitatEngine::Now );
-    my $uid = defined($HabitatEngine::UserID) ? $HabitatEngine::UserID : 0;
+    my $uid = _csrf_identity();
     return ConstantEq( $sig, Hmac("csrf|$uid|$exp") ) ? 1 : 0;
 }
 
