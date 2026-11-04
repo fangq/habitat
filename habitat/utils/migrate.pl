@@ -145,7 +145,11 @@ my %COLUMN_TRANSFORM = (
 
             # Legacy $FS2-joined hash (\x1e2 == "\x1e" . "2")
             my $FS2 = "\x1e2";
-            my %h   = split( /$FS2/, $val );
+            my %h   = do {
+                my @kv = split( /$FS2/, $val, -1 );
+                push @kv, '' if ( @kv % 2 );    # legacy blobs may end on a key
+                @kv;
+            };
             return encode_json( \%h );
         },
     },
@@ -272,6 +276,18 @@ sub migrate_page {
             data      => $r->[12],
             tag       => $r->[13],
         };
+
+        # Rows without a revision number (seen in old installs: a dangling
+        # minor-edit patch with no base, or a stray save of a generated
+        # page) are invisible to the legacy engine, which opens pages
+        # with `SELECT max(revision), *`: a page with only such rows
+        # renders as a new page. Skip them so the migrated wiki matches.
+        if ( !defined( $row->{revision} ) || $row->{revision} eq '' ) {
+            log_msg sprintf( "  skip %s: row without a revision number (not visible in the legacy wiki)",
+                $row->{id} // '?' );
+            $report->{'_skipped_norev'}++;
+            next;
+        }
         push @{ $by_id{ $row->{id} } }, $row;
     }
 
@@ -516,6 +532,7 @@ for my $tbl_spec (@TABLES) {
 # Summary
 # ----------------------------------------------------------------
 my $patch_failures = delete( $report{_patch_failures} ) // 0;
+my $skipped_norev  = delete( $report{_skipped_norev} )  // 0;
 print "\n--- migration summary ---\n";
 printf "%-30s %-12s %-12s\n", "table", "source", "dest";
 for my $label ( sort keys %report ) {
@@ -523,6 +540,7 @@ for my $label ( sort keys %report ) {
 }
 
 print "inline patch failures: $patch_failures (see WARNING lines)\n" if $patch_failures;
+print "page rows skipped (no revision number): $skipped_norev\n" if $skipped_norev;
 
 $src->disconnect;
 $dst->disconnect unless $dry_run;

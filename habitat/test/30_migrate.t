@@ -233,6 +233,60 @@ unlink $dst_path;
 }
 
 # ----------------------------------------------------------------
+# Regression (MCX wiki data): rows without a revision number are
+# invisible to the legacy engine (`SELECT max(revision), *`), so they
+# are skipped; and a legacy prefs blob that ends on a key converts
+# without dropping the other keys.
+# ----------------------------------------------------------------
+{
+    my ( undef, $nsrc ) = tempfile( "habitat-norev-src-XXXX", SUFFIX => '.db', UNLINK => 1, OPEN => 0, TMPDIR => 1 );
+    my ( undef, $ndst ) = tempfile( "habitat-norev-dst-XXXX", SUFFIX => '.db', UNLINK => 1, OPEN => 0, TMPDIR => 1 );
+    unlink $ndst;
+    my $s = DBI->connect( "dbi:SQLite:dbname=$nsrc", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    $s->do(
+        q{CREATE TABLE page (
+        id varchar(512), version integer,
+        author varchar(32), revision integer, tupdate integer, tcreate integer,
+        ip varchar(32), host varchar(64), summary varchar(128), text text,
+        minor integer, newauthor integer, data varchar(32), tag varchar(32)
+    )}
+    );
+    $s->do(
+        q{CREATE TABLE user (
+        id INTEGER PRIMARY KEY, name varchar(32), pass varchar(255), randkey varchar(255),
+        groupid varchar(255), lang varchar(8), email varchar(64), param varchar(32),
+        createtime integer, stylesheet varchar(128), createip varchar(32), tzoffset integer,
+        pagecreate varchar(512), pagemodify varchar(512)
+    )}
+    );
+    my $ins = "INSERT INTO page (id, revision, author, text) VALUES (?,?,?,?)";
+    $s->do( $ins, undef, 'Real',  1,     'alice', "real v1\n" );
+    $s->do( $ins, undef, 'Real',  2,     'alice', "real v2\n" );
+    $s->do( $ins, undef, 'Real',  undef, 'bot',   "stray\n" );         # extra row, no revision
+    $s->do( $ins, undef, 'Ghost', undef, 'bot',   "dangling patch\n" ); # only a revision-less row
+    $s->do( "INSERT INTO user (id, name, stylesheet) VALUES (?,?,?)",
+        undef, 1001, 'alice', join( "\x1e2", 'rcdays', '30', 'editrows', '20', 'dangling' ) );
+    $s->disconnect;
+
+    my ( $rc, $out ) = run_migrate( "--source", "dbi:SQLite:dbname=$nsrc", "--dest", "dbi:SQLite:dbname=$ndst" );
+    is( $rc, 0, "source with revision-less rows: migration exit code 0" );
+    like( $out, qr/page rows skipped \(no revision number\): 2/, "  ... both rows reported as skipped" );
+    my $d = DBI->connect( "dbi:SQLite:dbname=$ndst", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    is_deeply(
+        $d->selectrow_arrayref("SELECT revision, text FROM page WHERE id='Real'"),
+        [ 2, "real v2\n" ],
+        "  ... a real page keeps its real current revision"
+    );
+    is( $d->selectrow_array("SELECT COUNT(*) FROM page WHERE id='Ghost'"),
+        0, "  ... a page with only revision-less rows is not migrated (legacy wiki shows it as new)" );
+    require JSON::PP;
+    my $prefs = JSON::PP::decode_json( $d->selectrow_array("SELECT prefs FROM users WHERE id=1001") );
+    is_deeply( $prefs, { rcdays => '30', editrows => '20', dangling => '' },
+        "  ... odd-length legacy prefs blob converts with all keys" );
+    $d->disconnect;
+}
+
+# ----------------------------------------------------------------
 # A source that already has a schema fingerprint (a new-engine DB):
 # its row is not copied; the destination keeps its own current one.
 # (Copying it used to be a duplicate primary key.)
