@@ -230,4 +230,50 @@ unlink $dst_path;
     $d->disconnect;
 }
 
+# ----------------------------------------------------------------
+# Regression: inline FS4 minor-edit chains are applied FORWARD (base
+# is the oldest text; each "meta\x1e5diff" part is a later edit), the
+# same way the engine's PatchPage renders them. The migrator used to
+# replay them backwards and store the stale base as current text.
+# Covers both diff styles PatchText accepts.
+# ----------------------------------------------------------------
+{
+    require Text::Diff;
+    my $FS = "\x1e";
+    my @v  = ( "line1\n", "line1\nline2\n", "line1\nline2\nline3\n" );
+    my $u  = Text::Diff::diff( \$v[0], \$v[1], { STYLE => 'Unified' } );
+    my $o  = Text::Diff::diff( \$v[1], \$v[2], { STYLE => 'OldStyle' } );
+    my $chained =
+      $v[0] . "${FS}4" . "1700000001|alice|h|minor 1${FS}5" . $u . "${FS}4" . "1700000002|alice|h|minor 2${FS}5" . $o;
+
+    my ( undef, $csrc ) = tempfile( "habitat-chain-src-XXXX", SUFFIX => '.db', UNLINK => 1, OPEN => 0, TMPDIR => 1 );
+    my ( undef, $cdst ) = tempfile( "habitat-chain-dst-XXXX", SUFFIX => '.db', UNLINK => 1, OPEN => 0, TMPDIR => 1 );
+    unlink $cdst;
+    my $s = DBI->connect( "dbi:SQLite:dbname=$csrc", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    $s->do(
+        q{CREATE TABLE page (
+        id varchar(512), version integer,
+        author varchar(32), revision integer, tupdate integer, tcreate integer,
+        ip varchar(32), host varchar(64), summary varchar(128), text text,
+        minor integer, newauthor integer, data varchar(32), tag varchar(32)
+    )}
+    );
+    $s->do( "INSERT INTO page (id, revision, author, text) VALUES (?,?,?,?)",
+        undef, 'Chained', 1, 'alice', "old major\n" );
+    $s->do( "INSERT INTO page (id, revision, author, text) VALUES (?,?,?,?)",
+        undef, 'Chained', 2, 'alice', $chained );
+    $s->disconnect;
+
+    my ( $rc, $out ) =
+      run_migrate( "--source", "dbi:SQLite:dbname=$csrc", "--dest", "dbi:SQLite:dbname=$cdst" );
+    is( $rc, 0, "chained-page migration: exit code 0" );
+    my $d = DBI->connect( "dbi:SQLite:dbname=$cdst", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    my ( $text, $rev ) = $d->selectrow_array("SELECT text, revision FROM page WHERE id='Chained'");
+    is( $text, $v[2], "inline chain replayed forward: current text has every minor edit" );
+    is( $rev,  2,     "current revision number kept" );
+    is( $d->selectrow_array("SELECT text FROM page_revisions WHERE page_id='Chained' AND revision=1"),
+        "old major\n", "earlier major revision kept as a snapshot" );
+    $d->disconnect;
+}
+
 done_testing;

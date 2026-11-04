@@ -294,70 +294,42 @@ sub migrate_page {
     for my $id ( sort keys %by_id ) {
         my @rows = @{ $by_id{$id} };
 
-        # Reconstruct all revisions for this page. Each legacy row
-        # represents the current text at its `revision` value plus
-        # optionally an inline FS4-chain of MINOR revisions BELOW
-        # that one (since the wiki's "minor edit" path appended
-        # diffs to the current row's text).
-        my @history;    # ascending list of { revision, text, meta... }
+        # Reconstruct each legacy row's text. A row's text may carry an
+        # inline FS4-chain: the base is the text as of that row's major
+        # save, and each following part ("meta\x1e5diff") is a later
+        # MINOR edit applied FORWARD on top of it. This is exactly what
+        # the engine's PatchPage does when it renders such a row, so the
+        # row's real content is base + every patch in order. (An earlier
+        # version replayed the chain backwards, storing the stale base
+        # as the current text.) Minor edits have no integer revision of
+        # their own, so each row becomes one revision holding its fully
+        # patched text; intermediate minor states are not kept.
+        my @history;    # one entry per legacy row
         for my $row (@rows) {
-            my @patches = split( /$FS4/, $row->{text} );
-            my $base    = $patches[0];                     # snapshot for this row's revision
-
-            # First, push the row's snapshot itself.
-            push @history,
-              {
-                revision  => $row->{revision},
-                version   => $row->{version},
-                author    => $row->{author},
-                tupdate   => $row->{tupdate},
-                tcreate   => $row->{tcreate},
-                ip        => $row->{ip},
-                host      => $row->{host},
-                summary   => $row->{summary},
-                minor     => $row->{minor},
-                newauthor => $row->{newauthor},
-                data      => $row->{data},
-                tag       => $row->{tag},
-                text      => $base,
-              };
-
-            # Each subsequent patch reconstructs an EARLIER minor
-            # revision (apply, get progressively older text). The
-            # legacy format encodes "ts|user|host|summary\x1e5diff";
-            # take everything after \x1e5 as the patch payload.
-            my $cur_text = $base;
+            my @patches  = split( /$FS4/, $row->{text} );
+            my $cur_text = $patches[0];
             for ( my $i = 1 ; $i < @patches ; $i++ ) {
                 my $part = $patches[$i];
                 next if ( $part =~ /$FS5$/ );    # empty diff
-                my @half = split( /$FS5/, $part );
-                my $diff = $half[-1];
-                next if ( $diff eq '' );
-                $cur_text = eval { Text::Patch::patch( $cur_text, $diff, STYLE => "Unified" ) };
-                last if $@;                      # malformed chain; stop
-                push @history,
-                  {
-                    revision  => $row->{revision} - $i,
-                    version   => $row->{version},
-                    author    => $row->{author},
-                    tupdate   => $row->{tupdate},
-                    tcreate   => $row->{tcreate},
-                    ip        => $row->{ip},
-                    host      => $row->{host},
-                    summary   => $row->{summary},
-                    minor     => 1,
-                    newauthor => 0,
-                    data      => $row->{data},
-                    tag       => $row->{tag},
-                    text      => $cur_text,
-                  };
+                my $diff = ( split( /$FS5/, $part ) )[-1];
+                next if ( !defined($diff) || $diff eq '' );
+
+                # Same style detection as the engine's PatchText.
+                my $style = ( $diff =~ /^\@\@/ ) ? 'Unified' : 'OldStyle';
+                my $next  = eval { Text::Patch::patch( $cur_text, $diff, STYLE => $style ) };
+                if ( $@ || !defined $next ) {
+                    log_msg sprintf( "  WARNING %s r%d: inline patch %d/%d (%s) failed; "
+                          . "keeping text through patch %d",
+                        $id, $row->{revision}, $i, $#patches, $style, $i - 1 );
+                    $report->{'_patch_failures'}++;
+                    last;
+                }
+                $cur_text = $next;
             }
+            push @history, { %$row, text => $cur_text };
         }
 
-        # Sort by revision ascending, dedupe (legacy rows can have
-        # both a major-rev row and an inline-derived row at the same
-        # revision number; prefer the major-rev row, which is the
-        # snapshot, and which we pushed first).
+        # Sort by revision ascending; dedupe defensively (first wins).
         my %seen;
         @history =
           grep { !$seen{ $_->{revision} }++ } sort { $a->{revision} <=> $b->{revision} } @history;
@@ -526,11 +498,14 @@ for my $tbl_spec (@TABLES) {
 # ----------------------------------------------------------------
 # Summary
 # ----------------------------------------------------------------
+my $patch_failures = delete( $report{_patch_failures} ) // 0;
 print "\n--- migration summary ---\n";
 printf "%-30s %-12s %-12s\n", "table", "source", "dest";
 for my $label ( sort keys %report ) {
     printf "%-30s %-12s %-12s\n", $label, $report{$label}{src}, $report{$label}{dst};
 }
+
+print "inline patch failures: $patch_failures (see WARNING lines)\n" if $patch_failures;
 
 $src->disconnect;
 $dst->disconnect unless $dry_run;
