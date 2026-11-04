@@ -209,4 +209,25 @@ unlink $dst_path;
     $d->disconnect;
 }
 
+# ----------------------------------------------------------------
+# Regression: a legacy source that the new engine has already been
+# pointed at carries an EMPTY `users` table (from init_schema) next to
+# the populated legacy `user`. The populated one must win.
+# ----------------------------------------------------------------
+{
+    my $s =
+      DBI->connect( "dbi:SQLite:dbname=$src_path", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    $s->do("CREATE TABLE users (id integer PRIMARY KEY, name varchar(32), email varchar(64))");
+    $s->disconnect;
+    unlink $dst_path;
+    my ( $rc, $out ) = run_migrate( "--source", "dbi:SQLite:dbname=$src_path",
+        "--dest", "dbi:SQLite:dbname=$dst_path", );
+    is( $rc, 0, "migration with empty users + populated user: exit code 0" );
+    my $d =
+      DBI->connect( "dbi:SQLite:dbname=$dst_path", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    is( $d->selectrow_array("SELECT COUNT(*) FROM users"),
+        2, "populated legacy `user` preferred over empty `users`" );
+    $d->disconnect;
+}
+
 done_testing;

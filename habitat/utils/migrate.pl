@@ -414,13 +414,19 @@ for my $tbl_spec (@TABLES) {
     my $dst_table = $tbl_spec->{dest};
 
     # Source may carry either the legacy or the new table name (e.g.
-    # "user" or "users"). Prefer the one that exists.
+    # "user" or "users"). Prefer the first candidate that has rows,
+    # else the first that exists. A legacy DB that the new engine has
+    # already been pointed at carries BOTH: an empty `users` created by
+    # init_schema next to the populated legacy `user`. Picking by
+    # existence alone silently migrated zero accounts in that case.
     if ( my $aliases = $ALIAS_SOURCES{$dst_table} ) {
-        my $found;
+        my ( $found, $nonempty );
         for my $cand (@$aliases) {
-            if ( table_exists( $src, $cand ) ) { $found = $cand; last; }
+            next unless table_exists( $src, $cand );
+            $found //= $cand;
+            if ( row_count( $src, $cand ) > 0 ) { $nonempty = $cand; last; }
         }
-        $src_table = $found if defined $found;
+        $src_table = $nonempty // $found // $src_table;
     }
 
     my $label = $src_table eq $dst_table ? $dst_table : "$src_table -> $dst_table";

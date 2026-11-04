@@ -29,13 +29,10 @@
 #      accepts the legacy crypt(3) form and UpgradePasswordHashDB
 #      transparently rotates them to bcrypt on first successful login.
 #
-#   3. RULE PAGES. For every page in the new DB whose id ends with
-#      .v0 / .v1 / .e0 / .e1 (the four legacy ApplyRegExpRules
-#      namespaces), the line-oriented `from/to/opt` body is parsed
-#      and rewritten as a JSON array — the format EvalLocalRules
-#      consumes. The old line format still works at runtime; the
-#      JSON rewrite is so future edits get the structured, validated
-#      form.
+#   Rule pages (.v0/.v1/.e0/.e1) are copied verbatim. The engine applies
+#   them with ApplyRegExpRules, which only reads the line-oriented
+#   `from/to/opt` form; rewriting them to JSON (as an earlier version of
+#   this script did) broke every page that inherits a rule.
 #
 # Outputs after a successful run:
 #   <path_to_old_config>.new
@@ -50,7 +47,6 @@ use Getopt::Long;
 use File::Basename ();
 use Habitat::Store ();
 use DBI;
-use JSON::PP;
 
 # Keys that the modernization stages explicitly retired. Stage 1
 # removed the DES captcha key, Stage 5 dropped the legacy notify
@@ -139,7 +135,7 @@ if ( !$force && !$dry_run ) {
 # ----------------------------------------------------------------
 # Step 1: config migration
 # ----------------------------------------------------------------
-log_msg "step 1/3: rewriting config -> $new_config";
+log_msg "step 1/2: rewriting config -> $new_config";
 {
     open( my $in, '<', $old_config ) or die "open $old_config: $!\n";
     my @out;
@@ -196,7 +192,7 @@ log_msg "step 1/3: rewriting config -> $new_config";
 # ----------------------------------------------------------------
 # Step 2: hand off DB copy to utils/migrate.pl
 # ----------------------------------------------------------------
-log_msg "step 2/3: invoking utils/migrate.pl";
+log_msg "step 2/2: invoking utils/migrate.pl";
 {
     my @cmd = (
         $^X, "$Bin/migrate.pl",
@@ -212,59 +208,6 @@ log_msg "step 2/3: invoking utils/migrate.pl";
     die "migrate.pl exited with status $rc\n" if ( $rc != 0 );
 }
 
-# ----------------------------------------------------------------
-# Step 3: rule-page conversion (in the destination DB)
-#
-# Pages whose id ends with .v0/.v1/.e0/.e1 carry rewrite rules that
-# the wiki applies via ApplyRegExpRules. The line-oriented form
-# (`from/to/opt`) still works in the new engine, but EvalLocalRules
-# (Stage 6) takes a structured JSON array. We rewrite the body so
-# future edits use the validated form. The conversion uses the same
-# regex ApplyRegExpRules does so parses are bit-identical.
-# ----------------------------------------------------------------
-log_msg "step 3/3: rewriting rule pages to JSON in destination";
-if ($dry_run) {
-    log_msg "  (skipped under --dry-run)";
-} else {
-    my $dst =
-      DBI->connect( $dest_dsn, $dest_user, $dest_pass,
-        { RaiseError => 1, AutoCommit => 1, PrintError => 0 } )
-      or die "dest connect failed: $DBI::errstr\n";
-
-    my $rule_re = qr/\.(?:v[01]|e[01])$/;
-    my $rows    = $dst->selectall_arrayref(
-            "SELECT id, text FROM page WHERE id LIKE '%.v0' OR id LIKE '%.v1' "
-          . "OR id LIKE '%.e0' OR id LIKE '%.e1'" );
-    my ( $converted, $skipped ) = ( 0, 0 );
-    for my $row ( @{ $rows || [] } ) {
-        my ( $id, $body ) = @$row;
-        next unless ( $id =~ $rule_re );
-        my $json = legacy_rules_to_json($body);
-        if ( !defined $json ) {
-            log_msg "  skip $id (no parseable rules)";
-            $skipped++;
-            next;
-        }
-
-        # Skip pages already in JSON form (idempotent re-runs).
-        if ( $body =~ /\A\s*\[/ ) {
-            log_msg "  skip $id (already JSON)";
-            $skipped++;
-            next;
-        }
-        $dst->do( "UPDATE page SET text=? WHERE id=?", undef, $json, $id );
-        $dst->do(
-            "UPDATE page_revisions SET text=? WHERE page_id=? "
-              . "AND revision=(SELECT revision FROM page WHERE id=?)",
-            undef, $json, $id, $id
-        );
-        $converted++;
-        log_msg "  converted $id";
-    }
-    log_msg "  rule pages: $converted converted, $skipped skipped";
-    $dst->disconnect;
-}
-
 log_msg "done.";
 log_msg "outputs:";
 log_msg "  new config : $new_config" . ( $dry_run ? "  (would be written)" : "" );
@@ -272,54 +215,3 @@ log_msg "  new db     : $dest_dsn" .   ( $dry_run ? "  (would be written)" : "" 
 log_msg "next: point habitatdb/config at the new DB / Postgres DSN and";
 log_msg "      diff $new_config against your old config before swapping.";
 
-# ----------------------------------------------------------------
-# Helpers
-# ----------------------------------------------------------------
-
-# Convert a legacy line-oriented rule body into a JSON array. The
-# parser mirrors ApplyRegExpRules: each non-blank, non-comment line
-# is either `from/to[/flags]` (regex rewrite), `GREP pattern`,
-# `HEAD N`, or `TAIL N`. GREP/HEAD/TAIL have no JSON equivalent and
-# are preserved verbatim as `{op: 'GREP', arg: ...}` so they can be
-# round-tripped by a future tooling pass.
-#
-# Returns the JSON string, or undef if the body has no parseable
-# rules (caller can choose to leave the body alone in that case).
-sub legacy_rules_to_json {
-    my ($body) = @_;
-    return undef if ( !defined $body || $body !~ /\S/ );
-
-    # Continuation: `\<LF>` joins lines, mirroring ApplyRegExpRules.
-    my $FSA = "\x1eA";
-    my $b   = $body;
-    $b =~ s/\\\s*\r*\n/$FSA/g;
-
-    my @rules;
-    for my $line ( split /\n/, $b ) {
-        $line =~ s/[\r\n]+$//;
-        next if ( $line eq '' );
-
-        if ( $line =~ /^GREP\s+(.*)/ ) { push @rules, { op => 'GREP', arg => $1 }; next; }
-        if ( $line =~ /^HEAD\s+(.*)/ ) { push @rules, { op => 'HEAD', arg => $1 }; next; }
-        if ( $line =~ /^TAIL\s+(.*)/ ) { push @rules, { op => 'TAIL', arg => $1 }; next; }
-
-        # Same regex ApplyRegExpRules uses, so we accept exactly
-        # the line set the wiki engine accepts.
-        if ( $line =~ m{(.*[^\\])/(.*[^\\])(/([mgi])){0,1}$} ) {
-            my ( $from, $to, $opt ) = ( $1, $2, $4 // '' );
-            $to =~ s/\\\//\//g;
-            $to =~ s/\\\$/\$/g;
-            $to =~ s/\\N/\n/g;
-            my %r = ( from => $from, to => $to );
-            $r{opt} = $opt if ( $opt ne '' );
-            push @rules, \%r;
-        }
-
-        # Unparseable lines are silently dropped (same behavior as
-        # the runtime parser). A future strict mode could warn.
-    }
-
-    return undef if ( !@rules );
-    my $enc = JSON::PP->new->canonical(1)->pretty(0);
-    return $enc->encode( \@rules );
-}
