@@ -124,7 +124,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $ConfigError $LangError $UploadPattern $LocalTree %Permissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
-  %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber
+  %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
   $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache);
 
 # == Configuration =====================================================
@@ -252,6 +252,7 @@ $UseCaptcha          = 1;            # flag to enable captcha
 $DiscussSuffix       = '..discuss';
 $DBName              = "";
 $UseActivation       = 0;
+$DocType             = q(<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">);    # first line of every page; e.g. "<!DOCTYPE HTML>" for HTML5 standards mode
 $UseDetailedLog      = 0;
 $PageItemCount       = 20;
 $ListItemCount       = 100;
@@ -2086,8 +2087,7 @@ sub GetHtmlHeader {
     my ( $dtd, $html, $bodyExtra, $stylesheet, $printcss, $fontcss );
 
     $html  = '';
-    $dtd   = '-//W3C//DTD XHTML 1.0 Transitional//EN';
-    $html  = qq(<!DOCTYPE HTML PUBLIC "$dtd">\n);
+    $html  = ( defined($DocType) && $DocType ne '' ? $DocType : qq(<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">) ) . "\n";
     $title = $q->escapeHTML($title);
     $html .= "<html><head><title>$title</title>\n";
     $html .= "<meta http-equiv=\"content-type\" content=\"text/html; charset=$HttpCharset\"/>";
@@ -2223,7 +2223,7 @@ sub GetGotoBar {
     my ($id) = @_;
     my ( $main, $bartext );
 
-    $bartext = '<ul class="wikiheaderlist"><li>';
+    $bartext = '<ul class="wikiheaderlist"><li class="icon-home">';
     $bartext .= &GetPageLinkText( $HomePage, T('Home') );
     $bartext .= '</li>';
 
