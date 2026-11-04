@@ -23,6 +23,7 @@ use lib $Bin;
 use Test::More;
 use File::Temp qw(tempdir);
 use CGI;
+use JSON::PP ();    # the engine loads JSON::PP on demand; this test calls it directly
 use HabitatHarness;
 
 HabitatHarness::load_wiki();

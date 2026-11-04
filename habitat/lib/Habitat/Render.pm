@@ -335,7 +335,8 @@ sub EvalLocalRules {
 
     my $text = $origText;
     my $parsed;
-    eval { $parsed = decode_json($rules); };
+    require JSON::PP;    # loaded on demand; outside the eval so a missing module is not reported as a rules error
+    eval { $parsed = JSON::PP::decode_json($rules); };
     if ( $@ || ref($parsed) ne 'ARRAY' ) {
         my $err = $@ || T('Rules must be a JSON array of {from,to,opt} objects.');
         return $origText . '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml($err);
@@ -375,6 +376,7 @@ sub EvalLocalRules {
 sub ScrubRawHtml {
     my ($html) = @_;
     if ( !defined $HtmlScrubber ) {
+        require HTML::Scrubber;    # loaded on demand: trusted pages never get here
         $HtmlScrubber =
           HTML::Scrubber->new( default => [ 0, { '*' => 0 } ], comment => 0, process => 0 );
         my %attr = (

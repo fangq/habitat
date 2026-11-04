@@ -58,10 +58,10 @@ use strict;
 use warnings;
 
 use DBI;
-use Text::Diff;
-use Text::Patch;
-use HTML::Scrubber;
-use JSON::PP;
+# Text::Diff, Text::Patch, HTML::Scrubber and JSON::PP are loaded on
+# demand (require at the call site): an ordinary page view needs none of
+# them, and under plain CGI every module is re-loaded on every request
+# (~14 ms for these four plus Crypt::Bcrypt on the NeuroJSON host).
 use Habitat::Store qw(SafeIdent ReadDBItems WriteDBItems DeleteDBItems CopyDBItems);
 use Habitat::Auth qw(
   RandomBytes RandomHex GetSiteSecret Hmac ConstantEq
@@ -2972,17 +2972,19 @@ sub GetDiff {
     my ( $old, $new, $lock ) = @_;
     my ( $diff_out, $oldName, $newName, $key );
 
-    return diff( \$old, \$new, { STYLE => 'OldStyle' } );
+    require Text::Diff;
+    return Text::Diff::diff( \$old, \$new, { STYLE => 'OldStyle' } );
 }
 
 sub PatchText {
     my ( $base, $patch, $lock ) = @_;
     my ( $patch_out, $oldName, $newName, $key );
 
+    require Text::Patch;
     if ( $patch =~ /^\@\@/ ) {
-        return patch( $base, $patch, { STYLE => 'Unified' } );
+        return Text::Patch::patch( $base, $patch, { STYLE => 'Unified' } );
     }
-    return patch( $base, $patch, { STYLE => 'OldStyle' } );
+    return Text::Patch::patch( $base, $patch, { STYLE => 'OldStyle' } );
 }
 
 sub DiffToHTML {
@@ -3347,6 +3349,7 @@ sub SavePageDB {
         my ( $kind, $body ) = ( 'snapshot', $cur_text );
 
         if ( $UseDiff && defined($new_text) && defined($cur_text) ) {
+            require Text::Diff;    # outside the eval: a missing module must not degrade silently
             my $diff = eval { Text::Diff::diff( \$new_text, \$cur_text, { STYLE => 'Unified' } ); };
             if ( !$@ && defined($diff) && length($diff) < length($cur_text) ) {
                 $kind = 'diff';
@@ -3519,6 +3522,7 @@ sub OpenKeptListDB {
             if ( !defined($running_text) ) {
                 $resolved = $text;    # first iteration = current
             } elsif ( $kind eq 'diff' ) {
+                require Text::Patch;    # outside the eval: never show a raw diff as page text
                 $resolved =
                   eval { Text::Patch::patch( $running_text, $text, STYLE => 'Unified' ); };
                 $resolved = $text if ( $@ || !defined($resolved) );
@@ -3628,7 +3632,8 @@ sub LoadUserDataDB {
         # migration may still carry the $FS2-joined form, accept both.
         if ( defined($extradata) && $extradata ne '' ) {
             if ( $extradata =~ /^\s*\{/ ) {
-                my $h = eval { decode_json($extradata) };
+                require JSON::PP;
+                my $h = eval { JSON::PP::decode_json($extradata) };
                 %extra = %$h if ( !$@ && ref($h) eq 'HASH' );
             } else {
                 %extra = split( /$FS2/, $extradata );
@@ -5167,7 +5172,8 @@ sub SaveUserDataDB {
     # `stylesheet` and stores JSON instead of $FS2-joined text.
     # WriteDBItems generates a dialect-aware upsert (REPLACE on
     # SQLite, ON CONFLICT DO UPDATE on Postgres).
-    my $prefs_json = encode_json( \%extra );
+    require JSON::PP;
+    my $prefs_json = JSON::PP::encode_json( \%extra );
     WriteDBItems(
         $userdb,
         "id,name,pass,groupid,lang,email,param,createtime,"

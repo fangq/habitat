@@ -24,7 +24,9 @@ use strict;
 use warnings;
 use Exporter qw(import);
 use Digest::SHA ();
-use Crypt::Bcrypt qw(bcrypt bcrypt_check);
+# Crypt::Bcrypt is loaded on demand in HashPassword/VerifyPassword: only
+# login and password changes need it, and under plain CGI every module
+# is re-loaded on every request.
 use Habitat::Store ();
 
 our @EXPORT_OK = qw(
@@ -346,14 +348,16 @@ sub HashPassword {
     my ($pw) = @_;
     return '' if ( !defined($pw) || $pw eq '' );
     my $salt = RandomBytes(16);
-    return bcrypt( $pw, '2b', 12, $salt );
+    require Crypt::Bcrypt;
+    return Crypt::Bcrypt::bcrypt( $pw, '2b', 12, $salt );
 }
 
 sub VerifyPassword {
     my ( $pw, $stored ) = @_;
     return 0 if ( !defined($pw) || !defined($stored) || $stored eq '' );
     if ( $stored =~ /\A\$2[abxy]\$/ ) {
-        return bcrypt_check( $pw, $stored ) ? 1 : 0;
+        require Crypt::Bcrypt;
+        return Crypt::Bcrypt::bcrypt_check( $pw, $stored ) ? 1 : 0;
     }
     my $h = crypt( $pw, $stored );
     return 0 if ( !defined($h) );
