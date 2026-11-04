@@ -2411,6 +2411,23 @@ sub RestorePageHash {
 
 # added by FangQ, 2006/4/16
 
+# Load {'page'}{'admin_saved'} for a page that was not opened via
+# OpenPageDB (e.g. one pulled in by {{Page}} embedding). Leaves an
+# already-loaded flag alone. Pages not in the DB (e.g. %BuildinPages)
+# stay untrusted.
+sub LoadPageTrust {
+    my ($id) = @_;
+    return if ( defined $Pages{$id}->{'page'}{'admin_saved'} );
+    my $pagedb = &GetPageDB($id);
+    my $trust  = 0;
+    if ( $dbh ne "" && $pagedb ne "" && SafeIdent($pagedb) ) {
+        ($trust) = $dbh->selectrow_array(
+            "SELECT admin_saved FROM $pagedb WHERE id=? ORDER BY revision DESC LIMIT 1",
+            undef, $id );
+    }
+    $Pages{$id}->{'page'}{'admin_saved'} = $trust ? 1 : 0;
+}
+
 sub EmbedWikiPage {
     my ( $id, $uri, $name, $text ) = @_;
     $uri  = '' if ( !defined($uri) );
@@ -2430,8 +2447,18 @@ sub EmbedWikiPage {
     if ( PageExists($id) && @$PageStack <= $MaxEmbedDepth ) {
         if ( $uri eq "" ) {
             if ( $text eq '' ) {
+
+                # The embedded page renders its own content, so it gets
+                # its own raw-HTML trust. ReadRawWikiPage does not load
+                # admin_saved, so without this every embed was scrubbed.
+                &LoadPageTrust($id);
                 $res = &WikiToHTML( $id, ReadRawWikiPage($id) );
             } else {
+
+                # Caller-supplied text formatted with $id's rules: the
+                # text belongs to the embedding page, so never let it
+                # inherit $id's trust.
+                local $Pages{$id}->{'page'}{'admin_saved'} = 0;
                 $res = &WikiToHTML( $id, $text );    # use the rules for $id to format $text
             }
         } else {

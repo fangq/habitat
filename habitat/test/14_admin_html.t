@@ -195,6 +195,27 @@ seed_page( 'RuleTop/Child', $body,                     1 );
 }
 
 # ----------------------------------------------------------------
+# Regression: {{Page}} embedding. The embedded page is read with
+# ReadRawWikiPage, which does not load admin_saved, so every embed was
+# scrubbed. Each embedded page must render with its OWN trust; the
+# {{Page {text}}} form renders caller text and must stay untrusted.
+# ----------------------------------------------------------------
+seed_page( 'Embed/Trusted',   "<html><script>trusted_embed()</script></html>\n", 1 );
+seed_page( 'Embed/Untrusted', "<html><script>untrusted_embed()</script></html>\n", 0 );
+seed_page( 'Embed/Host',
+    "host\n{{Embed/Trusted}}\n{{Embed/Untrusted}}\n{{Embed/Trusted {<html><script>caller_text()</script></html>}}}\n",
+    0 );
+{
+    local $HabitatEngine::WikiLinks = 0;    # as in production configs; else Embed/X is linkified first
+    delete $HabitatEngine::Pages{$_} for qw(Embed/Trusted Embed/Untrusted);
+    %HabitatEngine::TextCache = ();
+    my $out = render_fresh('Embed/Host');
+    like( $out, qr|<script>trusted_embed\(\)|, "trusted page embedded in untrusted host keeps its <script>" );
+    unlike( $out, qr|<script>untrusted_embed|, "untrusted embedded page stays scrubbed" );
+    unlike( $out, qr|<script>caller_text|,     "{{Page {text}}}: caller text does not inherit embedded page's trust" );
+}
+
+# ----------------------------------------------------------------
 # A non-admin save on an admin-trusted page revokes trust.
 # ----------------------------------------------------------------
 seed_page( 'AdminPage', "follow-up\n", 0 );
