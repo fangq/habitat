@@ -3596,11 +3596,16 @@ sub LoadUserDataDB {
         $sth =
           $dbh->selectall_arrayref( "SELECT $cols FROM $userdb WHERE id=? LIMIT 1", undef, $uid );
     } else {
+        # Case-insensitive exact match. Was `LIKE ?`: case-insensitive on
+        # SQLite but case-sensitive under MariaDB's utf8mb4_bin, and it
+        # treated % and _ in the typed name as wildcards.
         if ( $uname =~ /\@/ ) {
-            $sth = $dbh->selectall_arrayref( "SELECT $cols FROM $userdb WHERE email LIKE ? LIMIT 1",
+            $sth = $dbh->selectall_arrayref(
+                "SELECT $cols FROM $userdb WHERE UPPER(email)=UPPER(?) LIMIT 1",
                 undef, $uname );
         } else {
-            $sth = $dbh->selectall_arrayref( "SELECT $cols FROM $userdb WHERE name LIKE ? LIMIT 1",
+            $sth = $dbh->selectall_arrayref(
+                "SELECT $cols FROM $userdb WHERE UPPER(name)=UPPER(?) LIMIT 1",
                 undef, $uname );
         }
     }
@@ -3652,6 +3657,13 @@ sub LoadUserDataDB {
     $UserData{'diffrclink'}   = $extra{'diffrclink'};
     $UserData{'alldiff'}      = $extra{'alldiff'};
     $UserData{'defaultdiff'}  = $extra{'defaultdiff'};
+
+    # Registration profile; prefs keys match the legacy NeuroJSON wiki
+    # so migrated accounts keep their data.
+    $UserData{'firstname'} = $extra{'fn'};
+    $UserData{'lastname'}  = $extra{'sn'};
+    $UserData{'inst'}      = $extra{'inst'};
+    $UserData{'area'}      = $extra{'area'};
     return "";
 
     # need to print log
@@ -4463,6 +4475,28 @@ sub DoEditPrefs {
     print &GetFormStart();
     print GetHiddenValue( "edit_prefs", 1 ), "\n";
     print '<h4>' . T('User info:') . "</h4>";
+
+    # Registration profile (first/last name, institute, interests).
+    # Names are fixed once set; institute/interests stay editable.
+    # Stored values are user input, so quote them on output.
+    print '<span class="span_prefinfo"><label class="formlabel">' . T('First Name') . '</label>';
+    if ( defined( $UserData{'firstname'} ) && $UserData{'firstname'} ne '' ) {
+        print QuoteHtml( $UserData{'firstname'} ) . '</span><br/>';
+    } else {
+        print &GetFormText( 'reg_firstname', '', 20, 50 ) . '<strong>*</strong></span><br/>';
+    }
+    print '<span class="span_prefinfo"><label class="formlabel">' . T('Last Name') . '</label>';
+    if ( defined( $UserData{'lastname'} ) && $UserData{'lastname'} ne '' ) {
+        print QuoteHtml( $UserData{'lastname'} ) . '</span><br/>';
+    } else {
+        print &GetFormText( 'reg_lastname', '', 20, 50 ) . '<strong>*</strong></span><br/>';
+    }
+    print '<span class="span_prefinfo"><label class="formlabel">' . T('Institute/Company') . '</label>',
+      &GetFormText( 'reg_inst', $UserData{'inst'} // '', 20, 50 ) . '<strong>*</strong></span><br/>';
+    print '<span class="span_prefinfo"><label class="formlabel">' . T('Interests') . '</label>',
+      &GetFormText( 'reg_research', $UserData{'area'} // '', 100, 250 )
+      . '</span><hr class="wikilinepref"/>';
+
     print '<span class="span_prefinfo"><label class="formlabel">' . T('User name:') . '</label>';
     if ( $UserData{'username'} ne '' ) {
 
@@ -4479,7 +4513,7 @@ sub DoEditPrefs {
         print &GetHiddenValue( 'p_username', $UserData{'username'} ), "\n";
     } else {
         print &GetFormText( 'username', "", 20, 30 ) . "<strong>*</strong>";
-        print T('(IP address will be used if not supplied)');
+        print T('(must be unique)');
     }
     if ( $UserData{'username'} ne '' ) {
         print '</span><br><span class="span_prefinfo"><label class="formlabel">'
@@ -4523,21 +4557,24 @@ sub DoEditPrefs {
         -size      => 20,
         -maxlength => 50
       ),
-      '</span><br/>';
+      '<strong>*</strong></span><br/>';
     print '<span class="span_prefinfo"><label class="formlabel">' . T('Email Address:'), '</label>',
-      &GetFormText( 'email', "", 20, 60 ) . '<strong>*</strong></span><hr class="wikilinepref"/>';
+      &GetFormText( 'email', "", 20, 60 )
+      . '<strong>*'
+      . T('(must be unique)')
+      . '</strong></span><hr class="wikilinepref"/>';
     if ( ( $AdminPass ne '' ) || ( $EditPass ne '' ) ) {
-        print '<span class="span_prefinfo"><label class="formlabel">'
-          . T('Administrator Password:'), '</label>',
+        print '<h4>' . T('Administrator token') . '</h4>';
+        print '<span class="span_prefinfo"><label class="formlabel">' . T('Token:'), '</label>',
           $q->password_field(
             -name      => 'p_adminpw',
             -value     => '*',
             -size      => 20,
             -maxlength => 50
           ),
-          ' ', T('(blank to remove password)'), '</span><br>',
-          T('(Administrator passwords are used for special maintenance.)');
+          ' ', T('(if you do not know what this is, please leave it untouched)'), '</span><br>';
     }
+    print "<hr class='wikilinepref'><h4>" . T('Additional user preferences') . '</h4>';
     print "<hr class='wikilinepref'><h4>$recentName:</h4>";
     print '<span class="span_prefinfo"><label class="formlabel">' . T('Default days to display:'),
       '</label>',
@@ -4654,6 +4691,12 @@ sub DoUpdatePrefs {
     $newpass   = &GetParam( "new_password", "" );
     $email     = &GetParam( "p_email",      "" );
 
+    # The address is later handed to the mailer (activation notice), so
+    # only plain addresses are accepted, for new and existing users.
+    if ( $email ne "" && !ValidEmail($email) ) {
+        PrintMsg( T("Please enter a valid email address"), T("Error"), 1 );
+    }
+
     if ( $UserID < 1001 ) {
         &DoNewLoginDB() if ( $UserID < 400 );
         if ($UseActivation) {
@@ -4684,29 +4727,63 @@ sub DoUpdatePrefs {
         $username = &FreeToNormal($username);
         $username =~ s/_/ /g;
     }
+
+    # Registration profile. First/last name are required once and then
+    # fixed (DoEditPrefs no longer offers an input for them, so keep the
+    # stored value rather than reading an absent field); institute is
+    # required on every save; interests are optional.
+    my %profile;
+    for my $f (
+        [ 'firstname', 'p_reg_firstname', 50,  1 ],
+        [ 'lastname',  'p_reg_lastname',  50,  1 ],
+        [ 'inst',      'p_reg_inst',      50,  0 ],
+        [ 'area',      'p_reg_research',  250, 0 ],
+      )
+    {
+        my ( $key, $param, $max, $fixed ) = @$f;
+        my $val =
+          ( $fixed && defined( $UserData{$key} ) && $UserData{$key} ne '' )
+          ? $UserData{$key}
+          : &GetParam( $param, '' );
+        $val =~ s/[\x00-\x1f\x7f]+/ /g;    # no control chars (incl. $FS)
+        $val =~ s/^\s+|\s+$//g;
+        $val = substr( $val, 0, $max ) if ( length($val) > $max );
+        $profile{$key} = $val;
+    }
+    if ( $profile{'firstname'} eq '' || $profile{'lastname'} eq '' || $profile{'inst'} eq '' ) {
+        ErrMsg(
+            T('You must provide your first name, last name and institute/company in order to register'),
+            T('Error'), 1
+        );
+    }
+
+    # Validation failures render as a wiki message (was: die, which
+    # CGI::Carp turns into a "Software error" page). The username is
+    # user input, so it is quoted before being echoed back.
     if ( $username eq "" ) {
 
         #removing username is not allowed now
         #print T('UserName removed.'), '<br>';
         #undef $UserData{'username'};
-        die( T('User name can not be empty.') );
+        ErrMsg( T('User name can not be empty.'), T('Error'), 1 );
     } elsif ( ( !$FreeLinks ) && ( !( $username =~ /^$LinkPattern$/ ) ) ) {
-        die Ts( 'Invalid UserName %s: not saved.', $username ), "<br>\n";
+        ErrMsg( Ts( 'Invalid UserName %s: not saved.', QuoteHtml($username) ), T('Error'), 1 );
     } elsif ( $FreeLinks && ( !( $username =~ /^$FreeLinkPattern$/ ) ) ) {
-        die Ts( 'Invalid UserName %s: not saved.', $username ), "<br>\n";
+        ErrMsg( Ts( 'Invalid UserName %s: not saved.', QuoteHtml($username) ), T('Error'), 1 );
     } elsif ( length($username) > 50 ) {    # Too long
-        die T('UserName must be 50 characters or less. (not saved)'), "<br>\n";
+        ErrMsg( T('UserName must be 50 characters or less. (not saved)'), T('Error'), 1 );
     } else {
         $UserData{'username'} = $username;
     }
     if ( $password eq "" ) {
-        die( T("User must set an non-empty password.") );
+        ErrMsg( T("User must set an non-empty password."), T('Error'), 1 );
     } elsif ( length($password) < 8 ) {
-        die( T("Password is shorter than 8 char.") );
+        ErrMsg( T("Password is shorter than 8 char."), T('Error'), 1 );
     } elsif ( $password =~ /[^a-zA-Z0-9_@^\]\[!@\$%^&]/ ) {
-        die( T("Password can only contain basic latin, digits or one of '[]!\@\$%^&'.") );
+        ErrMsg( T("Password can only contain basic latin, digits or one of '[]!\@\$%^&'."),
+            T('Error'), 1 );
     } elsif ( $password ne "*" ) {
-        print T('Password changed.'), '<br>';
+        print T('Successfully set user password.'), '<br>';
         $UserData{'password'} = HashPassword($password);
     }
     if ( ( $AdminPass ne "" ) || ( $EditPass ne "" ) ) {
@@ -4770,11 +4847,12 @@ sub DoUpdatePrefs {
     if ( $LangID ne "" ) {
         $UserData{'lang'} = $lang;
     }
+    $UserData{$_} = $profile{$_} for keys %profile;
     &SaveUserDataDB();
     if ( $UserID >= 1000 ) {
         AddUserLogDB( $UserID, 'Sp', '' );
     }
-    print '<b>', T('Preferences saved.'), '</b>';
+    print '<b>', T('User settings updated.'), '</b>';
     print '</div>';
     print &GetCommonFooter();
 }
@@ -5033,16 +5111,26 @@ sub SaveUserDataDB {
         die( T('ERROR: database uninitialized!') );
     }
     die("SaveUserDataDB: unsafe table name") if ( !SafeIdent($userdb) );
-    $tmp       = ReadDBItems( $userdb, 'id', "\n", '', "name=?", $UserData{'username'} );
+    # User names are unique case-insensitively ("Alice" blocks "alice"),
+    # as on the legacy NeuroJSON wiki. UPPER() works on all three
+    # dialects; on MariaDB the utf8mb4_bin collation would otherwise
+    # make `name=?` case-sensitive.
+    # Pre-existing case-variant duplicates can return several ids. User
+    # names cannot be changed once set, so if this account is among the
+    # matches it is simply saving itself; otherwise the name is taken.
+    $tmp = ReadDBItems( $userdb, 'id', "\n", '', "UPPER(name)=UPPER(?)", $UserData{'username'} );
+    my @sameName = grep { $_ ne '' } split( /\n/, $tmp );
     $isnewuser = 0;
-    if ( $tmp eq '' ) {
+    if ( !@sameName ) {
         $isnewuser = 1;
-    } elsif ( $tmp ne $UserID ) {
-        die( Ts( 'ERROR: user name %s has already been taken!', $UserData{'username'} ) );
+    } elsif ( !grep { $_ eq $UserID } @sameName ) {
+        ErrMsg( Ts( 'ERROR: user name %s has already been taken!', QuoteHtml( $UserData{'username'} ) ),
+            T('Error'), 1 );
     }
     $tmp = ReadDBItems( $userdb, 'id', "\n", '', "email=?", $UserData{'email'} );
     if ( $tmp ne '' && $tmp ne $UserID ) {
-        die( Ts( 'ERROR: user email %s has already been taken!', $UserData{'email'} ) );
+        ErrMsg( Ts( 'ERROR: user email %s has already been taken!', QuoteHtml( $UserData{'email'} ) ),
+            T('Error'), 1 );
     }
     $passhash  = ReadDBItems( $userdb, 'pass', "\n", '', "name=?", $UserData{'username'} );
     $encpass   = $UserData{'password'};
@@ -5066,6 +5154,10 @@ sub SaveUserDataDB {
         'diffrclink'   => $UserData{'diffrclink'},
         'alldiff'      => $UserData{'alldiff'},
         'defaultdiff'  => $UserData{'defaultdiff'},
+        'fn'           => $UserData{'firstname'},
+        'sn'           => $UserData{'lastname'},
+        'inst'         => $UserData{'inst'},
+        'area'         => $UserData{'area'},
     );
 
     # The randkey column was retired in Stage 5 (replaced by HMAC-
@@ -5618,36 +5710,67 @@ sub UpdateDiffs {
 }
 
 # Translation note: the email messages are still sent in English Send an email message.
+# Conservative address check used before an address is stored or
+# handed to the mailer: no whitespace, quotes or shell/header
+# metacharacters, and a leading alphanumeric so it can never be read
+# as a command-line option.
+sub ValidEmail {
+    my ($addr) = @_;
+    return 0 if ( !defined($addr) || length($addr) > 254 );
+    return $addr =~
+      /\A[A-Za-z0-9][A-Za-z0-9._%+-]*\@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+\z/
+      ? 1
+      : 0;
+}
+
 sub SendEmail {
     my ( $to, $from, $reply, $subject, $message ) = @_;
+
+    # The recipient is user-supplied (registration form). Refuse anything
+    # that is not a plain address, and strip line breaks from every
+    # header field so nothing can inject extra headers (e.g. Bcc:).
+    if ( !ValidEmail($to) ) {
+        warn "SendEmail: refusing invalid recipient address\n";
+        return;
+    }
+    s/[\r\n]+/ /g for ( $from, $reply, $subject );
 
     if ( $SendMail =~ /\/mail$/ ) {
         &MailEmail( $to, $from, $reply, $subject, $message );
         return;
     }
 
-# sendmail options:
-#    -odq : send mail to queue (i.e. later when convenient) -oi : do not wait for "." line to exit -t : headers
-#    determine recipient.
-    open( SENDMAIL, "| $SendMail -oi -t " ) or die "Can't send email: $!\n";
-    print SENDMAIL <<"EOF";
+    # sendmail options: -oi : do not treat a lone "." line as end of input.
+    # The recipient is passed as its own argument (as on the legacy
+    # NeuroJSON wiki) through a list-form pipe open, so no shell ever
+    # parses it.
+    my $fh;
+    if ( !open( $fh, '|-', $SendMail, '-oi', $to ) ) {
+        warn "Can't send email: $!\n";
+        return;
+    }
+    print $fh <<"EOF";
 From: $from
 To: $to
 Reply-to: $reply
 Subject: $subject\n
 $message
 EOF
-    close(SENDMAIL) or warn "sendmail didn't close nicely";
+    close($fh) or warn "sendmail didn't close nicely";
 }
 
 # Translation note: the email messages are still sent in English Send an email message.
 sub MailEmail {
     my ( $to, $from, $reply, $subject, $message ) = @_;
-    open( SENDMAIL, "| $SendMail -s '$subject' '$to'" ) or die "Can't send email: $!\n";
-    print SENDMAIL <<"EOF";
+    my $fh;
+    if ( !open( $fh, '|-', $SendMail, '-s', $subject, $to ) ) {
+        warn "Can't send email: $!\n";
+        return;
+    }
+    print $fh <<"EOF";
 $message
 EOF
-    close(SENDMAIL) or warn "mail didn't close nicely";
+    close($fh) or warn "mail didn't close nicely";
 }
 
 sub ReadWatchListDB {
