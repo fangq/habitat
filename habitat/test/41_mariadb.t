@@ -101,6 +101,20 @@ for my $tbl (@expected) {
     ok( $ok, "init_schema created table $tbl in mariadb" );
 }
 
+# Page bodies over 64 KB must survive (TEXT would truncate to 65535).
+{
+    my $big = ( "0123456789abcdef" x 6400 ) . "END";    # 102403 bytes
+    $dbh->do( "INSERT INTO page (id, revision, text) VALUES (?,?,?)", undef, "BigPage", 1, $big );
+    my ($got) = $dbh->selectrow_array( "SELECT text FROM page WHERE id=?", undef, "BigPage" );
+    is( length($got), length($big), "100 KB page text round-trips untruncated" );
+    my ($type) = $dbh->selectrow_array(
+        "SELECT DATA_TYPE FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='page' AND COLUMN_NAME='text'"
+    );
+    is( lc($type), "longtext", "page.text is LONGTEXT on mariadb" );
+    $dbh->do( "DELETE FROM page WHERE id=?", undef, "BigPage" );
+}
+
 # ----------------------------------------------------------------
 # Habitat::Store helpers work against MariaDB
 # ----------------------------------------------------------------

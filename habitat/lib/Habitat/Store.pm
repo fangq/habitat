@@ -304,12 +304,25 @@ sub init_schema {
             # utf8mb4_bin (binary, case-sensitive) so ID semantics
             # match what the wiki has always assumed.
             if ( $s =~ /^\s*CREATE\s+TABLE\b/i ) {
+
+                # MySQL/MariaDB `TEXT` holds only 64 KB, and outside
+                # strict mode an oversize value is silently truncated
+                # to 65535 bytes. SQLite/Pg TEXT is unbounded and page
+                # bodies routinely exceed 64 KB ($MaxPost defaults
+                # higher), so use LONGTEXT for every text column.
+                $s =~ s/\b(\w+)\s+text\b(?=\s*[,)])/$1 LONGTEXT/gi;
                 $s .= " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin";
             }
         }
 
-        eval { $dbh->do($s) };
-        my $err = $@;
+        # init_schema runs on every CGI request; the expected
+        # "Duplicate key name" from re-running CREATE INDEX on mysql
+        # must not be printed to the error log each time. With
+        # PrintError off, detect failure via the return value too, for
+        # handles opened with RaiseError => 0 (the wiki's default).
+        local $dbh->{PrintError} = 0;
+        my $rv  = eval { $dbh->do($s) };
+        my $err = $@ || ( defined $rv ? '' : ( $dbh->errstr // 'unknown error' ) );
         next if ( !$err );
 
         # Re-running init_schema on a populated DB is supported; a
@@ -387,6 +400,27 @@ qr/duplicate column|already exists|no such column|Unknown column|no such table|U
             eval { $dbh->do("ROLLBACK TO SAVEPOINT $sp") };
         }
         eval { $dbh->do("RELEASE SAVEPOINT $sp") };
+    }
+
+    # Widen 64 KB TEXT columns created by earlier versions of this
+    # schema on mysql (see the LONGTEXT note above). One metadata query
+    # per call; ALTERs only run when something still needs widening.
+    if ( $d eq 'mysql' ) {
+        local $dbh->{PrintError} = 0;
+        my $narrow = eval {
+            $dbh->selectall_arrayref(
+                "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS "
+                  . "WHERE TABLE_SCHEMA = DATABASE() "
+                  . "AND DATA_TYPE IN ('tinytext','text','mediumtext') "
+                  . "AND TABLE_NAME IN ('page','page_revisions','deletedpage','html','system')"
+            );
+        } || [];
+        for my $tc (@$narrow) {
+            my ( $t, $c ) = @$tc;
+            next unless ( SafeIdent($t) && SafeIdent($c) );
+            my $rv = eval { $dbh->do("ALTER TABLE `$t` MODIFY `$c` LONGTEXT") };
+            die( "init_schema (widen $t.$c): " . ( $@ || $dbh->errstr ) . "\n" ) if ( !defined $rv );
+        }
     }
     return 1;
 }

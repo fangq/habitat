@@ -189,4 +189,43 @@ is( Habitat::Store::regex_op(),
     );
 }
 
+# ----------------------------------------------------------------
+# mysql DDL: TEXT columns become LONGTEXT (MySQL/MariaDB TEXT is 64 KB
+# and silently truncates outside strict mode), and narrow columns left
+# by older schemas are widened. Mock handle: no MariaDB needed.
+# ----------------------------------------------------------------
+{
+
+    package FakeMysqlDbh;
+    sub new { my ($c, %a) = @_; bless { Driver => { Name => "mysql" }, PrintError => 1, log => [], %a }, $c }
+    sub do { my ($s, $sql) = @_; push @{ $s->{log} }, $sql; return 1 }
+    sub selectall_arrayref { my ($s, $sql) = @_; push @{ $s->{log} }, $sql; return $s->{narrow} || [] }
+    sub errstr { "" }
+}
+{
+    my $m = FakeMysqlDbh->new;
+    Habitat::Store::init_schema($m);
+    my @creates = grep { /^\s*CREATE\s+TABLE/i } @{ $m->{log} };
+    ok( scalar(@creates) >= 10, "mysql: init_schema issued CREATE TABLEs" );
+    is( scalar( grep { /\b\w+\s+text\b(?=\s*[,)])/i } @creates ), 0, "mysql: no bare TEXT column types left" );
+    my ($page) = grep { /CREATE TABLE IF NOT EXISTS page \(/ } @creates;
+    like( $page, qr/\btext LONGTEXT\b/, "mysql: page.text is LONGTEXT" );
+    like( $page, qr/summary varchar\(128\)/, "mysql: varchar columns untouched" );
+    is( scalar( grep { /MODIFY/ } @{ $m->{log} } ), 0, "mysql: nothing to widen -> no ALTER MODIFY" );
+
+    my $w = FakeMysqlDbh->new( narrow => [ [ "page", "text" ], [ "page_revisions", "text" ] ] );
+    Habitat::Store::init_schema($w);
+    is_deeply(
+        [ grep { /MODIFY/ } @{ $w->{log} } ],
+        [ "ALTER TABLE `page` MODIFY `text` LONGTEXT", "ALTER TABLE `page_revisions` MODIFY `text` LONGTEXT" ],
+        "mysql: narrow TEXT columns from an older schema are widened"
+    );
+}
+{
+    my $sq = DBI->connect( "dbi:SQLite:dbname=:memory:", "", "", { RaiseError => 1 } );
+    Habitat::Store::init_schema($sq);
+    my ($sql) = $sq->selectrow_array("SELECT sql FROM sqlite_master WHERE name='page'");
+    unlike( $sql, qr/LONGTEXT/, "sqlite: schema unchanged (no LONGTEXT)" );
+}
+
 done_testing;
