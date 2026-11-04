@@ -121,7 +121,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $OpenPageName @IndexList $IndexInit $TableMode
   $q $Now $UserID $TimeZoneOffset $ScriptName $BrowseCode $OtherCode
   $AnchoredLinkPattern @HeadingNumbers $TableOfContents $QuotedFullUrl
-  $ConfigError $LangError $UploadPattern $LocalTree %Permissions
+  $ConfigError $LangError $UploadPattern $LocalTree %Permissions %EditPermissions
   %NameSpaceV0 %NameSpaceV1 %NameSpaceE0 %NameSpaceE1 $DiscussSuffix
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
@@ -342,6 +342,7 @@ sub ResetRequestState {
     $LangError       = '';
     $MainPage        = '.';
     %Permissions     = ();
+    %EditPermissions = ();
     %NameSpaceV0     = ();
     %NameSpaceV1     = ();
     %NameSpaceE0     = ();
@@ -3772,6 +3773,13 @@ sub UserCanEdit {
                                              # Consider option for editor-level to edit these pages?
         return 0;
     }
+
+    # %EditPermissions: page-name pattern => minimum clearance to EDIT.
+    # It only restricts (checked before any grant below), so pages can be
+    # readable by everyone through %Permissions yet editable by few.
+    my $need = ReadPagePermissions( $id, \%EditPermissions );
+    return 0 if ( $need ne '' && $clearance < $need );
+
     $permit = ReadPagePermissions( $id, \%Permissions );
     if ( $permit ne '' && $clearance >= $permit ) {
         return 1;
@@ -6205,18 +6213,22 @@ sub DoPageLock {
 
 sub UpdatePageLogDB {
     my ( $dbname, $id ) = @_;
-    my ($sth);
     return if ( $UseDetailedLog != 1 );
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
     die("UpdatePageLogDB: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
-    $sth = $dbh->prepare("insert into $dbname (id,lastvisit,visit,x,y,z) values (?,?,0,-1,-1,-1);");
-    $sth->execute( $id, $Now );
-    $dbh->commit;    # sqlite does not support "on duplicate key update"
-    $sth = $dbh->prepare("update $dbname set lastvisit=?, visit=visit+1 where id=?;");
-    $sth->execute( $Now, $id );
-    $dbh->commit or die "Can't execute: ", $dbh->errstr;
+    # Visit counter: bump the row, create it on the first visit. (The
+    # old insert-then-update form hit a duplicate-key error on every
+    # repeat visit, and died on commit() under AutoCommit.) A race
+    # between two first visits loses one count, which is harmless.
+    my $n = $dbh->do( "update $dbname set lastvisit=?, visit=visit+1 where id=?", undef, $Now, $id );
+    if ( defined $n && $n == 0 ) {
+        local $dbh->{PrintError} = 0;
+        local $dbh->{RaiseError} = 0;
+        $dbh->do( "insert into $dbname (id,lastvisit,visit,x,y,z) values (?,?,1,-1,-1,-1)", undef, $id, $Now );
+    }
+    Habitat::Store::_commit_if_needed($dbh);
 }
 
 sub AddUserLogDB {
@@ -6229,7 +6241,7 @@ sub AddUserLogDB {
     die("AddUserLogDB: unsafe table name '$dbname'") if ( !SafeIdent($dbname) );
     my $sth = $dbh->prepare("insert into $dbname (id,time,ip,action,target) values (?,?,?,?,?);");
     $sth->execute( $uid, $Now, &RemoteAddr, $action, $target );
-    $dbh->commit or die "Can't execute: ", $dbh->errstr;
+    Habitat::Store::_commit_if_needed($dbh);
 }
 
 sub DoEditBanned {
