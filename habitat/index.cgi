@@ -2135,9 +2135,11 @@ sub GetHtmlHeader {
     $stylesheet = $StyleSheet if ( $stylesheet eq '' );
     $stylesheet = ''          if ( $stylesheet eq '*' );    # Allow removing override
     $printcss   = $stylesheet;
-    $printcss =~ s/\.[Cc][Ss][Ss]$/_print.css/;
+    # A ?query suffix (e.g. "?v=20261104" to bust browser and proxy caches)
+    # carries over to the derived stylesheets.
+    $printcss =~ s{\.[Cc][Ss][Ss](\?[^?]*)?$}{'_print.css' . ($1 // '')}e;
     $fontcss = $stylesheet;
-    $fontcss =~ s/\.[Cc][Ss][Ss]$/_webfont.css/;
+    $fontcss =~ s{\.[Cc][Ss][Ss](\?[^?]*)?$}{'_webfont.css' . ($1 // '')}e;
 
     if ( $stylesheet ne '' ) {
         $html .= qq(<style type="text/css">
