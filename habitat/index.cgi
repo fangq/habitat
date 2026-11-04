@@ -433,10 +433,12 @@ sub InitWikiEnv {
                 );
             }
 
-            # First-run bootstrap: create the schema if it isn't there.
-            # CREATE IF NOT EXISTS makes this idempotent on subsequent
-            # boots. Available for both dialects.
-            eval { Habitat::Store::init_schema($dbh) };
+            # Schema bootstrap. ensure_schema reads the fingerprint that
+            # init_schema recorded and only re-runs it when the schema
+            # code changed (or on a fresh database): one SELECT per
+            # connection instead of ~25 idempotent DDL statements, which
+            # cost ~25 ms per CGI request on MariaDB.
+            eval { Habitat::Store::ensure_schema($dbh) };
             $ConfigError .= "schema bootstrap warning: $@" if $@;
         }
     } else {

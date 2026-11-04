@@ -33,6 +33,8 @@ our @EXPORT_OK = qw(
   dialect
   regex_op
   init_schema
+  ensure_schema
+  schema_version
 );
 
 sub _dbh {
@@ -142,9 +144,11 @@ sub _build_upsert_sql {
 # function. To extend the schema, change the @ddl list here and the
 # test harness picks it up automatically.
 
-sub init_schema {
-    my $dbh = $_[0] || _dbh();
-    die("init_schema: no \$dbh") if ( !defined($dbh) );
+# The CREATE statements of the current schema, before per-dialect
+# rewriting (init_schema applies those). Kept separate from init_schema
+# so schema_version() can fingerprint the schema without running it.
+sub _schema_ddl {
+    my ($dbh) = @_;
 
     # SQLite and Postgres accept the same DDL for the column types we
     # use here (varchar(N), integer, text). The only difference is the
@@ -282,8 +286,57 @@ sub init_schema {
             last_ts integer NOT NULL
         )},
     );
+    return @ddl;
+}
 
-    my $d = dialect($dbh);
+# Additive column upgrades for existing installs. CREATE TABLE IF
+# NOT EXISTS doesn't modify a table that already has rows; a
+# pre-Stage-5 schema is missing the renamed `prefs` column on
+# `users`. SQLite doesn't support `ADD COLUMN IF NOT EXISTS` (only
+# Pg ≥ 9.6 does), so we issue the bare ADD COLUMN.
+#
+# On Postgres, a failed statement inside a transaction puts the
+# transaction into an aborted state — even if we eval-swallow the
+# Perl-level error, subsequent statements all fail until the
+# transaction is rolled back. SAVEPOINT / ROLLBACK TO SAVEPOINT
+# gives us the same statement-level isolation that autocommit
+# would, without disturbing the caller's transaction shape.
+sub _schema_alters {
+    my ($dbh) = @_;
+    my $d      = dialect($dbh);
+    my $jt     = json_column_type($d);
+    my @alters = (
+
+        # Stage 5 column additions.
+        "ALTER TABLE users       ADD COLUMN prefs $jt",
+        "ALTER TABLE page        ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
+        "ALTER TABLE deletedpage ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
+    );
+
+    # MariaDB-portability renames for installs that already have the
+    # old reserved-name shapes. Only sqlite and pg need these —
+    # MariaDB never could have created those old shapes in the first
+    # place (the original CREATE TABLE would have parse-errored on
+    # `lock` / `key` / `count`), so on mysql these ALTERs would
+    # always be no-ops AND would themselves parse-error before
+    # reaching the not-found check. Skip them for mysql entirely.
+    if ( $d ne 'mysql' ) {
+        push @alters,
+          (
+            "ALTER TABLE lock RENAME TO pagelock",
+            "ALTER TABLE login_attempts RENAME COLUMN key TO attempt_key",
+            "ALTER TABLE login_attempts RENAME COLUMN count TO attempts",
+          );
+    }
+    return @alters;
+}
+
+sub init_schema {
+    my $dbh = $_[0] || _dbh();
+    die("init_schema: no \$dbh") if ( !defined($dbh) );
+
+    my @ddl = _schema_ddl($dbh);
+    my $d   = dialect($dbh);
     for my $stmt (@ddl) {
         my $s = $stmt;
 
@@ -333,44 +386,7 @@ sub init_schema {
         die("init_schema: $err\n  while executing:\n$s\n");
     }
 
-    # Additive column upgrades for existing installs. CREATE TABLE IF
-    # NOT EXISTS above doesn't modify a table that already has rows; a
-    # pre-Stage-5 schema is missing the renamed `prefs` column on
-    # `users`. SQLite doesn't support `ADD COLUMN IF NOT EXISTS` (only
-    # Pg ≥ 9.6 does), so we issue the bare ADD COLUMN.
-    #
-    # On Postgres, a failed statement inside a transaction puts the
-    # transaction into an aborted state — even if we eval-swallow the
-    # Perl-level error, subsequent statements all fail until the
-    # transaction is rolled back. SAVEPOINT / ROLLBACK TO SAVEPOINT
-    # gives us the same statement-level isolation that autocommit
-    # would, without disturbing the caller's transaction shape.
-    my $jt     = json_column_type( dialect($dbh) );
-    my @alters = (
-
-        # Stage 5 column additions.
-        "ALTER TABLE users       ADD COLUMN prefs $jt",
-        "ALTER TABLE page        ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
-        "ALTER TABLE deletedpage ADD COLUMN admin_saved integer NOT NULL DEFAULT 0",
-    );
-
-    # MariaDB-portability renames for installs that already have the
-    # old reserved-name shapes. Only sqlite and pg need these —
-    # MariaDB never could have created those old shapes in the first
-    # place (the original CREATE TABLE would have parse-errored on
-    # `lock` / `key` / `count`), so on mysql these ALTERs would
-    # always be no-ops AND would themselves parse-error before
-    # reaching the not-found check. Skip them for mysql entirely.
-    if ( $d ne 'mysql' ) {
-        push @alters,
-          (
-            "ALTER TABLE lock RENAME TO pagelock",
-            "ALTER TABLE login_attempts RENAME COLUMN key TO attempt_key",
-            "ALTER TABLE login_attempts RENAME COLUMN count TO attempts",
-          );
-    }
-
-    for my $alter (@alters) {
+    for my $alter ( _schema_alters($dbh) ) {
         my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
 
         # Silence DBI's PrintError noise specifically for this attempt;
@@ -422,6 +438,58 @@ qr/duplicate column|already exists|no such column|Unknown column|no such table|U
             die( "init_schema (widen $t.$c): " . ( $@ || $dbh->errstr ) . "\n" ) if ( !defined $rv );
         }
     }
+
+    # Record which schema this database now has, so ensure_schema can
+    # skip all of the above on later requests. Best-effort: if it can't
+    # be written, the next request simply re-runs init_schema.
+    {
+        local $dbh->{PrintError} = 0;
+        eval {
+            $dbh->do( _build_upsert_sql( $dbh, 'system', 'id,data,time' ),
+                undef, 'schema_version', schema_version($dbh), time() );
+        };
+    }
+    return 1;
+}
+
+# Bump when init_schema's *logic* changes in a way existing databases
+# must re-run (a new per-dialect rewrite, a new widen step, ...).
+# Changes to the DDL/ALTER statement lists are picked up automatically.
+our $SCHEMA_CODE_REV = 1;
+
+# Fingerprint of the schema init_schema would apply to this handle's
+# dialect: a SHA-1 over the code revision, the dialect and every
+# DDL/ALTER statement. Pure computation, no database access.
+sub schema_version {
+    my $dbh = $_[0] || _dbh();
+    require Digest::SHA;
+    return Digest::SHA::sha1_hex(
+        join( "\0", "rev=$SCHEMA_CODE_REV", dialect($dbh), _schema_ddl($dbh), _schema_alters($dbh) ) );
+}
+
+# Per-request schema bootstrap. init_schema is idempotent but costs
+# ~25 statements; on a network database (MariaDB) that was ~25 ms of
+# every CGI request. Instead read the fingerprint init_schema recorded
+# and only run it when the schema code changed, or on a fresh database.
+# Returns 1 if init_schema ran, 0 if the schema was already current.
+# To force a re-check: DELETE FROM system WHERE id='schema_version'.
+sub ensure_schema {
+    my $dbh = $_[0] || _dbh();
+    die("ensure_schema: no \$dbh") if ( !defined($dbh) );
+    my $have = eval {
+        local $dbh->{PrintError} = 0;
+        local $dbh->{RaiseError} = 1;
+        $dbh->selectrow_array( "SELECT data FROM system WHERE id=?", undef, 'schema_version' );
+    };
+    if ($@) {
+
+        # Most likely a fresh database without a `system` table. On
+        # Postgres in a manual transaction the failed SELECT aborted the
+        # transaction; roll back so init_schema starts clean.
+        eval { $dbh->rollback } if ( !$dbh->{AutoCommit} );
+    }
+    return 0 if ( defined($have) && $have eq schema_version($dbh) );
+    init_schema($dbh);
     return 1;
 }
 

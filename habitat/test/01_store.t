@@ -200,6 +200,7 @@ is( Habitat::Store::regex_op(),
     sub new { my ($c, %a) = @_; bless { Driver => { Name => "mysql" }, PrintError => 1, log => [], %a }, $c }
     sub do { my ($s, $sql) = @_; push @{ $s->{log} }, $sql; return 1 }
     sub selectall_arrayref { my ($s, $sql) = @_; push @{ $s->{log} }, $sql; return $s->{narrow} || [] }
+    sub selectrow_array { my ($s, $sql) = @_; push @{ $s->{log} }, $sql; return $s->{have} }
     sub errstr { "" }
 }
 {
@@ -226,6 +227,55 @@ is( Habitat::Store::regex_op(),
     Habitat::Store::init_schema($sq);
     my ($sql) = $sq->selectrow_array("SELECT sql FROM sqlite_master WHERE name='page'");
     unlike( $sql, qr/LONGTEXT/, "sqlite: schema unchanged (no LONGTEXT)" );
+}
+
+# ----------------------------------------------------------------
+# ensure_schema: skip the ~25-statement init_schema when the database
+# already carries the current schema fingerprint.
+# ----------------------------------------------------------------
+{
+    my $want = Habitat::Store::schema_version( FakeMysqlDbh->new );
+    like( $want, qr/\A[0-9a-f]{40}\z/, "schema_version is a SHA-1 hex digest" );
+    is( Habitat::Store::schema_version( FakeMysqlDbh->new ), $want, "schema_version is deterministic" );
+    my $sq = DBI->connect( "dbi:SQLite:dbname=:memory:", "", "", { RaiseError => 1 } );
+    isnt( Habitat::Store::schema_version($sq), $want, "schema_version differs per dialect" );
+
+    # Current fingerprint -> exactly one cheap SELECT, no DDL.
+    my $cur = FakeMysqlDbh->new( have => $want );
+    is( Habitat::Store::ensure_schema($cur), 0, "mysql, current fingerprint: init_schema skipped" );
+    is( scalar @{ $cur->{log} }, 1, "  ... exactly one statement issued" );
+    like( $cur->{log}[0], qr/^SELECT data FROM system WHERE id=\?$/, "  ... the fingerprint lookup" );
+
+    # Stale or missing fingerprint -> full init_schema, then recorded.
+    for my $have ( 'stale', undef ) {
+        my $m = FakeMysqlDbh->new( have => $have );
+        is( Habitat::Store::ensure_schema($m), 1,
+            "mysql, " . ( defined $have ? "stale" : "missing" ) . " fingerprint: init_schema runs" );
+        ok( ( grep { /CREATE TABLE IF NOT EXISTS page \(/ } @{ $m->{log} } ), "  ... DDL issued" );
+        ok( ( grep { /^REPLACE INTO system \(id,data,time\)/ } @{ $m->{log} } ), "  ... fingerprint recorded" );
+    }
+}
+{
+    # Real SQLite, full cycle.
+    my $sq = DBI->connect( "dbi:SQLite:dbname=:memory:", "", "", { RaiseError => 1, PrintError => 0 } );
+    my $want = Habitat::Store::schema_version($sq);
+    is( Habitat::Store::ensure_schema($sq), 1, "sqlite, fresh database: ensure_schema bootstraps" );
+    ok( $sq->selectrow_array("SELECT name FROM sqlite_master WHERE type='table' AND name='page'"),
+        "  ... page table created" );
+    is( $sq->selectrow_array("SELECT data FROM system WHERE id='schema_version'"),
+        $want, "  ... fingerprint recorded in system" );
+    is( Habitat::Store::ensure_schema($sq), 0, "sqlite, second call: skipped" );
+
+    $sq->do("UPDATE system SET data='old' WHERE id='schema_version'");
+    is( Habitat::Store::ensure_schema($sq), 1, "sqlite, stale fingerprint: re-runs" );
+    is( $sq->selectrow_array("SELECT data FROM system WHERE id='schema_version'"),
+        $want, "  ... and re-records the current fingerprint" );
+
+    # Existing database from before fingerprints (e.g. a migrated one):
+    # schema present, no system row -> one init_schema run, then skip.
+    $sq->do("DELETE FROM system WHERE id='schema_version'");
+    is( Habitat::Store::ensure_schema($sq), 1, "sqlite, schema present but no fingerprint: runs once" );
+    is( Habitat::Store::ensure_schema($sq), 0, "  ... then skipped" );
 }
 
 done_testing;

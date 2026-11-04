@@ -468,9 +468,22 @@ for my $tbl_spec (@TABLES) {
     my @xform_fns     = map  { $xforms && $xforms->{$_} } @dst_keep;
     my $has_any_xform = grep { $_ } @xform_fns;
 
+    # system.schema_version describes the schema of the database it is
+    # in. The destination's init_schema already recorded its own; a
+    # source row (from a new-engine database) must not be copied over
+    # it (that would also be a duplicate primary key).
+    my $skip_idx;
+    if ( $dst_table eq 'system' ) {
+        ($skip_idx) = grep { $dst_keep[$_] eq 'id' } 0 .. $#dst_keep;
+    }
+
     my $batched = 0;
     my $total   = 0;
     while ( my $row = $select->fetchrow_arrayref ) {
+        next
+          if ( defined $skip_idx
+            && defined $row->[$skip_idx]
+            && $row->[$skip_idx] eq 'schema_version' );
         my @vals = @$row;
         if ($has_any_xform) {
             for my $i ( 0 .. $#vals ) {
@@ -491,6 +504,10 @@ for my $tbl_spec (@TABLES) {
     $dst->commit unless $dry_run;
 
     my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $dst_table );
+    if ( !$dry_run && $dst_table eq 'system' ) {    # report data rows, not the fingerprint
+        ($dst_count) =
+          $dst->selectrow_array("SELECT COUNT(*) FROM system WHERE id <> 'schema_version'");
+    }
     $report{$label} = { src => $src_count, dst => $dst_count };
     log_msg sprintf( "done %s : src=%d dst=%s", $label, $src_count, $dst_count );
 }

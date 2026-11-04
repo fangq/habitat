@@ -148,7 +148,9 @@ is( $dst->selectrow_array("SELECT COUNT(*) FROM page_revisions"),
     1, "page_revisions has the older Home revision" );
 is( $dst->selectrow_array("SELECT COUNT(*) FROM users"),  2, "user rows migrated" );
 is( $dst->selectrow_array("SELECT COUNT(*) FROM watch"),  2, "watch rows migrated" );
-is( $dst->selectrow_array("SELECT COUNT(*) FROM system"), 1, "system rows migrated" );
+is( $dst->selectrow_array("SELECT COUNT(*) FROM system WHERE id <> 'schema_version'"), 1, "system rows migrated" );
+is( $dst->selectrow_array("SELECT data FROM system WHERE id='schema_version'"),
+    Habitat::Store::schema_version($dst), "dest carries its own current schema fingerprint" );
 
 # Watch column data moved correctly to renamed column
 my $rows = $dst->selectall_arrayref("SELECT page, username FROM watch ORDER BY page");
@@ -228,6 +230,31 @@ unlink $dst_path;
     is( $d->selectrow_array("SELECT COUNT(*) FROM users"),
         2, "populated legacy `user` preferred over empty `users`" );
     $d->disconnect;
+}
+
+# ----------------------------------------------------------------
+# A source that already has a schema fingerprint (a new-engine DB):
+# its row is not copied; the destination keeps its own current one.
+# (Copying it used to be a duplicate primary key.)
+# ----------------------------------------------------------------
+{
+    my $s =
+      DBI->connect( "dbi:SQLite:dbname=$src_path", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    $s->do( "INSERT INTO system VALUES (?,?,?)", undef, 'schema_version', 'stale-from-source', 1 );
+    $s->disconnect;
+    unlink $dst_path;
+    my ( $rc, $out ) = run_migrate( "--source", "dbi:SQLite:dbname=$src_path",
+        "--dest", "dbi:SQLite:dbname=$dst_path", );
+    is( $rc, 0, "source with a schema fingerprint: migration exit code 0" );
+    my $d =
+      DBI->connect( "dbi:SQLite:dbname=$dst_path", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    is( $d->selectrow_array("SELECT data FROM system WHERE id='schema_version'"),
+        Habitat::Store::schema_version($d), "  ... dest fingerprint is its own, not the source's" );
+    is( $d->selectrow_array("SELECT data FROM system WHERE id='lockstate'"), '0', "  ... other system rows copied" );
+    $d->disconnect;
+    $s = DBI->connect( "dbi:SQLite:dbname=$src_path", "", "", { RaiseError => 1, AutoCommit => 1 } );
+    $s->do("DELETE FROM system WHERE id='schema_version'");
+    $s->disconnect;
 }
 
 # ----------------------------------------------------------------
