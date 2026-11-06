@@ -126,7 +126,8 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   $dbh $DBName $DBUser $DBPass %DBErr %DBPrefix
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
   $StaticCacheDir $StaticCacheOK $StaticCacheGen
-  $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache);
+  $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache
+  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -263,6 +264,9 @@ $RCHistoryLimit      = 100;
 $InlineDiffLimit     = 50;
 $LoginMaxAttempts    = 5;            # Block after this many failed logins
 $LoginThrottleWindow = 300;          # Counted within this many seconds
+$UsePasswordReset    = 1;            # "Forgot password?" link on the login page (needs a working $SendMail)
+$PasswordResetTTL    = 86400;        # A reset link expires after this many seconds
+$PasswordResetMailGap = 900;         # At most one reset email per account in this many seconds
 $TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
                                      # Only when REMOTE_ADDR matches one of these will
                                      # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
@@ -4324,6 +4328,10 @@ sub DoOtherRequest {
             &DoWatchPage($id);
         } elsif ( $action eq "activate" ) {
             &DoActivateUser();
+        } elsif ( $UsePasswordReset && $action eq "forgotpw" ) {
+            &DoForgotPasswordForm();
+        } elsif ( $UsePasswordReset && $action eq "resetpw" ) {
+            &DoResetPasswordForm();
         } elsif ( $action eq "unwatch" ) {
             &DoUnWatchPage($id);
         } else {
@@ -4341,6 +4349,14 @@ sub DoOtherRequest {
     }
     if ( &GetParam( "enter_login", 0 ) ) {
         &DoLogin();
+        return;
+    }
+    if ( $UsePasswordReset && &GetParam( "forgot_pw", 0 ) ) {
+        &DoForgotPassword();
+        return;
+    }
+    if ( $UsePasswordReset && &GetParam( "reset_pw", 0 ) ) {
+        &DoResetPassword();
         return;
     }
     if ( &GetParam( "edit_links", 0 ) ) {
@@ -5164,6 +5180,8 @@ sub EnterLoginForm {
         'If you do not have an account, please %s to register.',
         &ScriptLink( "action=newlogin", T('click here') )
       ) . "\n";
+    print '<br>' . &ScriptLink( "action=forgotpw", T('Forgot your password?') ) . "\n"
+      if ($UsePasswordReset);
     print '<hr class="wikilinefooter">';
     print $q->end_form;
 }
@@ -5401,6 +5419,168 @@ Your can only use your account after you activate it
 END_ACTIVATION_MSG
     SendEmail( $UserData{'email'}, $EmailFrom, $UserData{'email'}, T("Account activation notice"),
         $message );
+}
+
+# == Password reset ====================================================
+# A reset link carries uid, expiry and an HMAC over both plus the account's
+# current password hash and param. Nothing is stored server-side: the link
+# stops working when it expires or as soon as the password changes, which
+# also makes it single-use. Accounts imported locked (param "R...", empty
+# password) are unlocked by a successful reset, since the owner has just
+# proved control of the account's email address.
+
+sub PasswordResetSig {
+    my ( $uid, $exp, $pass, $param ) = @_;
+    $pass  = '' if ( !defined $pass );
+    $param = '' if ( !defined $param );
+    return Hmac("pwreset|$uid|$exp|$pass|$param");
+}
+
+# Returns the account row (hashref) for a valid, unexpired link, else undef.
+sub PasswordResetAccount {
+    my ( $uid, $exp, $sig ) = @_;
+    return undef if ( !defined($uid) || $uid !~ /\A\d+\z/ || $uid < 1000 );
+    return undef if ( !defined($exp) || $exp !~ /\A\d+\z/ || $exp < $Now );
+    return undef if ( !defined($sig) || $sig !~ /\A[0-9a-f]{64}\z/ );
+    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    return undef if ( $dbh eq "" || !SafeIdent($userdb) );
+    my $row = $dbh->selectrow_hashref( "SELECT id,name,pass,email,param FROM $userdb WHERE id=?", undef, $uid );
+    return undef if ( !$row );
+    return undef if ( !ConstantEq( $sig, PasswordResetSig( $uid, $exp, $row->{pass}, $row->{param} ) ) );
+    return $row;
+}
+
+sub DoForgotPasswordForm {
+    print &GetHeader( '', T('Forgot your password?'), '' );
+    print '<div class="wikiinfo">';
+    print '<p>', T('Enter your user name or email address. If it matches an account, a link to set a new password will be emailed to the address on file.'), '</p>';
+    print &GetFormStart();
+    print &GetHiddenValue( 'forgot_pw', 1 ), "\n";
+    print '<br><label class="formlabel">', T('User name or email:'), '</label>',
+      $q->textfield( -name => 'p_account', -value => '', -size => 30, -maxlength => 100, -override => 1 );
+    print '<br>', PrintCaptcha() if $UseCaptcha;
+    print '<br>', $q->submit( -name => 'Send', -value => T('Send reset link') ), "\n";
+    print '<hr class="wikilinefooter">';
+    print $q->end_form;
+    print '</div>';
+    print &GetMinimumFooter();
+}
+
+sub DoForgotPassword {
+    CSRFCheckOrDie();
+    if ( $UseCaptcha && !VerifyCaptcha( &GetParam( "captchaans", "" ), &GetParam( "captchaopt", "" ) ) ) {
+        PrintMsg( T("Wrong CAPTCHA Answer"), T("Error"), 1 );
+    }
+    my $ip_key = 'pwreset-ip:' . &RemoteAddr;
+    if ( LoginThrottleBlocked($ip_key) ) {
+        PrintMsg( T('Too many requests. Try again in a few minutes.'), T('Error'), 1 );
+    }
+    LoginThrottleHit($ip_key);
+
+    my $account = &GetParam( "p_account", "" );
+    $account =~ s/^\s+|\s+$//g;
+    if ( $account ne '' && length($account) <= 100 ) {
+        my $userdb = ( split( /\//, $UserDir ) )[-1];
+        my $col    = ( $account =~ /\@/ ) ? 'email' : 'name';
+        my $row;
+        if ( $dbh ne "" && SafeIdent($userdb) ) {
+            $row = $dbh->selectrow_hashref(
+                "SELECT id,name,pass,email,param FROM $userdb WHERE UPPER($col)=UPPER(?) LIMIT 1",
+                undef, $account );
+        }
+        if ( $row && $row->{id} >= 1000 && ValidEmail( $row->{email} // '' ) ) {
+            my $mail_key = "pwreset-mail:$row->{id}";
+            my $last     = $dbh->selectrow_arrayref(
+                'SELECT last_ts FROM login_attempts WHERE attempt_key=?', undef, $mail_key );
+            if ( !$last || $Now - $last->[0] >= $PasswordResetMailGap ) {
+                Habitat::Store::WriteDBItems( 'login_attempts', 'attempt_key,attempts,first_ts,last_ts',
+                    1, $mail_key, 1, $Now, $Now );
+                &SendPasswordResetMail($row);
+                AddUserLogDB( $row->{id}, 'pwreset', 'mail' );
+            }
+        }
+    }
+
+    # Same answer whether or not the account exists.
+    print &GetHeader( '', T('Forgot your password?'), '' );
+    print '<div class="wikiinfo">',
+      T('If that user name or email address belongs to an account, a link to set a new password has been sent to its email address. The link is valid for 24 hours.'),
+      '</div>';
+    print &GetMinimumFooter();
+}
+
+sub SendPasswordResetMail {
+    my ($row) = @_;
+    my $exp  = $Now + $PasswordResetTTL;
+    my $sig  = PasswordResetSig( $row->{id}, $exp, $row->{pass}, $row->{param} );
+    my $base = ( $SiteBase ne '' ) ? $SiteBase : $q->url( -full => 1 );
+    my $link = "$base?action=resetpw&uid=$row->{id}&exp=$exp&sig=$sig";
+    my $hours = int( $PasswordResetTTL / 3600 );
+    my $message = <<"END_RESET_MSG";
+Someone (hopefully you) asked to set a new password for the account
+"$row->{name}" on $SiteName.
+
+To choose a new password, open this link within $hours hours:
+
+  $link
+
+The link works once. If you did not ask for this, ignore this email;
+your account is unchanged.
+END_RESET_MSG
+    SendEmail( $row->{email}, $EmailFrom, $EmailFrom, "$SiteName: " . T('password reset'), $message );
+}
+
+sub PrintResetPasswordInvalid {
+    print &GetHeader( '', T('Set a new password'), '' );
+    print '<div class="wikiinfo">',
+      T('This password reset link is invalid, has expired, or has already been used.'), ' ',
+      &ScriptLink( "action=forgotpw", T('Request a new link') ), '</div>';
+    print &GetMinimumFooter();
+}
+
+sub DoResetPasswordForm {
+    my ( $uid, $exp, $sig ) = map { &GetParam( $_, "" ) } qw(uid exp sig);
+    my $row = PasswordResetAccount( $uid, $exp, $sig );
+    return PrintResetPasswordInvalid() if ( !$row );
+    print &GetHeader( '', T('Set a new password'), '' );
+    print '<div class="wikiinfo">';
+    print '<p>', Ts( 'Choose a new password for %s.', QuoteHtml( $row->{name} ) ), '</p>';
+    print &GetFormStart();
+    print &GetHiddenValue( 'reset_pw', 1 ), &GetHiddenValue( 'uid', $uid ), &GetHiddenValue( 'exp', $exp ),
+      &GetHiddenValue( 'sig', $sig ), "\n";
+    print '<br><label class="formlabel">', T('New password:'), '</label>',
+      $q->password_field( -name => 'p_newpass', -value => '', -size => 20, -maxlength => 100, -override => 1 );
+    print '<br><label class="formlabel">', T('Repeat password:'), '</label>',
+      $q->password_field( -name => 'p_newpass2', -value => '', -size => 20, -maxlength => 100, -override => 1 );
+    print '<br>', $q->submit( -name => 'Save', -value => T('Set password') ), "\n";
+    print '<hr class="wikilinefooter">';
+    print $q->end_form;
+    print '</div>';
+    print &GetMinimumFooter();
+}
+
+sub DoResetPassword {
+    CSRFCheckOrDie();
+    my ( $uid, $exp, $sig ) = map { &GetParam( $_, "" ) } qw(uid exp sig);
+    my $row = PasswordResetAccount( $uid, $exp, $sig );
+    return PrintResetPasswordInvalid() if ( !$row );
+    my $p1 = &GetParam( "p_newpass",  "" );
+    my $p2 = &GetParam( "p_newpass2", "" );
+    if ( length($p1) < 8 ) {
+        PrintMsg( T('The new password must be at least 8 characters long'), T('Error'), 1 );
+    }
+    if ( $p1 ne $p2 ) {
+        PrintMsg( T('Two passwords do not match'), T('Error'), 1 );
+    }
+    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    $dbh->do( "UPDATE $userdb SET pass=?, param='' WHERE id=?", undef, HashPassword($p1), $row->{id} );
+    Habitat::Store::_commit_if_needed($dbh);
+    LoginThrottleClear( 'name:' . lc( $row->{name} ) );
+    AddUserLogDB( $row->{id}, 'pwreset', 'done' );
+    print &GetHeader( '', T('Set a new password'), '' );
+    print '<div class="wikiinfo">', T('Your password has been changed. You can now log in.'), ' ',
+      &ScriptLink( "action=login", T('Login') ), '</div>';
+    print &GetMinimumFooter();
 }
 
 sub DoSearch {
