@@ -290,7 +290,7 @@ sub EnsureLoginThrottleTable {
     # varchar(255) (not TEXT) for the PK so MariaDB/InnoDB accepts
     # it without an explicit key prefix length.
     eval {
-        $dbh->do( 'CREATE TABLE IF NOT EXISTS login_attempts ('
+        $dbh->do( 'CREATE TABLE IF NOT EXISTS ' . Habitat::Store::T('login_attempts') . ' ('
               . 'attempt_key varchar(255) PRIMARY KEY,'
               . 'attempts INTEGER NOT NULL,'
               . 'first_ts INTEGER NOT NULL,'
@@ -305,7 +305,7 @@ sub LoginThrottleBlocked {
     return 0 if ( !defined($key) || $key eq '' || !$dbh );
     EnsureLoginThrottleTable();
     my $row =
-      $dbh->selectrow_arrayref( 'SELECT attempts, first_ts FROM login_attempts WHERE attempt_key=?',
+      $dbh->selectrow_arrayref( 'SELECT attempts, first_ts FROM ' . Habitat::Store::T('login_attempts') . ' WHERE attempt_key=?',
         undef, $key );
     return 0 if ( !$row );
     my ( $count, $first ) = @$row;
@@ -320,7 +320,7 @@ sub LoginThrottleHit {
     return if ( !defined($key) || $key eq '' || !$dbh );
     EnsureLoginThrottleTable();
     my $row =
-      $dbh->selectrow_arrayref( 'SELECT attempts, first_ts FROM login_attempts WHERE attempt_key=?',
+      $dbh->selectrow_arrayref( 'SELECT attempts, first_ts FROM ' . Habitat::Store::T('login_attempts') . ' WHERE attempt_key=?',
         undef, $key );
     no warnings 'once';
     my $now = $HabitatEngine::Now;
@@ -331,10 +331,10 @@ sub LoginThrottleHit {
         # Portable upsert: REPLACE INTO works on SQLite + MariaDB;
         # Habitat::Store::WriteDBItems handles the Postgres ON
         # CONFLICT dialect.
-        Habitat::Store::WriteDBItems( 'login_attempts', 'attempt_key,attempts,first_ts,last_ts',
+        Habitat::Store::WriteDBItems( Habitat::Store::T('login_attempts'), 'attempt_key,attempts,first_ts,last_ts',
             1, $key, 1, $now, $now );
     } else {
-        $dbh->do( 'UPDATE login_attempts SET attempts=attempts+1, last_ts=? WHERE attempt_key=?',
+        $dbh->do( 'UPDATE ' . Habitat::Store::T('login_attempts') . ' SET attempts=attempts+1, last_ts=? WHERE attempt_key=?',
             undef, $now, $key );
     }
 }
@@ -343,7 +343,7 @@ sub LoginThrottleClear {
     my ($key) = @_;
     my $dbh = _dbh();
     return if ( !defined($key) || $key eq '' || !$dbh );
-    eval { $dbh->do( 'DELETE FROM login_attempts WHERE attempt_key=?', undef, $key ); };
+    eval { $dbh->do( 'DELETE FROM ' . Habitat::Store::T('login_attempts') . ' WHERE attempt_key=?', undef, $key ); };
 }
 
 # ----------------------------------------------------------------

@@ -127,7 +127,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
   $StaticCacheDir $StaticCacheOK $StaticCacheGen
   $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache
-  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap $UseHttps);
+  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap $UseHttps $DBTablePrefix);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -270,6 +270,8 @@ $PasswordResetMailGap = 900;         # At most one reset email per account in th
 $UseHttps            = 1;            # Links the wiki builds to itself (redirects, emails, RSS) use https,
                                      # even when a TLS proxy (Cloudflare) talks plain http to the server.
                                      # Never applied to localhost. 0 = keep the request's own scheme.
+$DBTablePrefix       = '';           # Prefix for every table name (e.g. "dev_" -> dev_page, dev_users),
+                                     # so several wikis can share one database. Letters, digits, _ only.
 $TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
                                      # Only when REMOTE_ADDR matches one of these will
                                      # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
@@ -416,6 +418,7 @@ sub CleanWikiEnv {
 # InitLinkPatterns moved to Habitat::Render (phase 1 of render extraction).
 
 sub InitWikiEnv {
+    $Habitat::Store::TablePrefix = $DBTablePrefix;    # table names (see DBTable)
 
     # Connect (or reconnect) lazily. Under PSGI/Starman this runs once per
     # worker; subsequent requests reuse the same $dbh after a cheap ping.
@@ -534,8 +537,8 @@ sub DoCacheBrowse {
     if ( $language eq '' ) {
         $language = $LangID;
     }
-    my $htmldb    = ( split( /\//, $HtmlDir ) )[-1];
-    my $pagelogdb = ( split( /\//, $PageLog ) )[-1];
+    my $htmldb    = DBTable($HtmlDir);
+    my $pagelogdb = DBTable($PageLog);
 
     if ( $dbh eq "" || $htmldb eq "" ) {
         die( T('ERROR: database uninitialized!') );
@@ -688,13 +691,20 @@ sub InitCookie {
     }
 }
 
+# Database table behind a data-path setting ($PageDir, $UserDir, $RcFile, ...):
+# its last path component, after $DBTablePrefix.
+sub DBTable {
+    my ($path) = @_;
+    return $DBTablePrefix . ( split( /\//, $path ) )[-1];
+}
+
 sub GetPageDB {
     my ($id) = @_;
     my $pref = ReadPagePermissions( $id, \%DBPrefix );
     if ( $pref ne "" ) {
-        return $pref;
+        return $DBTablePrefix . $pref;
     } else {
-        return ( split( /\//, $PageDir ) )[-1];
+        return DBTable($PageDir);
     }
 }
 
@@ -880,7 +890,7 @@ sub BrowsePage {
     my $contentlen;
     my $pagehtml;
     my @vv;
-    my $pagelogdb = ( split( /\//, $PageLog ) )[-1];
+    my $pagelogdb = DBTable($PageLog);
 
     # Static cache: remember the cache generation before rendering, so a
     # purge that happens while we render prevents writing a stale copy.
@@ -1130,7 +1140,7 @@ sub ReadRCLogDB {
     # both dialects.
     $offset = GetParam( 'offset', 0x7fffffff );
 
-    $rclogdb = ( split( /\//, $RcFile ) )[-1];
+    $rclogdb = DBTable($RcFile);
     if ( $dbh eq "" || $rclogdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
@@ -3614,7 +3624,7 @@ sub LoadUserDataDB {
     my ( $uid, $uname ) = @_;
     $uname    = '' if ( !defined($uname) );
     %UserData = ();
-    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    my $userdb = DBTable($UserDir);
     my $sth;
     my (
         $id,         $name,      $pass,     $group,    $lang,       $email,      $param,
@@ -3811,7 +3821,7 @@ sub UserCanEdit {
 
 sub UserIsBanned {
     my ( $host, $ip, $data, $status );
-    $data   = ReadDBItems( "system", 'data', "\n", '', "id=?", 'banlist' );
+    $data   = ReadDBItems( Habitat::Store::T("system"), 'data', "\n", '', "id=?", 'banlist' );
     $status = 1;
     return 0 if ( !$status );    # No file exists, so no ban
     $data =~ s/\r//g;
@@ -3954,7 +3964,7 @@ sub ReadFile {
 
 sub UpdateHtmlCacheDB {
     my ( $id, $html ) = @_;
-    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
+    my $htmldb = DBTable($HtmlDir);
     my ( $sth, $language );
     $language = &GetParam( 'lang', $LangID );
 
@@ -4123,7 +4133,7 @@ sub StaticCacheCheckStamp {
 
 sub GenerateAllPagesListDB {
     my @pages;
-    my $pagedb = GetParam( "dbprefix", "" ) . ( split( /\//, $PageDir ) )[-1];
+    my $pagedb = GetParam( "dbprefix", "" ) . DBTable($PageDir);
     my ( $sth, $pg, $lim, $offset, $searchcmd );
 
     if ( $dbh eq "" || $pagedb eq "" ) {
@@ -4644,7 +4654,7 @@ sub DoActivateUser {
     $uid   = &GetParam( 'uid',     '' );
     $treg  = &GetParam( 'regtime', '' );
 
-    $userdb = ( split( /\//, $UserDir ) )[-1];
+    $userdb = DBTable($UserDir);
     $uid    = ( $uid =~ /\A\d+\z/ ) ? $uid : 0;
     $regkey = &ReadDBItems( $userdb, 'param', '', '', "id=?", $uid );
 
@@ -5299,7 +5309,7 @@ sub ResetRandKeyDB {
 
 sub GetNewUserIdDB {
     my ( $id, $rest, $count );
-    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    my $userdb = DBTable($UserDir);
     my $sth;
 
     if ( $dbh eq "" || $userdb eq "" ) {
@@ -5320,7 +5330,7 @@ sub GetNewUserIdDB {
 }
 
 sub SaveUserDataDB {
-    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    my $userdb = DBTable($UserDir);
     my (
         $id,       $sth,     $encpass,   $isnewuser, $tmp,   $name,
         $passhash, $randkey, $adminhash, $linkchr,   %extra, %rkey
@@ -5456,7 +5466,7 @@ sub PasswordResetAccount {
     return undef if ( !defined($uid) || $uid !~ /\A\d+\z/ || $uid < 1000 );
     return undef if ( !defined($exp) || $exp !~ /\A\d+\z/ || $exp < $Now );
     return undef if ( !defined($sig) || $sig !~ /\A[0-9a-f]{64}\z/ );
-    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    my $userdb = DBTable($UserDir);
     return undef if ( $dbh eq "" || !SafeIdent($userdb) );
     my $row = $dbh->selectrow_hashref( "SELECT id,name,pass,email,param FROM $userdb WHERE id=?", undef, $uid );
     return undef if ( !$row );
@@ -5494,7 +5504,7 @@ sub DoForgotPassword {
     my $account = &GetParam( "p_account", "" );
     $account =~ s/^\s+|\s+$//g;
     if ( $account ne '' && length($account) <= 100 ) {
-        my $userdb = ( split( /\//, $UserDir ) )[-1];
+        my $userdb = DBTable($UserDir);
         my $col    = ( $account =~ /\@/ ) ? 'email' : 'name';
         my $row;
         if ( $dbh ne "" && SafeIdent($userdb) ) {
@@ -5505,9 +5515,9 @@ sub DoForgotPassword {
         if ( $row && $row->{id} >= 1000 && ValidEmail( $row->{email} // '' ) ) {
             my $mail_key = "pwreset-mail:$row->{id}";
             my $last     = $dbh->selectrow_arrayref(
-                'SELECT last_ts FROM login_attempts WHERE attempt_key=?', undef, $mail_key );
+                'SELECT last_ts FROM ' . Habitat::Store::T('login_attempts') . ' WHERE attempt_key=?', undef, $mail_key );
             if ( !$last || $Now - $last->[0] >= $PasswordResetMailGap ) {
-                Habitat::Store::WriteDBItems( 'login_attempts', 'attempt_key,attempts,first_ts,last_ts',
+                Habitat::Store::WriteDBItems( Habitat::Store::T('login_attempts'), 'attempt_key,attempts,first_ts,last_ts',
                     1, $mail_key, 1, $Now, $Now );
                 &SendPasswordResetMail($row);
                 AddUserLogDB( $row->{id}, 'pwreset', 'mail' );
@@ -5586,7 +5596,7 @@ sub DoResetPassword {
     if ( $p1 ne $p2 ) {
         PrintMsg( T('Two passwords do not match'), T('Error'), 1 );
     }
-    my $userdb = ( split( /\//, $UserDir ) )[-1];
+    my $userdb = DBTable($UserDir);
     $dbh->do( "UPDATE $userdb SET pass=?, param='' WHERE id=?", undef, HashPassword($p1), $row->{id} );
     Habitat::Store::_commit_if_needed($dbh);
     LoginThrottleClear( 'name:' . lc( $row->{name} ) );
@@ -5612,7 +5622,7 @@ sub DoSearch {
 sub DoWatchPage {
     my ($id) = @_;
     CSRFCheckOrDie();
-    my $watchdb = ( split( /\//, $EmailFile ) )[-1];
+    my $watchdb = DBTable($EmailFile);
     my $user    = $UserData{'username'};
 
     if ( not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
@@ -5632,7 +5642,7 @@ sub DoWatchPage {
 sub DoUnWatchPage {
     my ($id) = @_;
     CSRFCheckOrDie();
-    my $watchdb = ( split( /\//, $EmailFile ) )[-1];
+    my $watchdb = DBTable($EmailFile);
     my $user    = $UserData{'username'};
 
     if ( $dbh && not( $UserID <= 1000 || $user eq '' || $id eq '' ) ) {
@@ -6043,7 +6053,7 @@ sub DoPost {
     AddUserLogDB( $UserID, 'Wr', $id ) if ( $UserID >= 1000 );
 
     if ($UseCache) {
-        my $htmldb   = ( split( /\//, $HtmlDir ) )[-1];
+        my $htmldb   = DBTable($HtmlDir);
         my $language = &GetParam( "lang", $LangID );
         if ( $dbh eq "" || $htmldb eq "" ) {
             die( T('ERROR: database uninitialized!') );
@@ -6159,8 +6169,8 @@ EOF
 sub ReadWatchListDB {
     my ($id) = @_;
     my ( $addr, $userlist );
-    my $watchdb = ( split( /\//, $EmailFile ) )[-1];
-    my $userdb  = ( split( /\//, $UserDir ) )[-1];
+    my $watchdb = DBTable($EmailFile);
+    my $userdb  = DBTable($UserDir);
 
     if ( $dbh eq "" || $watchdb eq "" || $userdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
@@ -6224,7 +6234,7 @@ sub SearchTitleAndBody {
 
     $offset = GetParam( 'offset', 0 );
 
-    $pagedb   = ( split( /\//, $PageDir ) )[-1];
+    $pagedb   = DBTable($PageDir);
     @keywords = split( /&&/, $string );
     foreach my $searchstr (@keywords) {
         if ( $searchstr =~ /^\s*([a-z0-9]+)\s*=\s*(.*)\s*/ ) {
@@ -6289,7 +6299,7 @@ sub UnlinkHtmlCache {
 
 sub NewPageCacheClear {
     my ($id) = @_;
-    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
+    my $htmldb = DBTable($HtmlDir);
 
     if ( $dbh eq "" || $htmldb eq "" ) {
         die( T('ERROR: database uninitialized!') );
@@ -6318,7 +6328,7 @@ sub DoUnlock {
 sub WriteRcLogDB {
     my ( $id, $summary, $isEdit, $editTime, $revision, $name, $rhost, $isadmin ) = @_;
     my ( $extraTemp, $rclogdb, $sth );
-    $rclogdb = ( split( /\//, $RcFile ) )[-1];
+    $rclogdb = DBTable($RcFile);
     if ( $dbh eq "" || $rclogdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }
@@ -6359,10 +6369,10 @@ sub DoEditLock {
     return if ( !&UserIsAdminOrError() );
     $fname = "$DataDir/noedit";
     if ( &GetParam( "set", 1 ) ) {
-        &WriteDBItems( "system", 'id,data,time', 1, ( "lockstate", "1", $Now ) );
+        &WriteDBItems( Habitat::Store::T("system"), 'id,data,time', 1, ( "lockstate", "1", $Now ) );
         print '<div class="wikiinfo">', T('Edit lock created.'), '</div>';
     } else {
-        &WriteDBItems( "system", 'id,data,time', 1, ( "lockstate", "0", $Now ) );
+        &WriteDBItems( Habitat::Store::T("system"), 'id,data,time', 1, ( "lockstate", "0", $Now ) );
         print '<div class="wikiinfo">', T('Edit lock removed.'), '</div>';
     }
     print &GetCommonFooter();
@@ -6382,7 +6392,7 @@ sub DoPageLock {
         return;
     }
     return if ( !&ValidIdOrDie($id) );    # Consider nicer error?
-    $lockdb = ( split( /\//, $LockDir ) )[-1];
+    $lockdb = DBTable($LockDir);
     $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id=?", $id );
     if ( &GetParam( "set", 1 ) ) {
         if ( not $tag =~ /L/ ) {
@@ -6427,7 +6437,7 @@ sub UpdatePageLogDB {
 
 sub AddUserLogDB {
     my ( $uid, $action, $target ) = @_;
-    my $dbname = ( split( /\//, $UserLog ) )[-1];
+    my $dbname = DBTable($UserLog);
     return if ( $UseDetailedLog != 1 );
     if ( $dbh eq "" || $dbname eq "" ) {
         die( T('ERROR: database uninitialized!') );
@@ -6443,7 +6453,7 @@ sub DoEditBanned {
 
     print &GetHeader( "", T("Editing Banned list"), "" );
     return if ( !&UserIsAdminOrError() );
-    $banList = ReadDBItems( "system", 'data', "\n", '', "id=?", 'banlist' );
+    $banList = ReadDBItems( Habitat::Store::T("system"), 'data', "\n", '', "id=?", 'banlist' );
     $status  = 1;
 
     $banList = "" if ( !$status );
@@ -6483,11 +6493,11 @@ sub DoUpdateBanned {
         print "<p>Empty banned list or error.";
         print "<p>Resubmit with at least one space character to remove.";
     } elsif ( $newList =~ /^\s*$/s ) {
-        WriteDBItems( "system", 'id,data,time', 1, ( "banlist", "", $Now ) );
+        WriteDBItems( Habitat::Store::T("system"), 'id,data,time', 1, ( "banlist", "", $Now ) );
 
         print "<p>Removed banned list";
     } else {
-        WriteDBItems( "system", 'id,data,time', 1, ( "banlist", $newList, $Now ) );
+        WriteDBItems( Habitat::Store::T("system"), 'id,data,time', 1, ( "banlist", $newList, $Now ) );
         print "<p>Updated banned list";
     }
     print "</div>\n";
@@ -6657,8 +6667,8 @@ sub DeletePage {
         return;
     }
     my $pagedb  = &GetPageDB($page);
-    my $rclogdb = ( split( /\//, $RcFile ) )[-1];
-    my $htmldb  = ( split( /\//, $HtmlDir ) )[-1];
+    my $rclogdb = DBTable($RcFile);
+    my $htmldb  = DBTable($HtmlDir);
 
     if ( $dbh eq "" || $pagedb eq "" || $rclogdb eq "" ) {
         die( T('ERROR: database uninitialized!') );
@@ -6905,7 +6915,7 @@ sub RenamePage {
     }
 
     # Move page rows + RC log rows (id matches the rename key directly).
-    for my $tb ( &GetPageDB($old), ( split( /\//, $RcFile ) )[-1] ) {
+    for my $tb ( &GetPageDB($old), DBTable($RcFile) ) {
         die("RenamePage: unsafe table name '$tb'") if ( !SafeIdent($tb) );
         my $s = $dbh->prepare("update $tb set id=? where id=?");
         $s->execute( $new, $old );
@@ -6922,12 +6932,12 @@ sub RenamePage {
     # `UPDATE set id=? WHERE id=?` never matched anything. Drop every
     # cached language variant for the old id; new pages will repopulate
     # the cache lazily on first read.
-    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
+    my $htmldb = DBTable($HtmlDir);
     if ( SafeIdent($htmldb) ) {
         DeleteDBItems( $htmldb, "id LIKE ?", "$old\[%\]" );
     }
 
-    $tbname = ( split( /\//, $EmailFile ) )[-1];
+    $tbname = DBTable($EmailFile);
     die("RenamePage: unsafe table name '$tbname'") if ( !SafeIdent($tbname) );
     $sth = $dbh->prepare("update $tbname set page=? where page=?");
     $sth->execute( $new, $old );
@@ -6968,7 +6978,7 @@ sub GetPageWatchLink {
 
 sub GetLockState {
     my ($lockstate);
-    $lockstate = ReadDBItems( "system", 'data', '', '', "id=?", 'lockstate' );
+    $lockstate = ReadDBItems( Habitat::Store::T("system"), 'data', '', '', "id=?", 'lockstate' );
     $lockstate = 0 if ( $lockstate != 1 );
 
     return $lockstate;
@@ -6977,7 +6987,7 @@ sub GetLockState {
 sub IsPageLocked {
     my ($id) = @_;
     my ( $lockdb, $tag );
-    $lockdb = ( split( /\//, $LockDir ) )[-1];
+    $lockdb = DBTable($LockDir);
     $tag    = ReadDBItems( $lockdb, 'tag', '', '', "id=?", $id );
     if ( $tag =~ /L/ ) {
         return 1;
@@ -7019,7 +7029,7 @@ sub IsPageWatched {
     my $user = $UserData{'username'};
 
     if ( $UserID > 1000 ) {
-        $watchdb = ( split( /\//, $EmailFile ) )[-1];
+        $watchdb = DBTable($EmailFile);
         $tag     = ReadDBItems( $watchdb, 'username', '', '', "page=? and username=?", $id, $user );
         if ( $tag ne '' ) {
             return 1;
@@ -7301,7 +7311,7 @@ sub BuildNameSpaceRules {
 
 sub RemovePageCache {
     my ( $id, $lang ) = @_;
-    my $htmldb = ( split( /\//, $HtmlDir ) )[-1];
+    my $htmldb = DBTable($HtmlDir);
     if ( $dbh eq "" || $htmldb eq "" ) {
         die( T('ERROR: database uninitialized!') );
     }

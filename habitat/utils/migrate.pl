@@ -35,13 +35,14 @@ use Habitat::Store ();
 my (
     $source_dsn, $source_user, $source_pass, $dest_dsn, $dest_user,
     $dest_pass,  $dry_run,     $batch_size,  $verbose,  $help,
-    @page_tables, $skip_core,
+    @page_tables, $skip_core, $dest_prefix,
 );
 $batch_size  = 500;
 $dest_user   = '';
 $dest_pass   = '';
 $source_user = '';
 $source_pass = '';
+$dest_prefix = '';
 
 GetOptions(
     "source=s"      => \$source_dsn,
@@ -56,6 +57,7 @@ GetOptions(
     "help|h"        => \$help,
     "page-table=s"  => \@page_tables,
     "skip-core"     => \$skip_core,
+    "dest-prefix=s" => \$dest_prefix,
 ) or usage(2);
 
 usage(0) if $help;
@@ -81,6 +83,9 @@ options:
                       the source lacks it, so the wiki can save to it.
   --skip-core         migrate only the --page-table tables (e.g. to take
                       them from a different source than the wiki tables)
+  --dest-prefix P     write every table as P<name> (e.g. dev_ -> dev_page,
+                      dev_users), for a wiki with \$DBTablePrefix = "P" sharing
+                      a database with another wiki; --page-table T goes to P<T>
 DSN examples:
   dbi:SQLite:dbname=/path/to/habitatdb.db
   dbi:Pg:dbname=habitat;host=localhost;port=5432
@@ -185,18 +190,21 @@ my $dst =
 # ----------------------------------------------------------------
 # Provision the destination schema
 # ----------------------------------------------------------------
+die "unsafe --dest-prefix '$dest_prefix'\n"
+  if ( $dest_prefix ne '' && $dest_prefix !~ /\A[A-Za-z_][A-Za-z0-9_]*\z/ );
+$Habitat::Store::TablePrefix = $dest_prefix;
 unless ($dry_run) {
     log_msg "applying schema to destination via Habitat::Store::init_schema";
     Habitat::Store::init_schema($dst);
     for my $t (@page_tables) {
-        Habitat::Store::init_page_table( $dst, $t );
+        Habitat::Store::init_page_table( $dst, $dest_prefix . $t );
     }
     $dst->commit;
 }
 @TABLES = () if $skip_core;
 for my $t (@page_tables) {
     die "unsafe --page-table name '$t'\n" unless Habitat::Store::SafeIdent($t);
-    push @TABLES, { source => $t, dest => $t, handler => \&migrate_page };
+    push @TABLES, { source => $t, dest => $t, real => $dest_prefix . $t, handler => \&migrate_page };
 }
 
 # ----------------------------------------------------------------
@@ -417,6 +425,7 @@ my %report;
 for my $tbl_spec (@TABLES) {
     my $src_table = $tbl_spec->{source};
     my $dst_table = $tbl_spec->{dest};
+    my $dst_real  = $tbl_spec->{real} // Habitat::Store::T($dst_table);    # name in the destination
 
     # Source may carry either the legacy or the new table name (e.g.
     # "user" or "users"). Prefer the first candidate that has rows,
@@ -434,13 +443,13 @@ for my $tbl_spec (@TABLES) {
         $src_table = $nonempty // $found // $src_table;
     }
 
-    my $label = $src_table eq $dst_table ? $dst_table : "$src_table -> $dst_table";
+    my $label = $src_table eq $dst_real ? $dst_real : "$src_table -> $dst_real";
 
     if ( !table_exists( $src, $src_table ) ) {
         log_msg "skip $label (not present in source)";
         next;
     }
-    if ( !table_exists( $dst, $dst_table ) ) {
+    if ( !table_exists( $dst, $dst_real ) ) {
         log_msg "skip $label (not present in destination — schema mismatch?)";
         next;
     }
@@ -448,12 +457,12 @@ for my $tbl_spec (@TABLES) {
     # Custom handler? It owns the entire copy logic for this table
     # (including any row counts / reporting it wants in $report).
     if ( my $handler = $tbl_spec->{handler} ) {
-        $handler->( $src, $dst, $src_table, $dst_table, $label, $dry_run, $verbose, \%report );
+        $handler->( $src, $dst, $src_table, $dst_real, $label, $dry_run, $verbose, \%report );
         next;
     }
 
     my @src_cols = get_columns( $src, $src_table );
-    my @dst_cols = get_columns( $dst, $dst_table );
+    my @dst_cols = get_columns( $dst, $dst_real );
     my %dst_set  = map { $_ => 1 } @dst_cols;
 
     # For each source column, decide where its value should go in dest.
@@ -491,7 +500,7 @@ for my $tbl_spec (@TABLES) {
     my $select = $src->prepare("SELECT $src_col_list FROM $src_table");
     my $insert;
     unless ($dry_run) {
-        $insert = $dst->prepare("INSERT INTO $dst_table ($dst_col_list) VALUES ($placeholders)");
+        $insert = $dst->prepare("INSERT INTO $dst_real ($dst_col_list) VALUES ($placeholders)");
     }
     $select->execute;
 
@@ -536,10 +545,10 @@ for my $tbl_spec (@TABLES) {
     }
     $dst->commit unless $dry_run;
 
-    my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $dst_table );
+    my $dst_count = $dry_run ? '(dry-run)' : row_count( $dst, $dst_real );
     if ( !$dry_run && $dst_table eq 'system' ) {    # report data rows, not the fingerprint
         ($dst_count) =
-          $dst->selectrow_array("SELECT COUNT(*) FROM system WHERE id <> 'schema_version'");
+          $dst->selectrow_array("SELECT COUNT(*) FROM $dst_real WHERE id <> 'schema_version'");
     }
     $report{$label} = { src => $src_count, dst => $dst_count };
     log_msg sprintf( "done %s : src=%d dst=%s", $label, $src_count, $dst_count );

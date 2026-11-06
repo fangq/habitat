@@ -144,6 +144,30 @@ sub _build_upsert_sql {
 # function. To extend the schema, change the @ddl list here and the
 # test harness picks it up automatically.
 
+# Table-name prefix so several wikis can share one database (the
+# engine sets it from $DBTablePrefix). T() gives the real name of one
+# of the tables below; deletedpage follows the engine's "deleted$pagedb"
+# rule, so with prefix "dev_" it is deleteddev_page.
+our $TablePrefix = '';
+
+sub T {
+    my ($name) = @_;
+    return $name if ( $TablePrefix eq '' );
+    die("unsafe table prefix '$TablePrefix'\n") if ( $TablePrefix !~ /\A[A-Za-z_][A-Za-z0-9_]*\z/ );
+    return $name eq 'deletedpage' ? "deleted${TablePrefix}page" : "$TablePrefix$name";
+}
+
+# Rewrite the table (and index) names in one schema statement with T().
+sub _prefix_ddl {
+    my ($s) = @_;
+    return $s if ( $TablePrefix eq '' );
+    $s =~ s/^(\s*CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS\s+)(\w+)(\s+ON\s+)(\w+)/"$1$TablePrefix$2$3" . T($4)/ie
+      or $s =~ s/^(\s*CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+)(\w+)/$1 . T($2)/ie
+      or $s =~ s/^(\s*ALTER\s+TABLE\s+)(\w+)/$1 . T($2)/ie;
+    $s =~ s/(\bRENAME\s+TO\s+)(\w+)/$1 . T($2)/ie;
+    return $s;
+}
+
 # The CREATE statements of the current schema, before per-dialect
 # rewriting (init_schema applies those). Kept separate from init_schema
 # so schema_version() can fingerprint the schema without running it.
@@ -424,9 +448,9 @@ sub init_schema {
     die("init_schema: no \$dbh") if ( !defined($dbh) );
 
     my $d = dialect($dbh);
-    _run_ddl( $dbh, _schema_ddl($dbh) );
+    _run_ddl( $dbh, map { _prefix_ddl($_) } _schema_ddl($dbh) );
 
-    for my $alter ( _schema_alters($dbh) ) {
+    for my $alter ( map { _prefix_ddl($_) } _schema_alters($dbh) ) {
         my $sp = "habitat_init_$$" . sprintf( "_%d", int( rand(0xffff) ) );
 
         # Silence DBI's PrintError noise specifically for this attempt;
@@ -468,7 +492,7 @@ qr/duplicate column|already exists|no such column|Unknown column|no such table|U
                 "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS "
                   . "WHERE TABLE_SCHEMA = DATABASE() "
                   . "AND DATA_TYPE IN ('tinytext','text','mediumtext') "
-                  . "AND TABLE_NAME IN ('page','page_revisions','deletedpage','html','system')"
+                  . "AND TABLE_NAME IN (" . join( ',', map { "'" . T($_) . "'" } qw(page page_revisions deletedpage html system) ) . ")"
             );
         } || [];
         for my $tc (@$narrow) {
@@ -485,7 +509,7 @@ qr/duplicate column|already exists|no such column|Unknown column|no such table|U
     {
         local $dbh->{PrintError} = 0;
         eval {
-            $dbh->do( _build_upsert_sql( $dbh, 'system', 'id,data,time' ),
+            $dbh->do( _build_upsert_sql( $dbh, T('system'), 'id,data,time' ),
                 undef, 'schema_version', schema_version($dbh), time() );
         };
     }
@@ -519,7 +543,7 @@ sub ensure_schema {
     my $have = eval {
         local $dbh->{PrintError} = 0;
         local $dbh->{RaiseError} = 1;
-        $dbh->selectrow_array( "SELECT data FROM system WHERE id=?", undef, 'schema_version' );
+        $dbh->selectrow_array( "SELECT data FROM " . T('system') . " WHERE id=?", undef, 'schema_version' );
     };
     if ($@) {
 
