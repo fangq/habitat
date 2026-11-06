@@ -127,7 +127,7 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
   $StaticCacheDir $StaticCacheOK $StaticCacheGen
   $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache
-  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap);
+  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap $UseHttps);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -267,6 +267,9 @@ $LoginThrottleWindow = 300;          # Counted within this many seconds
 $UsePasswordReset    = 1;            # "Forgot password?" link on the login page (needs a working $SendMail)
 $PasswordResetTTL    = 86400;        # A reset link expires after this many seconds
 $PasswordResetMailGap = 900;         # At most one reset email per account in this many seconds
+$UseHttps            = 1;            # Links the wiki builds to itself (redirects, emails, RSS) use https,
+                                     # even when a TLS proxy (Cloudflare) talks plain http to the server.
+                                     # Never applied to localhost. 0 = keep the request's own scheme.
 $TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
                                      # Only when REMOTE_ADDR matches one of these will
                                      # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
@@ -636,7 +639,7 @@ sub InitRequest {
     }
     $MainPage     = ".";                     # For subpages only, the name of the top-level page
     $OpenPageName = "";                      # Currently open page
-    $FullUrl      = $q->url( -full => 1 );
+    $FullUrl      = &SelfUrl();
 
     if ( !-d $DataDir ) {
         &ReportError( Ts( 'Could not create %s', $DataDir ) . ": $!" );
@@ -1468,7 +1471,7 @@ sub GetRcRss {
     my ( $rssHeader, $headList, $items );
 
     # Normally get URL from script, but allow override
-    $FullUrl         = $q->url( -full => 1 ) if ( $FullUrl eq "" );
+    $FullUrl         = &SelfUrl() if ( $FullUrl eq "" );
     $QuotedFullUrl   = &QuoteHtml($FullUrl);
     $SiteDescription = &QuoteHtml($SiteDescription);
 
@@ -2309,6 +2312,17 @@ sub GetSearchForm {
     return $result;
 }
 
+# Absolute URL of this script, for links the wiki builds to itself.
+# Behind a TLS-terminating proxy the CGI sees plain http, so with
+# $UseHttps (default) an http:// URL is upgraded to https://, except
+# for local development hosts.
+sub SelfUrl {
+    my $u = $q->url( -full => 1 );
+    $u =~ s{\Ahttp://}{https://}i
+      if ( $UseHttps && $u !~ m{\Ahttp://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:/|\z)}i );
+    return $u;
+}
+
 sub GetRedirectPage {
     my ( $newid, $name, $isEdit ) = @_;
     my ( $url, $html );
@@ -2319,7 +2333,7 @@ sub GetRedirectPage {
     } else {
 
         # Normally get URL from script, but allow override.
-        $FullUrl = $q->url( -full => 1 ) if ( $FullUrl eq "" );
+        $FullUrl = &SelfUrl() if ( $FullUrl eq "" );
         $url     = $FullUrl . &ScriptLinkChar() . &UrlEncode($newid);
     }
     $nameLink = "<a href=\"$url\">$name</a>";
@@ -5404,7 +5418,7 @@ sub SetPreRegFlag {
 
 sub SendRegMail {
     my $homeurl =
-        $q->url( -full => 1 )
+        &SelfUrl()
       . &ScriptLinkChar()
       . "action=activate\&uid=$UserID\&regid="
       . $UserData{'param'}
@@ -5513,7 +5527,7 @@ sub SendPasswordResetMail {
     my ($row) = @_;
     my $exp  = $Now + $PasswordResetTTL;
     my $sig  = PasswordResetSig( $row->{id}, $exp, $row->{pass}, $row->{param} );
-    my $base = ( $SiteBase ne '' ) ? $SiteBase : $q->url( -full => 1 );
+    my $base = ( $SiteBase ne '' ) ? $SiteBase : &SelfUrl();
     my $link = "$base?action=resetpw&uid=$row->{id}&exp=$exp&sig=$sig";
     my $hours = int( $PasswordResetTTL / 3600 );
     my $message = <<"END_RESET_MSG";
@@ -6172,7 +6186,7 @@ sub EmailNotify {
         my $address;
         $address = &ReadWatchListDB($id);
 
-        my $home_url        = $q->url( -full => 1 );
+        my $home_url        = &SelfUrl();
         my $page_url        = $home_url . "?" . &UrlEncode("$id");
         my $editors_summary = $q->param("summary");
         if ( ( $editors_summary eq "*" ) or ( $editors_summary eq "" ) ) {
