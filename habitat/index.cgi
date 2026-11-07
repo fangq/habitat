@@ -3898,6 +3898,13 @@ sub GetLockedPageFile {
     return $PageDir . "/" . &GetPageDirectory($id) . "/$id.lck";
 }
 
+# Named locks were directories under $LockDir for the flat-file store;
+# with the database store (now the only one) they always succeeded and
+# the database does the locking. Removing these with the flat-file code
+# left RequestLock calling an undefined sub, so every save died.
+sub RequestLockDir { return 1; }
+sub ReleaseLockDir { return 1; }
+
 sub RequestLock {
 
     # 10 tries, 3 second wait, possibly die on error
@@ -4514,6 +4521,11 @@ sub DoEdit {
     print
       "<form method=\"post\" action=\"$ScriptName\" enctype=\"application/x-www-form-urlencoded\" 
 name=\"myform\">";
+
+    # The edit form is written by hand (it needs name="myform" for the
+    # editor scripts), so it must add the CSRF token GetFormStart adds;
+    # without it every save was refused by DoPost's CSRFCheckOrDie.
+    print qq(<input type="hidden" name="csrf_token" value="), GenCSRFToken(), qq(" />\n);
 
     #  }
     #  else {print &GetFormStart();}
