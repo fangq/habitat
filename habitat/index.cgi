@@ -3899,6 +3899,51 @@ sub UserPermission {
     return $up;
 }
 
+# A token in $AdminPass/$EditPass is either the token itself or, as
+# written by utils/hashpass.pl, "{bcrypt}" and the token's bcrypt hash.
+# A user who typed a hashed token keeps a role code (RoleCode) instead of
+# a hash of what they typed, since two bcrypt hashes cannot be compared.
+# The role code is keyed with the site secret: anyone who sees the config
+# or the users table still cannot make one.
+sub IsHashedToken {
+    my ($t) = @_;
+    return ( defined($t) && $t =~ /\A\{bcrypt\}\$2[abxy]\$/ ) ? 1 : 0;
+}
+
+sub RoleCode {
+    my ($token) = @_;
+    return '{role}' . Hmac("role-token\0$token");
+}
+
+# Does a user's stored value give config token $token?
+sub TokenGrants {
+    my ( $token, $stored ) = @_;
+    return 0 if ( !defined($token) || $token eq '' || !defined($stored) || $stored eq '' );
+    return ConstantEq( $stored, RoleCode($token) ) if ( IsHashedToken($token) );
+    return 0 if ( $stored =~ /\A\{role\}/ );
+    return VerifyPassword( $token, $stored );
+}
+
+# Is $typed (preferences, registration form) config token $token?
+sub TokenMatches {
+    my ( $token, $typed ) = @_;
+    return 0 if ( !defined($token) || $token eq '' || !defined($typed) || $typed eq '' );
+    if ( IsHashedToken($token) ) {
+        require Crypt::Bcrypt;
+        return Crypt::Bcrypt::bcrypt_check( $typed, substr( $token, 8 ) ) ? 1 : 0;
+    }
+    return ConstantEq( $token, $typed );
+}
+
+# The value to store for a user who typed $typed as administrator token
+sub AdminTokenValue {
+    my ($typed) = @_;
+    foreach my $t ( split( /\s+/, "$AdminPass $EditPass" ) ) {
+        return RoleCode($t) if ( IsHashedToken($t) && TokenMatches( $t, $typed ) );
+    }
+    return HashPassword($typed);
+}
+
 sub UserIsAdmin {
     my ($stored);
     return 0 if ( $AdminPass eq "" );
@@ -3908,7 +3953,7 @@ sub UserIsAdmin {
     return 0 if ( $stored eq "" );
     foreach my $token ( split( /\s+/, $AdminPass ) ) {
         next     if ( $token eq "" );
-        return 1 if ( VerifyPassword( $token, $stored ) );
+        return 1 if ( TokenGrants( $token, $stored ) );
     }
     return 0;
 }
@@ -3931,7 +3976,7 @@ sub RegistrationTokenOK {
     my $pool = ( $level eq 'admin' ) ? $AdminPass : "$AdminPass $EditPass";
     foreach my $t ( split( /\s+/, $pool ) ) {
         next if ( $t eq '' );
-        $ok = 1 if ( ConstantEq( $t, $tok ) );
+        $ok = 1 if ( TokenMatches( $t, $tok ) );
     }
     return $ok;
 }
@@ -3944,7 +3989,7 @@ sub UserIsEditor {
     return 0 if ( $stored eq "" );
     foreach my $token ( split( /\s+/, $EditPass ) ) {
         next     if ( $token eq "" );
-        return 1 if ( VerifyPassword( $token, $stored ) );
+        return 1 if ( TokenGrants( $token, $stored ) );
     }
     return 0;
 }
@@ -5142,7 +5187,8 @@ sub DoUpdatePrefs {
             undef $UserData{'adminpw'};
         } elsif ( $password ne "*" ) {
             print T('Administrator password changed.'), '<br>';
-            $UserData{'adminpw'} = HashPassword($password);
+            $UserData{'adminpw'} = AdminTokenValue($password);
+            delete $UserData{'clearance'};
             if ( &UserIsAdmin() ) {
                 print T('User has administrative abilities.'), '<br>';
             } elsif ( &UserIsEditor() ) {
