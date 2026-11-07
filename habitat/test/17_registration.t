@@ -36,6 +36,7 @@ HabitatEngine::InitLinkPatterns();
 *HabitatEngine::CSRFCheckOrDie = sub { 1 };
 $HabitatEngine::UseActivation = 0;
 $HabitatEngine::AdminPass     = 'adm1nPass';
+$HabitatEngine::RegistrationPermission = 'user';    # registration levels: 27_register_token.t
 $HabitatEngine::LangID        = '';
 
 # Run a prefs action with the given form fields; returns (output, exited).

@@ -127,7 +127,8 @@ use vars qw(%InterSite $SaveUrl $SaveNumUrl
   %ExtViewer %ExtEditor $UseActivation %ExportPage $HtmlScrubber $DocType
   $StaticCacheDir $StaticCacheOK $StaticCacheGen
   $SecretFile $SiteSecret $LoginMaxAttempts $LoginThrottleWindow %RuleDirCache
-  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap $UseHttps $DBTablePrefix);
+  $UsePasswordReset $PasswordResetTTL $PasswordResetMailGap $UseHttps $DBTablePrefix
+  $RegistrationPermission);
 
 # == Configuration =====================================================
 $DataDir    = "./habitatdb";                   # Main wiki directory
@@ -272,6 +273,12 @@ $UseHttps            = 1;            # Links the wiki builds to itself (redirect
                                      # Never applied to localhost. 0 = keep the request's own scheme.
 $DBTablePrefix       = '';           # Prefix for every table name (e.g. "dev_" -> dev_page, dev_users),
                                      # so several wikis can share one database. Letters, digits, _ only.
+$RegistrationPermission = 'editor';  # Who may create an account (against spam sign-ups):
+                                     #   'user'   = anyone;
+                                     #   'editor' = only with a token from $EditPass or $AdminPass;
+                                     #   'admin'  = only with a token from $AdminPass.
+                                     # The token only unlocks registration; the new account is an
+                                     # ordinary user. No matching token configured = registration closed.
 $TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs/CIDR-like prefixes.
                                      # Only when REMOTE_ADDR matches one of these will
                                      # HTTP_X_REMOTE_ADDR / HTTP_X_FORWARDED_FOR be honored.
@@ -3867,6 +3874,29 @@ sub UserIsAdmin {
     return 0;
 }
 
+# $RegistrationPermission as 'user', 'editor' or 'admin'; anything else
+# counts as 'admin' (the most restrictive).
+sub RegistrationLevel {
+    my $l = lc( $RegistrationPermission // 'editor' );
+    return ( $l eq 'user' || $l eq 'editor' ) ? $l : 'admin';
+}
+
+# May an account be created with registration token $tok? The token is
+# only compared, never stored: it does not give the new account rights.
+sub RegistrationTokenOK {
+    my ($tok) = @_;
+    my $level = &RegistrationLevel();
+    return 1 if ( $level eq 'user' );
+    return 0 if ( !defined($tok) || $tok eq '' );
+    my $ok = 0;
+    my $pool = ( $level eq 'admin' ) ? $AdminPass : "$AdminPass $EditPass";
+    foreach my $t ( split( /\s+/, $pool ) ) {
+        next if ( $t eq '' );
+        $ok = 1 if ( ConstantEq( $t, $tok ) );
+    }
+    return $ok;
+}
+
 sub UserIsEditor {
     my ($stored);
     return 1 if ( &UserIsAdmin() );    # Admin includes editor
@@ -4802,6 +4832,18 @@ sub DoEditPrefs {
       . '<strong>*'
       . T('(must be unique)')
       . '</strong></span><hr class="wikilinepref"/>';
+    if ( $UserData{'username'} eq '' && &RegistrationLevel() ne 'user' ) {    # sign-up form
+        print '<h4>' . T('Registration token') . '</h4>';
+        print '<span class="span_prefinfo"><label class="formlabel">' . T('Token:'), '</label>',
+          $q->password_field( -name => 'p_regtoken', -value => '', -size => 20, -maxlength => 50 ),
+          '<strong>*</strong> ',
+          (
+            &RegistrationLevel() eq 'admin'
+            ? T('(registration needs a token from the wiki administrator)')
+            : T('(registration needs a token from a wiki editor or administrator)')
+          ),
+          '</span><hr class="wikilinepref"/>';
+    }
     if ( ( $AdminPass ne '' ) || ( $EditPass ne '' ) ) {
         print '<h4>' . T('Administrator token') . '</h4>';
         print '<span class="span_prefinfo"><label class="formlabel">' . T('Token:'), '</label>',
@@ -4934,6 +4976,25 @@ sub DoUpdatePrefs {
     # only plain addresses are accepted, for new and existing users.
     if ( $email ne "" && !ValidEmail($email) ) {
         PrintMsg( T("Please enter a valid email address"), T("Error"), 1 );
+    }
+
+    # $RegistrationPermission: an editor/admin-only wiki needs a matching
+    # registration token. Checked before anything is set up, so a refused
+    # registration writes no user row. Failures are throttled per IP.
+    if ( $UserID < 1001 && &RegistrationLevel() ne 'user' ) {
+        my $ip_key = 'regtoken-ip:' . &RemoteAddr;
+        if ( LoginThrottleBlocked($ip_key) ) {
+            PrintMsg( T('Too many requests. Try again in a few minutes.'), T('Error'), 1 );
+        }
+        if ( !&RegistrationTokenOK( &GetParam( "p_regtoken", "" ) ) ) {
+            LoginThrottleHit($ip_key);
+            PrintMsg(
+                &RegistrationLevel() eq 'admin'
+                ? T('Registration requires a valid administrator token.')
+                : T('Registration requires a valid editor or administrator token.'),
+                T('Error'), 1
+            );
+        }
     }
 
     if ( $UserID < 1001 ) {
