@@ -97,8 +97,14 @@ sub yscalar {
     }
     my $trail = 0;
     $trail++ while ( $s =~ s/\n\z// );
-    my $body = join( "\n", map { $_ eq '' ? '' : "    $_" } split( /\n/, $s, -1 ) );
-    return ( $trail ? '|2+' : '|2-' ) . "\n" . $body . ( "\n" x $trail );
+    my @lines = split( /\n/, $s, -1 );
+    my $body  = join( "\n", map { $_ eq '' ? '' : "    $_" } @lines );
+
+    # The first non-empty line sets the indent unless it is given; give it
+    # (|2) only when that line itself starts with spaces.
+    my ($first) = grep { $_ ne '' } @lines;
+    my $ind = ( defined($first) && $first =~ /^ / ) ? '2' : '';
+    return '|' . $ind . ( $trail ? '+' : '-' ) . "\n" . $body . ( "\n" x $trail );
 }
 
 sub to_yaml {
