@@ -3,7 +3,7 @@
 # Based on UseModWiki 1.0
 
 $CookieName = "HabitatCookie";               # Name for this wiki (for multi-wiki sites)
-$SiteName   = "Computational Imaging Lab (FangLab) Wiki"; # Name of site (used for titles)
+$SiteName   = "Habitat Wiki";    # Name of site (used for titles)
 $HomePage   = "Home";                                     # Home page (change space to _)
 $RCName     = "RecentChanges";                            # Name of changes page (change space to _)
 $LogoUrl    = "images/habitat_icon.png";                  # URL for site logo ("" for nologo)
@@ -21,7 +21,7 @@ $StyleSheet = "css/wikistyle_column.css";    # URL for CSS stylesheet (like "/wi
 $NotFoundPg = "";                            # Page for not-found links ("" for blank pg)
 $EmailFrom  = "Habitat";                     # Text for "From: " field of email notes.
 $SendMail   = "/usr/sbin/sendmail";          # Full path to sendmail executable
-$FooterNote = '<a href="http://wenq.org/habitat/"><b>Powered by Habitat</b></a>'
+$FooterNote = '<a href="https://wenq.org/habitat/"><b>Powered by Habitat</b></a>'
   ;                                          # HTML for bottom of every page
 $EditNote         = "";                              # HTML notice above buttons on edit page
 $MaxPost          = 1024 * 210;                      # Maximum 210K posts (about 200K for pages)
@@ -44,8 +44,8 @@ $UserHeader       = '';                              # Optional HTML header addi
 $UserBody         = '';                              # Optional <BODY> tag additional content
 $StartUID         = 1001;                            # Starting number for user IDs
 
-$UploadDir = '/var/www/html/wiki/upload';              # Full path (like /foo/www/uploads) for files
-$UploadUrl = 'http://kwafoo.coe.neu.edu/wiki/upload';  # Full URL (like http://foo.com/uploads)
+$UploadDir = '';    # Full path (like /foo/www/uploads) for files
+$UploadUrl = '';    # Full URL (like https://foo.com/uploads)
 
 @ImageSites = qw();                                    # Url prefixes of good image sites: ()=all
 
@@ -116,13 +116,13 @@ $BracketImg   = 1;                    # 1 = [url url.gif] becomes image link, 0 
 $MaxTreeDepth = 20;                   # maximum number of nested subpage depth
 
 # Names of sites.  (The first entry is used for the number link.)
-@IsbnNames = ( 'bn.com', 'amazon.com', 'search' );
+@IsbnNames = ( 'openlibrary.org', 'amazon.com', 'worldcat.org' );
 
 # Full URL of each site before the ISBN
 @IsbnPre = (
-    'http://shop.barnesandnoble.com/bookSearch/isbnInquiry.asp?isbn=',
-    'http://www.amazon.com/exec/obidos/ISBN=',
-    'http://www.pricescan.com/books/BookDetail.asp?isbn='
+    'https://openlibrary.org/isbn/',
+    'https://www.amazon.com/dp/',
+    'https://search.worldcat.org/search?q=bn:'
 );
 
 # Rest of URL of each site after the ISBN (usually '')
@@ -182,8 +182,7 @@ $EmailFile = "$DataDir/watch";       # Email notification lists
 
 #%DBPrefix=("$DiscussPage\$","talk");
 
-%ExtViewer =
-  ( "^test/Uni[0-9A-F]{4,5}\$", "test/UnicodeViewer", '^test/demofun1$', \&DemoContentFromFunc );
+%ExtViewer = ( '^test/demofun1$', \&DemoContentFromFunc );
 %ExtEditor = ();
 
 $PageEmbed     = 1;                                   # 1 = {{page|name}} format
@@ -209,177 +208,143 @@ $HistoryLimit    = 50;
 $RCHistoryLimit  = 100;
 $InlineDiffLimit = 50;
 
-$BuildinPages{"Habitat/NewSyntax"} = <<HABITAT_NEWFEATURES;
-= Habitat's new features =
+# Built-in pages for the advanced-features tour (Habitat/NewSyntax) and
+# the demo pages it embeds. The heredoc is quoted, so $names stay literal.
+$BuildinPages{"Habitat/NewSyntax"} = <<'HABITAT_NEWFEATURES';
+= Advanced features =
 <toc>
-<html><style type="text/css">
-div.embedpage{background-color:#CCCCCC;}
-</style></html>
-== # Page HTML Embedding ==
-By typing: <pre><nowiki>{{test/demo1}}</nowiki></pre><br>
-you can embed the HTML form of page [[test/demo1]] into the 
-current page, such as the following example:
-{{test/demo1}}
 
-the content of [[test/demo1]] is
+The basics are on [[Habitat/Markup]]. This page shows what makes Habitat
+different: pages that reuse other pages, pages that carry their own
+formatting rules, Markdown, and blogs and forums. The examples use small
+demo pages under <tt>test/</tt>.
+
+== # Embedding pages ==
+
+!! You type !! You get !!
+|| <tt><nowiki>{{test/demo1}}</nowiki></tt> || page [[test/demo1]], rendered, inside this page ||
+|| <tt><nowiki>{(test/demo1)}</nowiki></tt> || the raw text of [[test/demo1]], formatted as part of this page ||
+
+Here is <tt><nowiki>{{test/demo1}}</nowiki></tt>:
+{{test/demo1}}
+and here is its source, shown with <tt><nowiki><pre>{(test/demo1)}</pre></nowiki></tt>:
 <pre>{(test/demo1)}</pre>
 
-== # Page Raw Text Embedding ==
-By typing: <pre><nowiki>{(test/demo1)}</nowiki></pre><br>
-you can embed the raw text form of page [[test/demo1]] into the 
-current page, such as in this example [[test/demo3]].
-The raw text for [[test/demo3]] can be found 
-[http:?keywords=test/demo3&raw=1 here].
+Embedded pages can embed others in turn ([[test/demo2]] embeds
+[[test/demo1]]), up to <tt>$MaxEmbedDepth</tt> levels. Use this for
+headers, footers, menus, or any text that should appear on many pages but
+be edited in one place. Each embedded page keeps its own permissions: a
+reader who may not see it gets nothing.
 
+Add <tt>raw=1</tt> to any page address to get its plain text, for example
+[http:?action=browse&id=test/demo3&raw=1 test/demo3 as text].
 
-== # Object-oriented wiki pages ==
+== # Page rules ==
 
-In Habitat, each wiki page is an "object". It has its own
-data (i.e. content) and methods (rules). The methods can 
-alter the form or representation of the data at different 
-stages. There are 4 basic rules: pre-viewer rules, 
-post-viewer rules, pre-editor rules and post-editor rules.
+A page can carry text-rewriting rules in hidden companion pages:
 
-Pre-viewer and post-viewer rules are called when a user 
-browses a page (or browse a page where this page is embedded 
-with). The difference is that "pre-viewer" rules are called
-before converting wiki raw text to HTML, and "post-viewer"
-are called after the conversion.
+!! Rule page !! Applied !!
+|| <tt>Page/.v0</tt> || when the page is shown, before the wiki markup is converted ||
+|| <tt>Page/.v1</tt> || when the page is shown, after it has become HTML ||
+|| <tt>Page/.e0</tt> || when the edit form is opened ||
+|| <tt>Page/.e1</tt> || when an edit is saved ||
 
-Pre- and post-editor rules are called when a user is
-trying to edit the content of a page. The pre-editor 
-rules will modify the page text before sending the
-editing interface to the user. With this rule, one can
-define a HTML editor (using HTML and javascript) to modify the
-page content with a specific format. The post-editor
-rules are applied when user submits the modified content
-from the editor.
+'''Rules are inherited:''' the rules of <tt>Page</tt> also apply to
+<tt>Page/Sub</tt> and every page below it, before the subpage's own. One
+set of rules can so give a whole section of the wiki its own format: a bug
+tracker, a glossary, a slide deck. Only administrators can edit rule pages.
 
-The methods associated with a wiki page are automatically 
-inherited by its subpages. For example, if you define
-the '''pre-viewer''' rules for page [[atomic/menu]], when browsing
-page [[atomic/menu/style1]], the rules for [[atomic/menu]]
-will be executed first, before executing any rules defined
-for [[atomic/menu/style1]] itself (this allows mutation).
+Each line of a rule page is one rule:
 
-== # Wikipage Rules - Pre-viewer ==
+!! Rule !! Effect !!
+|| <tt>from/to</tt> || replace the regular expression <tt>from</tt> with <tt>to</tt> (add <tt>/g</tt>, <tt>/i</tt> or <tt>/m</tt> for the usual flags) ||
+|| <tt>GREP pattern</tt> || keep only the lines matching <tt>pattern</tt> ||
+|| <tt>HEAD n</tt>, <tt>TAIL n</tt> || keep only the first or last <tt>n</tt> lines ||
 
-The pre-viewer rules are defined in a special wiki page
-named "pagename/.v0" where "pagename" is the associated 
-wiki page. Currently, Habitat only supports regular expression
-replacement commands as the rules. We will extend this to
-more complex languages in the future.
+A backslash at the end of a line continues the rule on the next line.
+Rule output may contain placeholders, which are filled in when the page is
+shown: <tt><nowiki>&amp;lt;pagename&amp;gt;</nowiki></tt> (the last part of the
+page name), <tt><nowiki>&amp;lt;fullpagename&amp;gt;</nowiki></tt>,
+<tt><nowiki>&amp;lt;date&amp;gt;</nowiki></tt> and <tt><nowiki>&amp;lt;time&amp;gt;</nowiki></tt>
+(when the page was created), and <tt><nowiki>&amp;lt;datenow&amp;gt;</nowiki></tt> and
+<tt><nowiki>&amp;lt;timenow&amp;gt;</nowiki></tt>. In page text they are written with
+the HTML escapes exactly as shown here.
 
-Here we show a simple demo for how to use pre-viewer rules. 
-Let's first define a page called [[test/code]], and set the
-pre-viewer rules in [[test/code/.v0]] as
+For example, [[test/code/.v0]] holds two rules that wrap the text of every
+page under <tt>test/code</tt> in <tt><nowiki><pre></nowiki></tt>:
 <pre>{(test/code/.v0)}</pre>
-
-You can see, the rules adds some HTML tages before and 
-after the raw data. Let's define a subpage named 
-[[test/code/codedemo]] with content
+so [[test/code/codedemo]], whose text is
 <pre>{(test/code/codedemo)}</pre>
-
-when you browse [[test/code/codedemo]], you will see
+is shown as
 {{test/code/codedemo}}
 
+The site configuration can also attach rules, or a Perl function, to page
+names by pattern (<tt>%NameSpaceV0</tt> and friends, <tt>%ExtViewer</tt>);
+[[test/demofun1]] is produced by such a function.
 
+== # Markdown pages ==
+
+A page whose first line is
+<pre><nowiki><!-- markdown --></nowiki></pre>
+is written in Markdown instead of wiki markup (this needs the
+<tt>Text::Markdown::Discount</tt> Perl module). As everywhere, raw HTML in
+it is cleaned unless an administrator saved the page.
+
+== # Blogs and forums ==
+
+Any page becomes a ''board'' when an '''administrator''' saves it with a
+line like one of these:
+<pre><nowiki><board type=forum perpage=20 post=user reply=user>
+<board type=blog perpage=10 post=editor reply=user></nowiki></pre>
+That line is replaced by the list of posts, with a ''New post'' button for
+those allowed to write.
+
+!! Setting !! Values !! Forum default !! Blog default !!
+|| <tt>type</tt> || <tt>forum</tt> or <tt>blog</tt> || || ||
+|| <tt>perpage</tt> || posts (and replies) per page, 1-200 || 20 || 10 ||
+|| <tt>post</tt> || who may start a post: <tt>anon</tt>, <tt>user</tt>, <tt>editor</tt>, <tt>admin</tt> || <tt>user</tt> || <tt>editor</tt> ||
+|| <tt>reply</tt> || who may reply, same values || <tt>user</tt> || <tt>user</tt> ||
+
+* Every post and every reply is a wiki page of its own, with history, diff and edit link. Forum topics are named <tt>Forum/0001</tt>, blog posts after the date and title (<tt>Blog/2026-11-07-Hello-World</tt>), and replies <tt>Forum/0001/0001</tt>.
+* A forum lists topics by latest activity, with reply counts; a blog shows the newest posts first with an excerpt. Both page through long lists and can be filtered by tag.
+* Authors can edit their own posts; editors and administrators can also make a topic sticky, close it to replies, and delete replies or whole threads.
+* Only an administrator's save switches a board on or changes its settings, so nobody else can open a board to anonymous posting.
+
+The full guide is <tt>BOARDS.md</tt> in the source folder.
+
+== # Who may read and edit what ==
+
+Set in the site configuration:
+
+!! Setting !! Effect !!
+|| <tt>%Permissions</tt> || page-name patterns that need a higher level to read ||
+|| <tt>%EditPermissions</tt> || page-name patterns that need a higher level to edit ||
+|| <tt>$PermEditAllowed</tt> || the lowest level that may edit at all ||
+|| <tt>$RegistrationPermission</tt> || who may create an account ||
+
+Levels are: anonymous visitor, logged-in user, editor and administrator.
+Administrators can also lock single pages, or the whole site, from the
+administration links.
 HABITAT_NEWFEATURES
 
+$BuildinPages{"test/demofun1"} = 'Replaced by the output of DemoContentFromFunc() in the config.';
 $BuildinPages{"test/code/.v0"} = '^/<pre>
 $/<\/pre>';
-
 $BuildinPages{"test/code/codedemo"} = '// sample C++ code
-class HabitatWikiPage{
-      char *name;
-      char *text;
-      HabitatWikiPage(char *pagename);
-      void previewer();
+class HabitatWikiPage {
+    char *name;
+    char *text;
+    HabitatWikiPage(char *pagename);
+    void previewer();
 };';
-
-$BuildinPages{"test/Uni8888"} = '';
-
-$BuildinPages{"test/UnicodeViewer"} = '<html>
-<script type="text/javascript">
- function getunicode(){
-     var parts = location.href.split("#");
-     var glyphpath = parts[parts.length-1];
-     try {
-	 glyphpath = decodeURIComponent(glyphpath);
-     } catch(e) {;}
-     if(parts.length>1) {
-	var hex=glyphpath.replace(/.*Uni([0-9A-Fa-f]+)$/,"$1");
-	var val=parseInt(hex,16);
-        glyphpath=String.fromCharCode(val);
-	document.getElementById("unititle").innerHTML="UNICODE:"+hex+"&raquo;"+glyphpath;
-	var str="";
-	for(i=-16;i<=16;i++){
-	     if(i==0)
-		str+="<&#"+(val+i)+";>";
-	     else
-		str+="<a href=\"?test/Uni"+(val+i).toString(16).toUpperCase()+"\">&#"+(val+i)+";</a>";
-	}
-	document.getElementById("uniblock").innerHTML=str;
-     }
- };
- window.onload = getunicode;
-</script>
-<h2 id="unititle"></h2>
-<p id="uniblock" style="font-size:20px"></h2>
-</html>';
-
-$BuildinPages{"test/demo1"} = '== # Embedding Content ==
-This text comes from the embedded page.';
-
-$BuildinPages{"test/demo2"} = '== # Parent Page ==
-This text is from parient page.
+$BuildinPages{"test/demo1"} = '=== Embedded content ===
+This text comes from the page \'\'test/demo1\'\'.';
+$BuildinPages{"test/demo2"} = '=== Parent page ===
+This text is from the parent page, which embeds a rendered page:
 {{test/demo1}}';
-
-$BuildinPages{"test/demo3"} = '== # Parent Page ==
-This text is from parient page.
+$BuildinPages{"test/demo3"} = '=== Parent page ===
+This text is from the parent page, which includes the raw text of another page:
 {(test/demo1)}';
-
-$BuildinPages{"atom/menu/.v0"} = '-+/<hr class="menusep">';
-$BuildinPages{"atom/menu/.v1"} = '^/<style type="text\/css">\
-ul.wikiullevel1{\
-  margin: 0;\
-  padding: 0;\
-  background-color:rgb(60,192,60);\
-  color:white;\
-  list-style-type: none;\
-}\
-ul.wikiullevel1 li{\
-  position: relative;\
-  display: inline;\
-  margin:8px;\
-}\
-ul.wikiullevel2{\
-  left: 0;\
-  top: 0;\
-  border: 1px solid gray;\
-  position: absolute;\
-  display: block;\
-  visibility: hidden;\
-  z-index: 100;\
-  background-color:rgb(256,256,210);\
-  color: green;\
-  padding:0;\
-  white-space:nowrap;\
-  filter:alpha(opacity=90);\
-  opacity: 0.9;\
-  list-style-type: none;\
-}\
-ul.wikiullevel2 li{\
-  float: none;\
-  display: block;\
-  margin:10px;\
-}\
-hr.menusep{\
-  width:200px;\
-  color: #aaaaaa;\
-}\
-<\/style>\
-<script type="text\/javascript" src="\/plugin\/menu\/menuscript.js"><\/script>';
 
 # external content modifiers (plugins or addons)
 

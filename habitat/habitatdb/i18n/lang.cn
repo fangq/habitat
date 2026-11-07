@@ -1,305 +1,57 @@
 # == Language =======================================================
 # Habitat Translation for Simplified Chinese (cn)
-# http://wenq.org/habitat/
+# https://wenq.org/habitat/
 # Qianqian Fang <q.fang at neu.edu>
 
 $RCName = "最近更新";    # Name of changes page (change space to _)
 
 #$FooterNote  = "Habitat提供动力";
-$SiteName                = "Habitat";            # Name of site (used for titles)
+#$SiteName                = "Habitat";            # Name of site (used for titles)  # keep the site name from config
 $HomePage                = "首页";                 # Home page (change space to _)
 $DiscussSuffix           = "..讨论";
-$BuildinPages{$HomePage} = <<HOMEPAGE_DEFAULT;
-= 欢迎使用 Habitat 个人资讯管理平台 =
-{{atom/menu/HabitatMenu}}
+# The English built-in pages (installation, markup, advanced features)
+# are shared; the home page below replaces the English one.
+do "$DataDir/i18n/lang.en";
+
+$BuildinPages{$HomePage} = <<'HOMEPAGE_DEFAULT';
+= 欢迎使用 Habitat =
 <toc>
-== # 什么是Habitat ==
 
-Habitat是一个小巧、快捷、安装简便、可扩展性强的个人资讯管理平台。
-Habitat使用perl语言编写，以sqlite本地数据库作为后端，并包含了内置
-的服务器脚本。Habitat可以直接在本地计算机上运行使用，也可以放置在
-开放服务器上提供多人或者社区使用。
+Habitat 是一个用 Perl 编写的小巧、快速的 wiki 引擎。把它放到任何能运行 Perl 的网站服务器上，您和合作者就可以直接在浏览器里共同编辑网站，每一次修改都会保存在页面历史中。
 
-Habitat是一个wiki引擎，也同时是一个内容管理系统(CMS)。用户可以
-使用Habitat来快速建立和维护个人网站，或者为社区提供协作式创作平台。
+'''这是一个内置页面。'''新建的 Habitat wiki 在有人编辑之前都会显示这个页面。登录后点击“编辑本页”即可换成您自己的首页。
 
-Habitat是由[http://github.com/fangq 房骞骞]在
-[http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]的基础上
-为开源中文字体项目[http://wenq.org 文泉驿]开发并优化的。
-新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
-多语言支持、面向对象的wiki数据结构以及可编程的扩展接口。
+== # Habitat 的功能 ==
 
-{(Habitat/Download)}
+* '''wiki 编辑：'''简单的文本标记（[[Habitat/Markup|标记语法]]，英文），每个页面都有完整的修订历史和差异比较，另有[http:?action=rc 最近更新]、RSS 订阅和全文搜索。
+* '''树状页面：'''像 <tt>项目/笔记/2026</tt> 这样的名字就是子页面；<tt><nowiki><localtree></nowiki></tt> 标记列出当前页面下的所有子页面。
+* '''一处编写，多处复用：'''<tt><nowiki>{{页面}}</nowiki></tt> 嵌入另一个页面的显示结果，<tt><nowiki>{(页面)}</nowiki></tt> 嵌入它的原始文本。
+* '''页面规则：'''页面可以带有文本替换规则，并自动作用于它的所有子页面，从而把 wiki 的一部分变成缺陷跟踪、术语表或幻灯片。详见 [[Habitat/NewSyntax|高级功能]]（英文）。
+* '''Markdown：'''第一行为 <tt><nowiki><!-- markdown --></nowiki></tt> 的页面用 Markdown 书写。
+* '''博客和论坛：'''一行 <tt><nowiki><board></nowiki></tt> 就能把页面变成博客或讨论区。每篇帖子和每条回复都是独立的页面，支持分页、标签、置顶、关闭主题和版主管理。
+* '''帐号和权限：'''可以开放注册，也可以只允许持有编辑或管理员口令的人注册；用户可以通过邮件重设密码；页面可以单独限制阅读、编辑或锁定。
+* '''默认安全：'''密码用 bcrypt 保存，所有表单都有 CSRF 保护，登录有频率限制；用户输入的 HTML 会被过滤，只有管理员最后保存的页面才能包含脚本。
+* '''几乎处处可运行：'''普通 CGI 虚拟主机、PSGI（Starman、plackup）、mod_perl 或 FastCGI 均可；数据可存放在 SQLite（默认）、MariaDB/MySQL 或 PostgreSQL；静态页面缓存让 Apache 无需启动 Perl 即可为匿名访客提供页面。
+* '''中英文界面'''（[http:?action=browse&id=Home&lang=en English]）。
 
-== # 如何使用Habitat ==
+== # 快速上手 ==
 
-第一次使用Habitat，请使用左侧的[http:?action=newlogin Register(注册帐号)]链接来设定用户
-名，密码和管理员口令。如果您不设定用户名，所有编辑将显示您的IP地址。
+# '''注册帐号：'''点击页面上方的[http:?action=newlogin 注册]。如果本站只接受受邀注册，您需要向站长索取编辑或管理员口令；同时填写管理员口令会使您的帐号成为管理员。
+# '''编辑页面：'''点击“编辑本页”，修改文字后保存。任何内容都不会丢失：“查看其它版本”可以找回以前的每一个版本。
+# '''新建页面：'''在任意页面写一个链接，例如 <tt><nowiki>[[我的新页面]]</nowiki></tt>，保存后点击该链接即可开始编写新页面。
+# '''学习标记语法'''请看 [[Habitat/Markup]]，'''高级功能'''请看 [[Habitat/NewSyntax]]（均为英文）。
+# '''架设自己的 wiki''' 请参照 [[Habitat/Install]]（英文）。
 
-如果您希望设定自己为Habitat上唯一有编辑权的用户(其他用户只可以阅读)，
-您需要在注册页面中输入前面设定好的管理员口令并保存，然后在<tt>config</tt>文件中把
-<tt>EditAllowed</tt>选择设置为0，否则任何用户都可以编辑。对于个人网站，我们
-建议用户使用上述设置。
+== # 源代码与帮助 ==
 
-添加、改写页面内容，请选择页面上面的"编辑本页"链接。Habitat遵循最为
-广泛使用的wiki排版格式语言，兼容[http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
-以及大多数[http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]
-基本语法。请查看[Local:HabitatTest HabitatTest]和[Local:HabitatNewTest HabitatNewTest]页面
-获取更多排版格式信息。
+* 源代码、版本发布和问题反馈：https://github.com/fangq/habitat
+* 项目主页：https://wenq.org/habitat/
+* 许可证：GNU 通用公共许可证（GPL）第 2 版或更新版本。
 
-Habitat支持多层次Wiki页面命名。您可以建立诸如"[[页面/子页面]]"
-和"[[页面/子页面/底层页面]]"形式的页面结构来保存树状结构的信息。
-
-== # 如何获取帮助或参与开发 ==
-
-您可以访问[http://wenq.org/forum/viewforum.php?f=8 Habitat的论坛]
-来获取更多帮助信息。我们也会在[http://wenq.org/habitat/ 项目主页]
-上公布更新公告。
-
-Habitat是一个开源项目。您可以帮助我们改进代码、添加新的插件、设计皮肤
-和样式、测试并反馈bug。请访问[http://wenq.org/habitat/ Habitat项目主页]
-并加入开发者行列。
-
-== # 更大的计划 ==
-
-Habitat项目是“可理解计算(HUC)”的一个子项目。HUC项目的目的是推动
-开放、安全、合作以及直观的计算模型和软件。目前，HUC项目重点
-开发一系列以脚本语言为基础，处理可被人类理解的文字、图案以及
-多媒体数据(包括音频、视频和手势等)的软件。Habitat是遵循HUC原则的
-一个模板软件：它本身是由高级脚本语言写成，它处理的对象是可以
-直接理解的纯文本数据。
-
-我们欢迎大家开发更多遵循HUC原则的软件。我们认为更多HUC软件将
-对未来的计算机发展以及建立一个透明、开放的用户、软件生态系统有
-着积极的作用。
+Habitat 于 2006 年起源于开源字体项目[https://wenq.org/ 文泉驿]的 wiki，由[https://github.com/fangq 房骞骞]在 [https://www.usemod.com/cgi-bin/wiki.pl UseModWiki] 的基础上开发，并于 2026 年针对安全、速度和现代服务器进行了全面改写。
 HOMEPAGE_DEFAULT
 
 $BuildinPages{"Home"} = $BuildinPages{$HomePage};
-
-$BuildinPages{"HabitatTest"} = <<HABITAT_TEST_PAGE;
-= Habitat 排版标记语言示范页面 =
-<toc>
-== # 基本标记 ==
-!! 输入 !! 显示 !!
-|| <tt><nowiki>''斜体''</nowiki></tt> || ''斜体'' ||
-|| <tt><nowiki>'''粗体'''</nowiki></tt> || '''粗体''' ||
-|| <tt><nowiki>'''''粗斜体'''''</nowiki></tt> || '''''粗斜体''''' ||
-|| <tt><nowiki>&lt;u&gt;下划线&lt;/u&gt;</nowiki></tt> || <u>下划线</u> ||
-|| <tt><nowiki><tt>等宽文本(monospace)</tt></nowiki></tt> || <tt>等宽文本(monospace)</tt> ||
-|| <tt><nowiki><pre>代码文本(pre-text)</pre></nowiki></tt> || <pre>代码文本(pre-text)</pre> ||
-|| <tt><nowiki>&lt;nowiki&gt;''取消 wiki 标记语法''&lt;/nowiki&gt;</nowiki></tt> || <nowiki>''取消 wiki 标记语法''</nowiki> ||
-
-== # 链接 ==
-!! 输入 !! 显示 !!
-|| <tt><nowiki>[[指页面的链接]]</nowiki></tt> || [[指页面的链接]] ||
-|| <tt><nowiki>[[空格_等于_下划线]]</nowiki></tt> || [[空格_等于_下划线]] ||
-|| <tt><nowiki>[[页面 | 显示文字]]</nowiki></tt> || [[页面 | 显示文字]] ||
-|| <tt><nowiki>[[主页面/子页面/第三层页面]]</nowiki></tt> || [[主页面/子页面/第三层页面]] ||
-|| <tt><nowiki>[[主页面/子页面/第三层页面 | 多层次页面]]</nowiki></tt> || [[主页面/子页面/第三层页面 | 多层次页面]] ||
-|| <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
-|| <tt><nowiki>[http://example.com/ URL地址]</nowiki></tt> || [http://example.com/  URL地址] ||
-|| <tt><nowiki>[http:?Home 直接指定脚本参数]</nowiki></tt> || [http:?Home 直接指定脚本参数] ||
-|| <tt><nowiki>[http:?Home#Anchor 带锚的链接]</nowiki></tt> || [http:?Home#Anchor 带锚的链接] ||
-|| <tt><nowiki>[Local:Home 使用Local替代wiki脚本名]</nowiki></tt> || [Local:Home 使用Local替代wiki脚本名] ||
-|| <tt><nowiki>[http:/cgi-bin/index.cgi?Home 从域名根目录指定路径的链接]</nowiki></tt> || [http:/cgi-bin/index.cgi?Home 从域名根目录指定路径的链接] ||
-|| <tt><nowiki>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</nowiki></tt> || <tt>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</tt> ||
-|| <tt><nowiki>Local:页面名""</nowiki></tt> || Local:页面名""||
-|| <tt><nowiki>Local:页面名#锚点""</nowiki></tt> || Local:页面名#锚点"" ||
-|| <tt><nowiki>[#锚点]</nowiki></tt> || [#Anchor] [http:?HabitatTest#锚点 点击跳到本行] ||
-
-
-== # 标题 ==
-输入: 
-<pre><nowiki>
-= 一号标题 =
-== 二号标题 ==
-=== 三号标题 ===
-==== 四号标题 ====
-===== 五号标题 =====
-====== 六号标题 ======
-</nowiki></pre>
-显示: <html><div style="border:1px solid black;padding:5pt;margin:5px;"></html>
-= 一号标题 =
-== 二号标题 ==
-=== 三号标题 ===
-==== 四号标题 ====
-===== 五号标题 =====
-====== 六号标题 ======
-<html></div></html>
-
-
-== # 列表 ==
-输入: 
-<pre><nowiki>
-* 第一点
-* 第二点
-** 第2.1点
-** 第2.2点
-*** 第2.2.1点
-</nowiki></pre>
-显示:
-* 第一点
-* 第二点
-** 第2.1点
-** 第2.2点
-*** 第2.2.1点
----------------
-输入: 
-<pre><nowiki>
-# 带编号的第1条
-# 带编号的第2条
-## 带编号的第2.1条
-## 带编号的第2.2条
-### 带编号的第2.2.1条
-</nowiki></pre>
-显示:
-# 带编号的第1条
-# 带编号的第2条
-## 带编号的第2.1条
-## 带编号的第2.2条
-### 带编号的第2.2.1条
-
----------------
-输入: 
-<pre><nowiki>
-:一次缩进 
-::两次缩进
-</nowiki></pre>
-显示:
-:一次缩进 
-::两次缩进
-
----------------
-输入: 
-<pre><nowiki>
-;'''定义模式''': 对定义项的解释
-;;'''子定义模式''': 对子定义的解释
-</nowiki></pre>
-显示:
-;'''定义模式''': 对定义项的解释
-;;'''子定义模式''': 对子定义的解释
-
----------------
-输入 (输入和输出是相同的): 
-<pre><nowiki>
- struct Complex_{
-     float x;
-     float y;
- }; // code segment
-</nowiki></pre>
-显示:
- struct Complex_{
-     float x;
-     float y;
- }; // code segment
-
-== # 图片 ==
-输入: 
-<pre><nowiki>http:/images/habitat_logo.png</nowiki></pre>
-
-显示:<br>
-http:/images/habitat_logo.png
-
-== # 表格 ==
-输入: 
-<pre><nowiki>
-!! 表头 !! 第二列 !! 第三列 !!
-|| 链接 || [http:?Home 家页面] || '''链接到家页面''' ||
-||  || 左右都是空表格 || ||
-|||| 占两列的表格  || <- 这是一个宽单元 ||
-||这是一个宽单元 ->|||| 占两列的表格  ||
-||__这是一个长单元 || <- 左边的单元占两行|| ||
-|| 下面只用填写 || 两个单元 ||
-</nowiki></pre>
-显示:
-!! 表头 !! 第二列 !! 第三列 !!
-|| 链接 || [http:?Home 家页面] || '''链接到家页面''' ||
-||  || 左右都是空表格 || ||
-|||| 占两列的表格  || <- 这是一个宽单元 ||
-||这是一个宽单元 ->|||| 占两列的表格  ||
-||__这是一个长单元 || <- 左边的单元占两行|| ||
-|| 下面只用填写 || 两个单元 ||
-
-HABITAT_TEST_PAGE
-
-$BuildinPages{"Habitat/Download"} = <<HABITAT_DOWNLOAD;
-== # 如何安装Habitat ==
-下载最新的稳定版，请浏览[https://sourceforge.net/projects/huc/files/ 这个页面]
-的文件下载列表。<b>如果您正在使用Debian/Ubuntu，您可以下载安装deb包，它将
-自动完成所有设置。安装好的Habitat可以从“附件”菜单中启动。</b>
-
-您还可以使用Git来获取最新的代码(没有完全测试)。在 Unix/Linux/Mac OS上，您可以用下面的命令：
-  git clone https://github.com/fangq/habitat.git
-如果您使用的是Windows，您需要安装 [https://tortoisegit.org/download/ TortoiseGit]
-来执行上面的命令。
-
-Habitat有四种运行模式：标准模式，扩展模式，精简模式，最小模式。
-其中在最小模式下，您甚至可以仅仅使用一个200kB的脚本来实现
-大多数功能。
-
-使用标准模式来运行Habitat是推荐的做法。在这种模式下，您可以使用
-sqlite来作为数据库后台引擎，这样不但可以节省大量的磁盘空间，而且
-方便检索和备份。标准模式要求perl支持以下的模块：
- DBI, DBD::Sqlite3, Text::Diff, Text::Patch, Crypt::DES
-如果您使用Ubuntu Linux，您可以通过下面的命令安装所有依赖软件：
-  sudo apt-get install perl python sqlite3 libdbd-sqlite3-perl \
-     libtext-diff-perl libtext-patch-perl libcrypt-des-perl
-其中perl和python在大多数情况下已经安装，所以上面的命令只需要
-增加大约1MB的系统空间。如果您没有系统管理员权限，您可以从Habitat
-的网站上直接下载编译好的perl模块，并放在lib子目录下。
-
-安装完成后您需要初始化数据库：
-  sqlite3 db/habitatdb.db '.read db/gendb.sql'
-为安全性考虑，我们强烈建议您重新设定管理员密码和网站Hash，您需要编辑config文件
-  nano habitatdb/config
-查找<tt>AdminPass</tt>和<tt>CaptchaKey</tt>，并把其中的字符串换成您希望使用
-的密码。其中<tt>CaptchaKey</tt>的值只能包含0123456789以及ABCDEF。
-为了保护您的密码不被其他用户看到，请将<tt>habitatdb</tt>目录移到一个www用户
-无法访问的目录下，比如<tt>/var/lib/habitatdb</tt>下面(您需要创建这个目录)。
-您需要同时将index.cgi脚本中<tt>DataDir</tt>变量对应的值设置为新目录的名字。
-
-完成设置后，您就可以测试运行Habitat了。您只需要在控制台
-运行<tt>runlocal.sh</tt>脚本即可。一个浏览器窗口将自动弹出，Habitat
-将自动载入首页页面。如果您希望使用中文作为默认语言，请在
-index.cgi文件中找到<tt>LangID="en"</tt>并将en替换为cn。
-HABITAT_DOWNLOAD
-
-$BuildinPages{"atom/menu/HabitatMenu"} = "* 关于Habitat
-** [http://wenq.org/habitat/index.cgi?keywords=Home&lang=cn 中文主页]
-** [http://wenq.org/forum/viewforum.php?f=8 中文论坛]
-** [http://wenq.org/habitat/index.cgi?RecentChanges 最近更新]
-** ----------
-** [http://wenq.org/habitat 英文主页]
-** [https://sourceforge.net/apps/phpbb/huc/viewforum.php?f=1 英文论坛]
-* 功能展示
-** [http://wenq.org/habitat/index.cgi?WhatsNew Habitat的新特性]
-** [http://wenq.org/habitat/index.cgi?Habitat/Markup Habitat排版语言]
-** [http://wenq.org/habitat/index.cgi?Habitat/NewSyntax 扩展语法]
-* 下载安装
-** [http://sourceforge.net/projects/huc/files/ 浏览所有下载文件]
-** [http://wenq.org/habitat/index.cgi?Habitat/Download 下载Habitat]
-** [http://wenq.org/habitat/index.cgi?Habitat/Install 如何安装]
-** [http://wenq.org/habitat/index.cgi?Habitat/Register 注册您的网站]
-* 使用Habitat
-** [http://wenq.org/habitat/index.cgi?FAQ 常见问题]
-** [http://wenq.org/habitat/index.cgi?Habitat/Setup 设置Habitat]
-** [http://wenq.org/habitat/index.cgi?Habitat/Security 提高设置安全性]
-** ----------
-** [http://wenq.org/habitat/index.cgi?Habitat/PluginHowTo 如何编写插件]
-* 贡献
-** [http://wenq.org/habitat/index.cgi?Dev/Team 加入Habitat开发]
-** ----------
-** [http://wenq.org/habitat/index.cgi?Dev/Bugs 报告Bug]
-** [http://wenq.org/habitat/index.cgi?Dev/Translations 翻译和本地化]
-** [http://wenq.org/habitat/index.cgi?Dev/Plugins 贡献插件]
-** [http://github.com/fangq/habitat 浏览代码Github]
-** ----------
-** [http://wenq.org/habitat/index.cgi?Dev/Maillist 邮件列表]
-** [http://wenq.org/habitat/index.cgi?Dev/Donation 捐款支持]
-* 本站功能
-** [http:?action=index 显示所有页面]
-** [http:?action=version 显示版本信息]
-** [http:?keywords=Home&lang=en 本站英文首页]";
 
 $Translate{'Simplified Chinese'}                                                = '中文';
 $Translate{'User Forum'}                                                        = '用户论坛';

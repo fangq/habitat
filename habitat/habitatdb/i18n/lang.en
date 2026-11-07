@@ -1,324 +1,289 @@
 # == Language =======================================================
 # Habitat Translation for English (en)
-# http://wenq.org/habitat/
+# https://wenq.org/habitat/
 # Qianqian Fang <q.fang at neu.edu>
 
 # English translation is build-in
 
-$BuildinPages{$HomePage} = <<HOMEPAGE_DEFAULT;
-= Habitat Organic Wiki =
-{{atom/menu/HabitatMenu}}
+# Built-in pages: shown until someone saves a page of the same name.
+# The heredocs are quoted (<<'END'), so $names in the text stay literal.
+
+$BuildinPages{$HomePage} = <<'HOMEPAGE_DEFAULT';
+= Welcome to Habitat =
 <toc>
-== # What is Habitat ==
 
-Habitat is a light-weight, fast, easy-to-install and highly customizable
-wiki engine. With Habitat, you can set up a user-editable website 
-in just a few minutes. Once it's up and running, your Habitat-based website 
-can be accessed from anywhere by a web browser, allowing you and
-your collaborators to jointly create, edit and manage web pages
-using a rich-format wiki syntax. Habitat is ideal small-sized 
-projects, though, it has been used for large-scaled open-source 
-communities involving thousands of contributors.
+Habitat is a small, fast wiki engine written in Perl. Put it on any web
+server that runs Perl and you have a website that you and your
+collaborators can edit from a browser, with every change kept in the
+page history.
 
-Habitat is highly versetile, featuring a Wikipedia-like text 
-formatting language, hierachical page structure, excellent 
-content reusability, plug-in interface for easy extensions, and much more. 
-Being a wiki, Habitat provides a dynamic website that users 
-can add new content or edit existing pages over time. It is 
-particularly useful when multiple users jointly develop 
-documentations or resources in a collaborative project.
+'''This is a built-in page.''' A new Habitat wiki shows it until someone
+edits it. To replace it with your own front page, log in and click
+''Edit this page''.
 
-Habitat was derived from [http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]
-by [http://github.com/fangq/ Qianqian Fang],
-who had also founded the collaborative font development project -
-[http://wenq.org/en/ WenQuanYi]. Habitat is a result of over a decade
-continuous improvement of the WenQuanYi Wiki.
-See [http://wenq.org/habitat/index.cgi?WhatsNew What's New] for
-a full list of the new features.
+== # What Habitat can do ==
 
-{(Habitat/Download)}
+* '''Wiki editing.''' Simple text markup ([[Habitat/Markup]]), a full revision history with diffs for every page, [http:?RecentChanges Recent changes], an RSS feed, and full-text search.
+* '''Pages in a tree.''' Names like <tt>Project/Notes/2026</tt> make subpages. A <tt><nowiki><localtree></nowiki></tt> tag lists the pages under the current one.
+* '''Write once, reuse anywhere.''' <tt><nowiki>{{Page}}</nowiki></tt> embeds another page, rendered. <tt><nowiki>{(Page)}</nowiki></tt> embeds its raw text.
+* '''Page rules.''' A page can carry text-rewriting rules that also apply to all of its subpages, so a section of the wiki can be turned into a bug tracker, a glossary or a slide deck. See [[Habitat/NewSyntax]].
+* '''Markdown.''' A page that starts with <tt><nowiki><!-- markdown --></nowiki></tt> is written in Markdown.
+* '''Blogs and forums.''' A <tt><nowiki><board></nowiki></tt> line turns a page into a blog or a discussion forum. Every post and every reply is its own page, with paging, tags, sticky and closed topics, and moderation.
+* '''Accounts and permissions.''' Registration can be open, or limited to people who have an editor or administrator token. Users can reset a lost password by email. Pages can be restricted for reading, for editing, or locked.
+* '''Safe by default.''' Passwords are hashed with bcrypt. Every form is CSRF-protected. Logins are throttled. Raw HTML from users is scrubbed; only pages last saved by an administrator may carry scripts.
+* '''Runs almost anywhere.''' Plain CGI on shared hosting, PSGI (Starman, plackup), mod_perl or FastCGI. Data goes in SQLite (the default), MariaDB/MySQL or PostgreSQL. A static page cache lets Apache serve anonymous visitors without starting Perl.
+* '''English and Chinese''' user interface ([http:?action=browse&id=Home&lang=cn 中文]).
 
-== # How to use Habitat ==
+== # Getting started ==
 
-If you run Habitat for the first time, you need to click on the
-"[http:?action=newlogin Register]" link on the left to create a username/password
-for yourself. You can also apply the admin password you set
-during the initial setup. Otherwise, you will be considered as an 
-anonymous user and Habitat will only display your IP address.
+# '''Create an account.''' Use [http:?action=newlogin Register] at the top of the page. If this wiki only takes registrations from invited people, you need the editor or administrator token from the site owner. Typing the administrator token as well makes your account an administrator.
+# '''Edit a page.''' Click ''Edit this page'', change the text, and save. Nothing is lost: ''View other revisions'' shows every earlier version.
+# '''Make a new page.''' Write a link such as <tt><nowiki>[[My New Page]]</nowiki></tt> on any page, save, and follow the link to start writing the new page.
+# '''Learn the markup''' from [[Habitat/Markup]], and the advanced features from [[Habitat/NewSyntax]].
+# '''Run your own wiki''' by following [[Habitat/Install]].
 
-If you want to set yourself as the only user who can make changes, 
-you have to login as an administrator (by setting the admin password
-in the register page), and set <tt>EditAllowed</tt> to 0 in the <tt>config</tt>
-file. If you want to run Habitat for personal use, this is 
-highly recommended.
+== # Built-in pages ==
 
-To create or modify pages, simply click on the "[http:?action=edit&id=Home Edit this page]" 
-link on the top. Habitat supports many common Wiki markup
-rules used by [http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
-or [http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]. Please check out 
-[Local:Habitat/Markup Markup Format] and [Local:Habitat/NewSyntax NewSyntax]
-pages for more details about formatting.
+!! Page !! What it is !!
+|| [[Habitat/Install]] || Download, install and configure Habitat ||
+|| [[Habitat/Markup]] || The text markup, with examples ||
+|| [[Habitat/NewSyntax]] || Embedding, page rules, Markdown, boards ||
+|| [http:?action=index All pages] || Every page in this wiki ||
+|| [http:?RecentChanges Recent changes] || What changed lately ||
 
-A new feature of Habitat is the support of hierarchical pages.
-You can create something like "[[Page/Subpage]]"
-or "[[Page/Subpage/Subsubpage]]" to represent more complex
-information or resources.
+Like this page, the built-in pages are only defaults: save a page with the
+same name to replace one.
 
-== # Where to get help ==
+== # Source code and help ==
 
-Please visit the [http://wenq.org/forum/viewforum.php?f=8 Habitat forum]
-to get more information related to Habitat. We also actively
-post new versions or patches at the [http://wenq.org/habitat/ Habitat 
-website].
+* Source code, releases and the issue tracker: https://github.com/fangq/habitat
+* Project page: https://wenq.org/habitat/
+* License: GNU General Public License, version 2 or later.
 
-Habitat is an open-source project. You are welcome to contribute 
-and become a developer. Please visit 
-[http://wenq.org/habitat/ Habitat website] for more details.
-
+Habitat started in 2006 as the wiki of the
+[https://wenq.org/en/ WenQuanYi] open-source font project, built by
+[https://github.com/fangq Qianqian Fang] on top of
+[https://www.usemod.com/cgi-bin/wiki.pl UseModWiki]. In 2026 it was
+reworked for security, speed and modern servers.
 HOMEPAGE_DEFAULT
 
-$BuildinPages{"Habitat/Download"} = <<HABITAT_DOWNLOAD;
-== # How to install Habitat ==
-To download the latest stable release of Habitat, please browse
-the download section of [https://sourceforge.net/projects/huc/files/ this page].
-If you are using Debian/Ubuntu, please download and install
-the deb package. It will set up everything for you 
-and you can find Habitat in the "Accessories" menu.
-
-If you want to try out the latest code, you can 
-access it from our Github repository at https://github.com/fangq/habitat .
-On Unix/Linux/Mac OS, you can use the following git command:
-  git clone https://github.com/fangq/habitat.git
-On Windows, you might want to install [https://tortoisegit.org/download/ TortoiseGit]
-to run the above command.
-
-You may run Habitat in 4 modes: "Standard", "Extended", 
-"Basic" and "Compatibility". Under the "Compatibility" mode, you can get 
-a fully functional wiki even by using a SINGLE script (only 200kB in size)!
-
-It is recommended to run Habitat under the "Standard" mode.
-With this mode, sqlite database is used as
-the backend, which not only saves a lot of disk space,
-but also makes it super fast for searching and data backup. 
-
-To use the Standard mode, you must make sure the following
-perl modules are installed on your system:
-  DBI, DBD::Sqlite3, Text::Diff, Text::Patch, Crypt::DES
-If you are running a Debian/Ubuntu desktop, you can install all the 
-dependencies using the following command:
-  sudo apt-get install perl python sqlite3 libdbd-sqlite3-perl \
-     libtext-diff-perl libtext-patch-perl libcrypt-des-perl
-In most cases, perl and python have already been installed. So, the 
-above command only adds about 1M space. If you do not have 
-permission to install these modules, you can download the pre-compiled 
-modules from our website. Extract the downloaded modules
-into a subfolder called "lib" under the Habitat main directory.
-
-The next step is to initialize database, please run the 
-following command from Habitat's main folder:
-  sqlite3 db/habitatdb.db '.read db/gendb.sql'
-For safety reasons, we strongly suggest you setting your own
-administrator password and site hash. To do so, you need
-to edit a global config file with command:
-  nano habitatdb/config
-search for <tt>AdminPass</tt> and <tt>CaptchaKey</tt>, replace the values 
-in the quotations to whatever password you prefer. Note,
-<tt>CaptchaKey</tt> must be a 16digit hex number. You should
-also consider moving the <tt>habitatdb</tt> directory to a safe place to 
-avoid direct exposing of the <tt>config</tt> file. A suggested place is 
-<tt>/var/lib/habitatdb/</tt>. Remember to update the value for <tt>DataDir</tt>
-variable at the beginning of index.cgi if you have moved the <tt>habitatdb</tt> folder.
-
-Now it is time to test Habitat. Open a terminal, and
-navigate to the Habitat main folder, and run
- ./runlocal.sh
-A browser window will pop-up, and the home page will be displayed.
-If you prefer to use Chinese (or other languages) as the default 
-language, edit "<tt>index.cgi</tt>", search for <tt>LangID="en"</tt>, and
-replace en to cn (or other language codes).
-HABITAT_DOWNLOAD
-
-$BuildinPages{"Habitat/Markup"} = <<HABITAT_TEST_PAGE;
-= Habitat Wiki Markup Test Page =
+$BuildinPages{"Habitat/Install"} = <<'HABITAT_INSTALL';
+= Installing Habitat =
 <toc>
-== # Basic markup rules ==
-!! Input !! Display as !!
+
+== # What you need ==
+
+* A web server that can run Perl CGI scripts (Apache, nginx with a CGI or PSGI backend, or almost any shared web host). For a quick try on your own computer, Python 3 is enough.
+* Perl 5 (tested with 5.34 and 5.40), with these modules: <tt>CGI</tt>, <tt>DBI</tt>, <tt>DBD::SQLite</tt>, <tt>Crypt::Bcrypt</tt>, <tt>HTML::Scrubber</tt>, <tt>Text::Diff</tt> and <tt>Text::Patch</tt>.
+* Optional: <tt>Text::Markdown::Discount</tt> for Markdown pages, <tt>DBD::MariaDB</tt> or <tt>DBD::Pg</tt> for a database server instead of SQLite, and <tt>Plack</tt> for PSGI deployments.
+
+On Debian or Ubuntu:
+  sudo apt install libcgi-pm-perl libdbd-sqlite3-perl libhtml-scrubber-perl libtext-diff-perl libtext-patch-perl cpanminus
+  sudo cpanm Crypt::Bcrypt
+With <tt>cpanm</tt> on any system, from the source folder:
+  cpanm --installdeps .
+
+== # Get the code ==
+
+  git clone -b stage0-security https://github.com/fangq/habitat.git
+  cd habitat/habitat
+
+The wiki itself is the <tt>habitat/</tt> folder: <tt>index.cgi</tt> (the
+script), <tt>lib/</tt> (its modules), <tt>habitatdb/</tt> (configuration
+and translations), plus <tt>css/</tt>, <tt>images/</tt> and
+<tt>plugin/</tt>.
+
+== # Try it on your computer ==
+
+  ./runlocal.sh
+
+This starts a small web server on port 51712 and opens
+<tt>http://localhost:51712/cgi-bin/index.cgi</tt> in your browser. The
+database (<tt>db/habitatdb.db</tt>, SQLite) and its tables are created
+on the first visit. Stop the server with <tt>./stoplocal.sh</tt>.
+
+== # Install on a web server ==
+
+# Copy the <tt>habitat/</tt> folder to a directory your web server runs CGI scripts from, for example <tt>/var/www/wiki/</tt>.
+# Move <tt>habitatdb/</tt> somewhere the web server does not serve, such as <tt>/var/lib/habitat/</tt>, and set <tt>$DataDir</tt> near the top of <tt>index.cgi</tt> to that path. The <tt>config</tt> file in it holds your passwords.
+# Edit <tt>habitatdb/config</tt> (see below). At least set <tt>$SiteName</tt>, <tt>$AdminPass</tt> and <tt>$DBName</tt>.
+# Make sure the web server user can write the database (for SQLite, the folder that holds the <tt>.db</tt> file).
+# Open the wiki, [http:?action=newlogin register], and type your <tt>$AdminPass</tt> value in the ''Administrator token'' field: your account becomes the first administrator.
+
+With Apache, this <tt>.htaccess</tt> in the wiki folder runs the script
+and keeps the server from handing out the modules in <tt>lib/</tt> as text:
+  Options +ExecCGI -Indexes
+  AddHandler cgi-script .cgi
+  DirectoryIndex index.cgi
+  RewriteEngine On
+  RewriteRule ^lib(/|$) - [F,L]
+
+For PSGI (Starman, plackup), mod_perl, FastCGI, nginx, the static page
+cache, and moving from SQLite to PostgreSQL, see <tt>DEPLOYMENT.md</tt> in
+the source folder.
+
+== # Settings worth knowing ==
+
+All settings live in <tt>habitatdb/config</tt>, a Perl file.
+
+!! Setting !! What it does !!
+|| <tt>$SiteName</tt> || The wiki's name, shown in titles ||
+|| <tt>$AdminPass</tt>, <tt>$EditPass</tt> || Administrator and editor tokens (several may be given, separated by spaces). Typing one in the preferences page makes an account an administrator or editor ||
+|| <tt>$RegistrationPermission</tt> || Who may create an account: <tt>'user'</tt> (anyone), <tt>'editor'</tt> (only with an editor or administrator token; the default), <tt>'admin'</tt> (only with the administrator token) ||
+|| <tt>$PermEditAllowed</tt> || Lowest level that may edit: 1 for logged-in users ||
+|| <tt>%Permissions</tt>, <tt>%EditPermissions</tt> || Page-name patterns that need a higher level to read, or to edit ||
+|| <tt>$DBName</tt>, <tt>$DBUser</tt>, <tt>$DBPass</tt> || The database: <tt>dbi:SQLite:dbname=...</tt>, <tt>dbi:MariaDB:database=...;host=...</tt> or <tt>dbi:Pg:dbname=...</tt> ||
+|| <tt>$DBTablePrefix</tt> || Lets several wikis share one database ||
+|| <tt>$EmailFrom</tt>, <tt>$SendMail</tt> || Sender address and mail program for password resets and change notices ||
+|| <tt>$UseCaptcha</tt> || A small arithmetic question for anonymous edits and registrations ||
+|| <tt>$UseHttps</tt> || Links the wiki builds to itself use https (on by default) ||
+|| <tt>$StyleSheet</tt>, <tt>$LogoUrl</tt>, <tt>$FooterNote</tt> || Look and feel ||
+
+== # Upgrading an old Habitat wiki ==
+
+Wikis from the old engine (2006-2023) can be converted, history included:
+  perl utils/migrateall.pl /path/to/old/habitatdb/config /path/to/old/db/habitatdb.db
+It writes a modernised <tt>config.new</tt> and a new database next to the
+old ones, and leaves the originals untouched. Old passwords keep working
+and are re-hashed with bcrypt at each user's next login.
+HABITAT_INSTALL
+
+# Old name of the install page.
+$BuildinPages{"Habitat/Download"} = $BuildinPages{"Habitat/Install"};
+
+$BuildinPages{"Habitat/Markup"} = <<'HABITAT_MARKUP';
+= Habitat Markup =
+<toc>
+
+Habitat pages are plain text with a few marks for formatting. The left
+column shows what you type and the right column what it looks like. To
+see how any page was written, open it with ''Edit this page''.
+
+== # Text ==
+!! You type !! You get !!
 || <tt><nowiki>''italic''</nowiki></tt> || ''italic'' ||
 || <tt><nowiki>'''bold'''</nowiki></tt> || '''bold''' ||
-|| <tt><nowiki>'''''bold-italic'''''</nowiki></tt> || '''''bold-italic''''' ||
-|| <tt><nowiki>&lt;u&gt;underline&lt;/u&gt;</nowiki></tt> || <u>underline</u> ||
-|| <tt><nowiki>&lt;tt&gt;monospaced text&lt;/tt&gt;</nowiki></tt> || <tt>monospace text</tt> ||
-|| <tt><nowiki>&lt;pre&gt;preformatted text&lt;/pre&gt;</nowiki></tt> || <pre>preformatted text</pre> ||
-|| <tt><nowiki>&lt;nowiki&gt;''disable all wiki formats''&lt;/nowiki&gt;</nowiki></tt> || <nowiki>''disable all wiki formats''</nowiki> ||
+|| <tt><nowiki>'''''bold italic'''''</nowiki></tt> || '''''bold italic''''' ||
+|| <tt><nowiki>`code`</nowiki></tt> || `code` ||
+|| <tt><nowiki><u>underline</u> <s>strike</s> x<sup>2</sup> H<sub>2</sub>O</nowiki></tt> || <u>underline</u> <s>strike</s> x<sup>2</sup> H<sub>2</sub>O ||
+|| <tt><nowiki><nowiki>''no formatting''</nowiki></nowiki></tt> || <nowiki>''no formatting''</nowiki> ||
+|| <tt><nowiki>line one<br>line two</nowiki></tt> || line one<br>line two ||
+|| <tt><nowiki>----</nowiki></tt> (four or more dashes) || a horizontal line ||
+
+A blank line starts a new paragraph. A line ending in a backslash
+(<tt>\</tt>) is joined with the next one.
 
 == # Links ==
-!! Input !! Display as !!
-|| <tt><nowiki>[[Link to a Wikipage]]</nowiki></tt> || [[Link to a Wikipage]] ||
-|| <tt><nowiki>[[Underlines_Equal_Spaces]]</nowiki></tt> || [[Underlines_Equal_Spaces]] ||
-|| <tt><nowiki>[[Link | Link Caption]]</nowiki></tt> || [[Link | Link Caption]] ||
-|| <tt><nowiki>[[Master/Subpage/Subsubpage]]</nowiki></tt> || [[Master/Subpage/Subsubpage]] ||
-|| <tt><nowiki>[[Master/Subpage/Subsubpage | Multi-level page]]</nowiki></tt> || [[Master/Subpage/Subsubpage | Multi-level page]] ||
-|| <tt><nowiki>http://example.of.a.url.com/</nowiki></tt> || http://example.of.a.url.com/ ||
-|| <tt><nowiki>[http://example.com/ URL Text]</nowiki></tt> || [http://example.com/ URL Text] ||
-|| <tt><nowiki>[http:?Home Link to this wiki script]</nowiki></tt> || [http:?Home Link to this wiki script] ||
-|| <tt><nowiki>[http:?Home#Anchor Link with an anchor]</nowiki></tt> || [http:?Home#Anchor Link with an anchor] ||
-|| <tt><nowiki>[Local:Home Link to a local page]</nowiki></tt> || [Local:Home Link to a local page] ||
-|| <tt><nowiki>[http:/cgi-bin/index.cgi?Home Link from server root]</nowiki></tt> || [http:/cgi-bin/index.cgi?Home Link from server root] ||
-|| <tt><nowiki>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</nowiki></tt> || <tt>[http:/images/habitat_logo.png http:/images/habitat_icon.png]</tt> ||
-|| <tt><nowiki>Local:LocalPage</nowiki></tt> || Local:LocalPage ||
-|| <tt><nowiki>Local:LocalPage#Anchor</nowiki></tt> || Local:LocalPage#Anchor ||
-|| <tt><nowiki>[#Anchor]</nowiki></tt> || [#Anchor] [http:?Habitat/Markup#Anchor Click to jump here] ||
+!! You type !! You get !!
+|| <tt><nowiki>[[Habitat/Install]]</nowiki></tt> || [[Habitat/Install]] ||
+|| <tt><nowiki>[[Habitat/Install|how to install]]</nowiki></tt> || [[Habitat/Install|how to install]] ||
+|| <tt><nowiki>[[A page that does not exist]]</nowiki></tt> || [[A page that does not exist]] (click to create it) ||
+|| <tt><nowiki>https://github.com/fangq/habitat</nowiki></tt> || https://github.com/fangq/habitat ||
+|| <tt><nowiki>[https://github.com/fangq/habitat the source code]</nowiki></tt> || [https://github.com/fangq/habitat the source code] ||
+|| <tt><nowiki>[http:?action=index list of all pages]</nowiki></tt> || [http:?action=index list of all pages] ||
+|| <tt><nowiki>[#here]</nowiki></tt> then <tt><nowiki>[http:?Habitat/Markup#here jump]</nowiki></tt> || [#here] [http:?Habitat/Markup#here jump] ||
 
+Page names can contain spaces (stored as underscores) and slashes:
+<tt><nowiki>[[Project/Notes/2026]]</nowiki></tt> is a subpage of
+<tt>Project/Notes</tt>. <tt><nowiki>http:?</nowiki></tt> at the start of a link means
+''this wiki's script''.
 
-== # Headings ==
-input: 
-<pre><nowiki>
-= Heading 1 =
-== Heading 2 ==
-=== Heading 3 ===
-==== Heading 4 ====
-===== Heading 5 =====
-====== Heading 6 ======
-</nowiki></pre>
-Display as: <html><div style="border:1px solid black;padding:5pt;margin:5px;"></html>
-= Heading 1 =
-== Heading 2 ==
-=== Heading 3 ===
-==== Heading 4 ====
-===== Heading 5 =====
-====== Heading 6 ======
-<html></div></html>
+== # Headings and table of contents ==
+<pre>
+= Page title =
+== Section ==
+=== Subsection ===
+== # Numbered section ==
+</pre>
+Up to six levels. A <tt>#</tt> after the opening marks numbers the heading
+and adds it to the table of contents, which <tt><nowiki><toc></nowiki></tt> places on
+the page (as at the top of this one).
 
+== # Lists and indentation ==
+<pre>
+* apples
+* pears
+** green pears
+</pre>
+gives
+* apples
+* pears
+** green pears
 
-== # Lists ==
-input: 
-<pre><nowiki>
-* Bullet Item 1
-* Bullet Item 2
-** Bullet Item 2.1
-** Bullet Item 2.2
-*** Bullet Item 2.2.1
-</nowiki></pre>
-Display as:
-* Bullet Item 1
-* Bullet Item 2
-** Bullet Item 2.1
-** Bullet Item 2.2
-*** Bullet Item 2.2.1
----------------
-input: 
-<pre><nowiki>
-# Numbered Item 1
-# Numbered Item 2
-## Numbered Item 2.1
-## Numbered Item 2.2
-### Numbered Item 2.2.1
-</nowiki></pre>
-Display as:
-# Numbered Item 1
-# Numbered Item 2
-## Numbered Item 2.1
-## Numbered Item 2.2
-### Numbered Item 2.2.1
+<pre>
+# first
+# second
+## second, part a
+</pre>
+gives
+# first
+# second
+## second, part a
 
----------------
-input: 
-<pre><nowiki>
-:indentaton 
-::more indentaton 
-</nowiki></pre>
-Display as:
-:indentaton 
-::more indentaton 
+<pre>
+: indented
+:: more indented
+; term : its definition
+</pre>
+gives
+: indented
+:: more indented
+; term : its definition
 
----------------
-input: 
-<pre><nowiki>
-;'''define a word''': the detailed definition of a word
-;;'''define a sub item''': the detailed definition of the sub item
-</nowiki></pre>
-Display as:
-;'''define a word''': the detailed definition of a word
-;;'''define a sub item''': the detailed definition of the sub item
-
----------------
-input (of course, they are the same): 
-<pre><nowiki>
- struct Complex_{
-     float x;
-     float y;
- }; // code segment
-</nowiki></pre>
-Display as:
- struct Complex_{
-     float x;
-     float y;
- }; // code segment
-
-== # Images ==
-input: 
-<pre><nowiki>http:/images/habitat_logo.png</nowiki></pre>
-
-display as:<br>
-http:/images/habitat_logo.png
+== # Preformatted text and code ==
+Lines that start with a space are shown as typed, in a fixed-width font:
+ int main() {
+     return 0;
+ }
+<tt><nowiki><pre>...</pre></nowiki></tt> and <tt><nowiki><code>...</code></nowiki></tt>
+do the same for a whole block, and no wiki markup is applied inside them.
 
 == # Tables ==
-input: 
-<pre><nowiki>
-!! Table Header !! Column 2 !! Column 3 !!
-|| link || [http:?Home Home] || '''link to home page''' ||
-||  || show empty cells || ||
-|||| more than one cells  || <- a wider cell ||
-||a wider cell ->|||| more than one cells  ||
-||__vertical span || <- cell spans two rows || ||
-|| one more cell || and another ||
-</nowiki></pre>
-Display as:
-!! Table Header !! Column 2 !! Column 3 !!
-|| link || [http:?Home Home] || '''link to home page''' ||
-||  || show empty cells || ||
-|||| more than one cells  || <- a wider cell ||
-||a wider cell ->|||| more than one cells  ||
-||__vertical span || <- cell spans two rows || ||
-|| one more cell || and another ||
+<pre>
+!! Name !! Type !! Notes !!
+|| Habitat || wiki || written in Perl ||
+|||| this cell spans two columns || one more ||
+||__ this cell spans two rows || a || b ||
+|| c || d ||
+</pre>
+!! Name !! Type !! Notes !!
+|| Habitat || wiki || written in Perl ||
+|||| this cell spans two columns || one more ||
+||__ this cell spans two rows || a || b ||
+|| c || d ||
 
-HABITAT_TEST_PAGE
+<tt>!!</tt> makes header cells and <tt>||</tt> normal cells. Doubling the
+mark at the start of a cell (<tt>||||</tt>) spans columns, and
+underscores after it (<tt>||__</tt>) span rows.
 
-$BuildinPages{"atom/menu/HabitatMenu"} = "* About Habitat
-** [http://wenq.org/habitat Homepage]
-** [http://wenq.org/habitat/index.cgi?RecentChanges Recent Updates]
-** [https://sourceforge.net/apps/phpbb/huc/viewforum.php?f=1 Forum (English)]
-** ----------
-** [http://wenq.org/habitat/index.cgi?keywords=Home&lang=cn Homepage (Chinese)]
-** [http://wenq.org/forum/viewforum.php?f=8 Forum (Chinese)]
-* Features
-** [http://wenq.org/habitat/index.cgi?WhatsNew What's New in Habitat]
-** [http://wenq.org/habitat/index.cgi?Habitat/Markup Habitat Wiki Format]
-** [http://wenq.org/habitat/index.cgi?Habitat/NewSyntax Advanced Features]
-* Download
-** [http://sourceforge.net/projects/huc/files/ Browse All Packages]
-** [http://wenq.org/habitat/index.cgi?Habitat/Download Download Habitat]
-** [http://wenq.org/habitat/index.cgi?Habitat/Install Installation]
-** [http://wenq.org/habitat/index.cgi?Habitat/Register Register Your Copy]
-* Use Habitat
-** [http://wenq.org/habitat/index.cgi?FAQ FAQ]
-** [http://wenq.org/habitat/index.cgi?Habitat/Setup Setup Habitat]
-** [http://wenq.org/habitat/index.cgi?Habitat/Security Security Advice]
-** ----------
-** [http://wenq.org/habitat/index.cgi?Habitat/PluginHowTo How to Write Plugins]
-* Contribute
-** [http://wenq.org/habitat/index.cgi?Dev/Team Join Habitat Team]
-** ----------
-** [http://wenq.org/habitat/index.cgi?Dev/Bugs Report Bugs]
-** [http://wenq.org/habitat/index.cgi?Dev/Translations Translations]
-** [http://wenq.org/habitat/index.cgi?Dev/Plugins Contribute Plugins]
-** [http://github.com/fangq/github Browse Source Code]
-** ----------
-** [http://wenq.org/habitat/index.cgi?Dev/Maillist Mailing Lists]
-** [http://wenq.org/habitat/index.cgi?Dev/Donation Support Habitat]
-* This Site
-** [http:?action=index List All Pages]
-** [http:?action=version Show Version]
-** [http:?keywords=Home&lang=cn Chinese Version]";
+== # Images ==
+A link to an image file is shown as the image:
+<tt><nowiki>https://wenq.org/habitat/images/habitat_icon.png</nowiki></tt>
+gives https://wenq.org/habitat/images/habitat_icon.png
+
+<tt><nowiki>[https://github.com/fangq/habitat https://wenq.org/habitat/images/habitat_icon.png]</nowiki></tt>
+makes the image a link.
+
+== # HTML ==
+Common HTML tags such as <tt><nowiki><b></nowiki></tt>, <tt><nowiki><div></nowiki></tt>,
+<tt><nowiki><table></nowiki></tt> and <tt><nowiki><font></nowiki></tt> can be typed directly.
+Anything else goes inside <tt><nowiki><html>...</html></nowiki></tt>. On pages
+last saved by an ordinary user that HTML is cleaned (no scripts, styles or
+event handlers); only pages last saved by an administrator keep it as
+written.
+
+== # Special tags ==
+!! Tag !! Becomes !!
+|| <tt><nowiki><toc></nowiki></tt> || the table of contents of numbered headings ||
+|| <tt><nowiki><localtree></nowiki></tt> || a tree of this page's subpages ||
+|| <tt><nowiki>{{Page}}</nowiki></tt>, <tt><nowiki>{(Page)}</nowiki></tt> || another page, embedded (see [[Habitat/NewSyntax]]) ||
+|| <tt><nowiki><board type=forum></nowiki></tt> || a forum or blog (see [[Habitat/NewSyntax]]) ||
+
+== # Markdown ==
+Put this on the first line of a page to write the rest in Markdown
+instead of wiki markup:
+<pre><nowiki><!-- markdown --></nowiki></pre>
+This needs the <tt>Text::Markdown::Discount</tt> Perl module on the server.
+HABITAT_MARKUP
 
 1

@@ -1,62 +1,35 @@
-= 欢迎使用 Habitat 个人资讯管理平台 =
-{{atom/menu/HabitatMenu}}
+= 欢迎使用 Habitat =
 <toc>
-== # 什么是Habitat ==
 
-Habitat是一个小巧、快捷、安装简便、可扩展性强的个人资讯管理平台。
-Habitat使用perl语言编写，以sqlite本地数据库作为后端，并包含了内置
-的服务器脚本。Habitat可以直接在本地计算机上运行使用，也可以放置在
-开放服务器上提供多人或者社区使用。
+Habitat 是一个用 Perl 编写的小巧、快速的 wiki 引擎。把它放到任何能运行 Perl 的网站服务器上，您和合作者就可以直接在浏览器里共同编辑网站，每一次修改都会保存在页面历史中。
 
-Habitat是一个wiki引擎，也同时是一个内容管理系统(CMS)。用户可以
-使用Habitat来快速建立和维护个人网站，或者为社区提供协作式创作平台。
+'''这是一个内置页面。'''新建的 Habitat wiki 在有人编辑之前都会显示这个页面。登录后点击“编辑本页”即可换成您自己的首页。
 
-Habitat是由[http://nmr.mgh.harvard.edu/~fangq/ 房骞骞]在
-[http://www.usemod.com/cgi-bin/wiki.pl UseModWiki]的基础上
-为开源中文字体项目[http://wenq.org 文泉驿]开发并优化的。
-新添加的功能包括用户管理系统、后台数据库功能、多层次wiki页面、
-多语言支持、面向对象的wiki数据结构以及可编程的扩展接口。
+== # Habitat 的功能 ==
 
-{(Habitat/Download)}
+* '''wiki 编辑：'''简单的文本标记（[[Habitat/Markup|标记语法]]，英文），每个页面都有完整的修订历史和差异比较，另有[http:?action=rc 最近更新]、RSS 订阅和全文搜索。
+* '''树状页面：'''像 <tt>项目/笔记/2026</tt> 这样的名字就是子页面；<tt><nowiki><localtree></nowiki></tt> 标记列出当前页面下的所有子页面。
+* '''一处编写，多处复用：'''<tt><nowiki>{{页面}}</nowiki></tt> 嵌入另一个页面的显示结果，<tt><nowiki>{(页面)}</nowiki></tt> 嵌入它的原始文本。
+* '''页面规则：'''页面可以带有文本替换规则，并自动作用于它的所有子页面，从而把 wiki 的一部分变成缺陷跟踪、术语表或幻灯片。详见 [[Habitat/NewSyntax|高级功能]]（英文）。
+* '''Markdown：'''第一行为 <tt><nowiki><!-- markdown --></nowiki></tt> 的页面用 Markdown 书写。
+* '''博客和论坛：'''一行 <tt><nowiki><board></nowiki></tt> 就能把页面变成博客或讨论区。每篇帖子和每条回复都是独立的页面，支持分页、标签、置顶、关闭主题和版主管理。
+* '''帐号和权限：'''可以开放注册，也可以只允许持有编辑或管理员口令的人注册；用户可以通过邮件重设密码；页面可以单独限制阅读、编辑或锁定。
+* '''默认安全：'''密码用 bcrypt 保存，所有表单都有 CSRF 保护，登录有频率限制；用户输入的 HTML 会被过滤，只有管理员最后保存的页面才能包含脚本。
+* '''几乎处处可运行：'''普通 CGI 虚拟主机、PSGI（Starman、plackup）、mod_perl 或 FastCGI 均可；数据可存放在 SQLite（默认）、MariaDB/MySQL 或 PostgreSQL；静态页面缓存让 Apache 无需启动 Perl 即可为匿名访客提供页面。
+* '''中英文界面'''（[http:?action=browse&id=Home&lang=en English]）。
 
-== # 如何使用Habitat ==
+== # 快速上手 ==
 
-第一次使用Habitat，请使用左侧的[http:?action=newlogin Register(注册帐号)]链接来设定用户
-名，密码和管理员口令。如果您不设定用户名，所有编辑将显示您的IP地址。
+# '''注册帐号：'''点击页面上方的[http:?action=newlogin 注册]。如果本站只接受受邀注册，您需要向站长索取编辑或管理员口令；同时填写管理员口令会使您的帐号成为管理员。
+# '''编辑页面：'''点击“编辑本页”，修改文字后保存。任何内容都不会丢失：“查看其它版本”可以找回以前的每一个版本。
+# '''新建页面：'''在任意页面写一个链接，例如 <tt><nowiki>[[我的新页面]]</nowiki></tt>，保存后点击该链接即可开始编写新页面。
+# '''学习标记语法'''请看 [[Habitat/Markup]]，'''高级功能'''请看 [[Habitat/NewSyntax]]（均为英文）。
+# '''架设自己的 wiki''' 请参照 [[Habitat/Install]]（英文）。
 
-如果您希望设定自己为Habitat上唯一有编辑权的用户(其他用户只可以阅读)，
-您需要在注册页面中输入前面设定好的管理员口令并保存，然后在<tt>config</tt>文件中把
-<tt>EditAllowed</tt>选择设置为0，否则任何用户都可以编辑。对于个人网站，我们
-建议用户使用上述设置。
+== # 源代码与帮助 ==
 
-添加、改写页面内容，请选择页面上面的"编辑本页"链接。Habitat遵循最为
-广泛使用的wiki排版格式语言，兼容[http://www.usemod.com/cgi-bin/wiki.pl?TextFormattingRules UseModWiki] 
-以及大多数[http://en.wikipedia.org/wiki/Help:Wiki_markup Wikipedia]
-基本语法。请查看[Local:HabitatTest HabitatTest]和[Local:HabitatNewTest HabitatNewTest]页面
-获取更多排版格式信息。
+* 源代码、版本发布和问题反馈：https://github.com/fangq/habitat
+* 项目主页：https://wenq.org/habitat/
+* 许可证：GNU 通用公共许可证（GPL）第 2 版或更新版本。
 
-Habitat支持多层次Wiki页面命名。您可以建立诸如"[[页面/子页面]]"
-和"[[页面/子页面/底层页面]]"形式的页面结构来保存树状结构的信息。
-
-== # 如何获取帮助或参与开发 ==
-
-您可以访问[http://wenq.org/forum/viewforum.php?f=8 Habitat的论坛]
-来获取更多帮助信息。我们也会在[http://wenq.org/habitat/ 项目主页]
-上公布更新公告。
-
-Habitat是一个开源项目。您可以帮助我们改进代码、添加新的插件、设计皮肤
-和样式、测试并反馈bug。请访问[http://wenq.org/habitat/ Habitat项目主页]
-并加入开发者行列。
-
-== # 更大的计划 ==
-
-Habitat项目是“可理解计算(HUC)”的一个子项目。HUC项目的目的是推动
-开放、安全、合作以及直观的计算模型和软件。目前，HUC项目重点
-开发一系列以脚本语言为基础，处理可被人类理解的文字、图案以及
-多媒体数据(包括音频、视频和手势等)的软件。Habitat是遵循HUC原则的
-一个模板软件：它本身是由高级脚本语言写成，它处理的对象是可以
-直接理解的纯文本数据。
-
-我们欢迎大家开发更多遵循HUC原则的软件。我们认为更多HUC软件将
-对未来的计算机发展以及建立一个透明、开放的用户、软件生态系统有
-着积极的作用。
+Habitat 于 2006 年起源于开源字体项目[https://wenq.org/ 文泉驿]的 wiki，由[https://github.com/fangq 房骞骞]在 [https://www.usemod.com/cgi-bin/wiki.pl UseModWiki] 的基础上开发，并于 2026 年针对安全、速度和现代服务器进行了全面改写。
