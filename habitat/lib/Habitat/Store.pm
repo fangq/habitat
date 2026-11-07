@@ -303,6 +303,30 @@ sub _schema_ddl {
         # refuses TEXT PRIMARY KEY without an explicit key prefix
         # length. Real throttle keys (e.g. "ip:1.2.3.4" or
         # "name:alice") are well under 255 chars.
+        # Boards (blogs/forums, Habitat::Board): a derived index of board
+        # pages, their posts and replies, rebuildable from the pages.
+        # kind = 'board' | 'post' | 'reply'; parent = the board for a
+        # post, the post for a reply; seq = number within the parent;
+        # author_* = who created the page (page.author is the last
+        # editor); tactive = last activity (new replies); tags stored
+        # as ",a,b,"; config = the board's settings (kind 'board').
+        # varchar(255) keys: page ids are at most 120 characters.
+        q{CREATE TABLE IF NOT EXISTS pagemeta (
+            id varchar(255) NOT NULL, board varchar(255) NOT NULL,
+            parent varchar(255) NOT NULL, kind varchar(8) NOT NULL,
+            seq integer NOT NULL DEFAULT 0,
+            title varchar(255), tags varchar(255),
+            author_id integer, author_name varchar(32),
+            tcreate integer NOT NULL, tupdate integer, tactive integer NOT NULL,
+            nreplies integer NOT NULL DEFAULT 0, last_author varchar(32),
+            sticky integer NOT NULL DEFAULT 0, closed integer NOT NULL DEFAULT 0,
+            config varchar(255),
+            PRIMARY KEY (id)
+        )},
+        q{CREATE INDEX IF NOT EXISTS pagemeta_bact ON pagemeta (board, kind, sticky, tactive)},
+        q{CREATE INDEX IF NOT EXISTS pagemeta_bnew ON pagemeta (board, kind, sticky, tcreate)},
+        q{CREATE INDEX IF NOT EXISTS pagemeta_par  ON pagemeta (parent, seq)},
+
         q{CREATE TABLE IF NOT EXISTS login_attempts (
             attempt_key varchar(255) PRIMARY KEY,
             attempts integer NOT NULL,

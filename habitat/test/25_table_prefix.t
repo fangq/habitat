@@ -40,7 +40,7 @@ is( HabitatEngine::GetPageDB('Home'),   'dev_page', 'GetPageDB uses the prefix' 
 
 Habitat::Store::init_schema($dbh);
 my %all = map { $_ => 1 } @{ tables($dbh) };
-my @want = map { Habitat::Store::T($_) } qw(page page_revisions deletedpage users html rclog pagelock watch system pagelog userlog login_attempts);
+my @want = map { Habitat::Store::T($_) } qw(page page_revisions deletedpage users html rclog pagelock watch system pagelog userlog login_attempts pagemeta);
 is( scalar( grep { !$all{$_} } @want ), 0, 'init_schema created every prefixed table' ) or diag join ' ', sort keys %all;
 is( scalar( keys %all ), 2 * @$main_tables, 'and nothing else (same number as the unprefixed set)' );
 ok( $dbh->selectrow_array("SELECT data FROM dev_system WHERE id='schema_version'"), 'schema fingerprint stored in dev_system' );

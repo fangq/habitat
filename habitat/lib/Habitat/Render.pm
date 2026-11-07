@@ -485,6 +485,22 @@ sub WikiToHTML {
 
     $pageText = &RemoveFS($pageText);
 
+    # Board posts (Habitat::Board) start with a "<!-- post ... -->"
+    # metadata header; it is data, not content.
+    $pageText =~ s/\A\s*<!--\s*post\b.*?-->[ \t]*\r?\n?//s if ( $id =~ m{/} && &BoardOf($id) );
+
+    # On an active board, the <board ...> directive line expands to the
+    # list of posts (elsewhere it is left as typed).
+    my $boardmark = "\x02HABITATBOARD\x02";
+    my $hasboard  = 0;
+    if ( $pageText =~ /^[ \t]*<board\b/m && &BoardConfig($id) ) {
+        if ( $pageText =~ /\A\s*<!--\s*markdown\s*-->/i ) {
+            $hasboard = ( $pageText =~ s/^[ \t]*<board\b[^>\n]*>[ \t]*$/$boardmark/m ) ? 1 : 0;
+        } else {
+            $hasboard = 2;    # after <nowiki> is set aside, below
+        }
+    }
+
     # Stage 6: per-page Markdown opt-in. A page whose first line is
     #   <!-- markdown -->
     # gets rendered by Text::Markdown::Discount instead of the wiki
@@ -504,11 +520,19 @@ sub WikiToHTML {
               . QuoteHtml( $@ // '?' )
               . "</div>";
         }
-        return $Pages{$id}->{'page'}{'admin_saved'} ? $html : ScrubRawHtml($html);
+        $html = ScrubRawHtml($html) if ( !$Pages{$id}->{'page'}{'admin_saved'} );
+        if ( $hasboard == 1 ) {
+            my $idx = &BoardIndexHtml($id);
+            $html =~ s/(?:<p>)?\s*\x02?HABITATBOARD\x02?\s*(?:<\/p>)?/$idx/;
+        }
+        return $html;
     }
 
     $pageText =~ s/<nowiki>((.|\n)*?)<\/nowiki>/&StoreRaw($1)/ige;
     $pageText =~ s/\&lt;nowiki\&gt;((.|\n)*?)\&lt;\/nowiki\&gt;/&StoreRaw($1)/ige;
+    if ( $hasboard == 2 ) {
+        $pageText =~ s/^[ \t]*<board\b[^>\n]*>[ \t]*$/&StoreRaw(&BoardIndexHtml($id))/me;
+    }
     if ( $PageEmbed == 1 ) {    # added by FangQ, 2006/4/16
         $pageText =~
 s/\{\(($FreeLinkPattern)(::($FreeLinkPattern)){0,1}(\|(.*)){0,1}\)\}/&EmbedWikiPageRaw($1,$5,$7)/geo;

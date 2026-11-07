@@ -77,6 +77,7 @@ use Habitat::Auth qw(
 # below — and all the engine globals the subs read/write — keep working
 # unchanged.
 use Habitat::Render;
+use Habitat::Board;    # blogs and discussion forums (same package)
 
 #use diagnostics;
 
@@ -345,6 +346,7 @@ sub ResetRequestState {
     %TextCache       = ();
     %RuleDirCache    = ();
     $LocalTree       = undef;
+    &BoardResetCache();
     $TableOfContents = '';
     @HeadingNumbers  = ();
     $PrintedHeader   = 0;
@@ -1010,7 +1012,8 @@ sub BrowsePage {
     }
     $MainPage = $id;
     $MainPage =~ s|/.*||;    # Only the main page name (remove subpage)
-    $fullHtml = &GetHeader( $id, &QuoteHtml($id), $oldId );
+    my $boardtitle = &BoardTitle($id);
+    $fullHtml = &GetHeader( $id, $boardtitle ne '' ? $boardtitle : &QuoteHtml($id), $oldId );    # GetHtmlHeader escapes
     if ( $revision ne '' ) {
         if ( ( $revision eq $$Page{'revision'} ) || ( $goodRevision ne '' ) ) {
             $fullHtml .=
@@ -1071,9 +1074,12 @@ sub BrowsePage {
         $pagehtml = "<textarea cols=100 rows=25 readonly=1>" . $$Text{'text'} . "</textarea>";
     }
     if ( &GetParam( 'diff', '' ) eq '' ) {
-        $fullHtml .= $pagehtml;
+        $fullHtml .= &BoardPostInfoHtml($id) . $pagehtml;
     }
     $fullHtml .= '</div>';
+    if ( !$showDiff && $revision eq '' ) {
+        $fullHtml .= &BoardThreadHtml($id);    # replies of a board post
+    }
     if ( ( $id eq $RCName ) || ( T($RCName) eq $id ) || ( T($id) eq $RCName ) ) {
         print $fullHtml;
         print '<div class="wikirc">';
@@ -2070,14 +2076,20 @@ sub GetHeader {
         $result .= "<li class='inactivetab'>";
         $result .=
           &GetHistoryLink( $id, T('View other revisions'), "icon-time", T('View other revisions') );
-        $result .= "</li><li class='inactivetab'>";
-        if ( not( $id =~ m|$DiscussSuffix$| ) ) {
-            $result .= &GetCommentLink( $id, T('Discuss'), "icon-comments", T('Discuss') );
+        $result .= "</li>";
+        if ( my @board = &BoardOf($id) ) {    # board posts have replies, not a discuss page
+            $result .= &BoardHeaderTabs($id);
         } else {
-            $result .= &GetBrowseLink( substr( $id, 0, length($id) - length($DiscussSuffix) ),
-                T('Return'), "icon-undo", T('Return') );
+            $result .= "<li class='inactivetab'>";
+            if ( not( $id =~ m|$DiscussSuffix$| ) ) {
+                $result .= &GetCommentLink( $id, T('Discuss'), "icon-comments", T('Discuss') );
+            } else {
+                $result .= &GetBrowseLink( substr( $id, 0, length($id) - length($DiscussSuffix) ),
+                    T('Return'), "icon-undo", T('Return') );
+            }
+            $result .= '</li>';
+            $result .= &BoardHeaderTabs($id);    # "New post" on a board page
         }
-        $result .= '</li>';
     }
     $result .= '</ul></div>' . &GetWrapperStart();
     return $result;
@@ -3376,6 +3388,7 @@ sub SavePageDB {
     die("SavePageDB: unsafe table name") if ( !SafeIdent($pagedb) );
     die("SavePageDB: unsafe table name") if ( !SafeIdent($revdb) );
     $$Page{'name'} = $name;
+    $$Text{'text'} = &BoardFixHeader( $name, $$Text{'text'} );    # sticky/closed only from editors
 
     # Read the previous current row (if any) so we can archive it
     # before we overwrite. The new revision is current_rev + 1.
@@ -3469,6 +3482,7 @@ sub SavePageDB {
         $UserData{'id'},
         $admin_saved,
     );
+    &BoardAfterSave( $name, $$Text{'text'}, $cur_rev, $admin_saved );    # board index (Habitat::Board)
     &PurgeStaticCache();    # any page change can alter pages that embed or inherit it
 }
 
@@ -3814,6 +3828,10 @@ sub UserCanEdit {
     # readable by everyone through %Permissions yet editable by few.
     my $need = ReadPagePermissions( $id, \%EditPermissions );
     return 0 if ( $need ne '' && $clearance < $need );
+
+    # Board posts and replies: editors edit any, users what they created.
+    my $board = &BoardEditRule($id);
+    return $board if ( defined $board );
 
     $permit = ReadPagePermissions( $id, \%Permissions );
     if ( $permit ne '' && $clearance >= $permit ) {
@@ -4348,6 +4366,16 @@ sub DoOtherRequest {
         $action = lc($action);
         if ( $action eq "edit" ) {
             &DoEdit( $id, 0, 0, "", 0 ) if &ValidIdOrDie($id);
+        } elsif ( $action eq "newpost" ) {    # boards (Habitat::Board)
+            &DoBoardNewPost($id) if &ValidIdOrDie($id);
+        } elsif ( $action eq "reply" ) {
+            &DoBoardReply($id) if &ValidIdOrDie($id);
+        } elsif ( $action eq "postedit" ) {
+            &DoBoardPostEdit($id) if &ValidIdOrDie($id);
+        } elsif ( $action eq "boardmod" ) {
+            &DoBoardModerate($id) if &ValidIdOrDie($id);
+        } elsif ( $action eq "boardrebuild" ) {
+            &DoBoardRebuild($id) if &ValidIdOrDie($id);
         } elsif ( $action eq "unlock" ) {
             &DoUnlock();
         } elsif ( $action eq "index" ) {
@@ -6766,6 +6794,7 @@ sub DeletePage {
     &WriteRcLogDB( $page, GetParam( "summary", "" ),
         2, $Now, 0, $UserData{'username'}, $UserData{'email'}, 0 );
     AddUserLogDB( $UserID, 'De', $page ) if ( $UserID >= 1000 );
+    &BoardForget($page) if ( !&PageExists($page) );    # board index (Habitat::Board)
     return $res;
 
 }
@@ -7014,6 +7043,7 @@ sub RenamePage {
     die("RenamePage: unsafe table name '$tbname'") if ( !SafeIdent($tbname) );
     $sth = $dbh->prepare("update $tbname set page=? where page=?");
     $sth->execute( $new, $old );
+    &BoardRenamed( $old, $new );    # board index (Habitat::Board)
     return;
 }
 
