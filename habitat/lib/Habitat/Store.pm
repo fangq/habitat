@@ -482,6 +482,15 @@ sub init_schema {
         # and report the latter as a no-op rather than a warning.
         local $dbh->{PrintError} = 0;
 
+        # SQLite before 3.25 (e.g. CentOS 7, SourceForge) cannot parse
+        # RENAME COLUMN at all, so only try it when the old column is
+        # there; a fresh or already converted table is left alone.
+        if ( $d eq 'sqlite' && $alter =~ /^ALTER\s+TABLE\s+(\w+)\s+RENAME\s+COLUMN\s+(\w+)\s/i ) {
+            my ( $tbl, $col ) = ( $1, $2 );
+            my $cols = eval { $dbh->selectall_arrayref("PRAGMA table_info($tbl)") } || [];
+            next if ( !grep { lc( $_->[1] ) eq lc($col) } @$cols );
+        }
+
         eval { $dbh->do("SAVEPOINT $sp") };
         eval { $dbh->do($alter) };
         my $err = $@;

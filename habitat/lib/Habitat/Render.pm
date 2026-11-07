@@ -297,7 +297,11 @@ sub ApplyYamlRules {
     my ( $yaml, $blocks ) = &_YamlLiftBlocks($rules);
     eval {
         require CPAN::Meta::YAML;
-        my $docs = CPAN::Meta::YAML->read_string($yaml);
+        # Old CPAN::Meta::YAML (0.008, Perl 5.16) refuses a stream without
+        # a final newline and returns undef instead of dying.
+        $yaml .= "\n" if ( $yaml !~ /\n\z/ );
+        my $docs = CPAN::Meta::YAML->read_string($yaml)
+          or die( ( CPAN::Meta::YAML->errstr || 'YAML error' ) . "\n" );
         $data = [ map { ref($_) eq 'ARRAY' ? @$_ : () } @$docs ];
         die T('Rules must be a YAML list of {from, to, opt} entries.') . "\n"
           if ( !grep { ref($_) eq 'ARRAY' } @$docs );
