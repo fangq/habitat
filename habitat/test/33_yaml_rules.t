@@ -57,6 +57,13 @@ is( yaml( "- tail: 2\n",    $lines ), "three\nfour",    "tail N (no leading blan
 is( yaml( "- tail: 9\n",    $lines ), $lines,           "tail longer than text" );
 is( yaml( "- grep: e\n- head: 1\n", $lines ), "one", "grep then head" );
 
+is( yaml( "- prepend: 'top '\n- append: ' end'\n", "mid" ), "top mid end", "prepend and append" );
+is( yaml( "- prepend: '\\1 \$1'\n", "x" ), '\1 $1x', "prepend text is not expanded" );
+is( yaml( "- prepend: |\n    <pre>\n- append: |-\n\n    </pre>\n", "code" ),
+    "<pre>\ncode\n</pre>", "prepend/append take blocks" );
+is( yaml( "- prepend: x\n", "" ), "x", "prepend on empty text (an .e0 template)" );
+is( HabitatEngine::EvalLocalRules( '[{"append":"!"}]', "hi", 0 ), "hi!", "JSON config rules accept append too" );
+
 # ----------------------------------------------------------------
 # Literal blocks
 # ----------------------------------------------------------------

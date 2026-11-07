@@ -283,6 +283,8 @@ sub IsYamlRules {
 #   - grep: 'regex'           keep only the lines that match
 #   - head: N                 keep the first N lines
 #   - tail: N                 keep the last N lines
+#   - prepend: 'text'         insert text at the start (nothing expanded)
+#   - append: 'text'          add text at the end
 # Parsed with CPAN::Meta::YAML (core Perl, a YAML subset), never eval'd.
 # That parser flattens the indentation of literal blocks and drops
 # their blank lines, both of which matter in wiki text, so "key: |"
@@ -458,8 +460,8 @@ sub EvalLocalRules {
 }
 
 # Apply a parsed rule list (JSON config rules or a YAML rule page).
-# Steps that are not hashes, or lack both from/to and grep/head/tail,
-# are skipped. With $pageRule, from ".*" replaces the whole text, as in
+# Steps that are not hashes, or lack from/to and every one of
+# grep/head/tail/prepend/append, are skipped. With $pageRule, from ".*" replaces the whole text, as in
 # the line format.
 sub _ApplyRuleList {
     my ( $list, $text, $pageRule ) = @_;
@@ -472,6 +474,14 @@ sub _ApplyRuleList {
                 next;
             }
             $text = join( "\n", grep { /$re/ } split( /\r?\n/, $text ) );
+            next;
+        }
+        if ( defined( $r->{prepend} ) && !ref( $r->{prepend} ) ) {
+            $text = $r->{prepend} . $text;
+            next;
+        }
+        if ( defined( $r->{append} ) && !ref( $r->{append} ) ) {
+            $text .= $r->{append};
             next;
         }
         if ( defined( $r->{head} ) && $r->{head} =~ /^\d+$/ ) {
