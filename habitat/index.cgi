@@ -3156,7 +3156,7 @@ sub OpenNewSection {
     $$Section{'ip'}       = &RemoteAddr;
     $$Section{'host'}     = '';                          # Updated only for real edits (can be slow)
     $$Section{'id'}       = $UserID;
-    $$Section{'username'} = &GetParam( "username", "" );
+    $$Section{'username'} = $UserData{'username'} // '';    # not from the request: no forged authors
     $$Section{'data'}     = $data;
 
     # Snapshot the section into the page hash. Stage 5 cleanup: was
@@ -3516,7 +3516,7 @@ sub SaveSection {
     $$Section{'ts'}       = $Now;                          # Updated every edit
     $$Section{'ip'}       = &RemoteAddr;
     $$Section{'id'}       = $UserID;
-    $$Section{'username'} = &GetParam( "username", "" );
+    $$Section{'username'} = $UserData{'username'} // '';    # not from the request: no forged authors
     $$Section{'data'}     = $data;
 
     # Hash copy (was: FS2-joined string).
@@ -3902,7 +3902,9 @@ sub UserPermission {
 sub UserIsAdmin {
     my ($stored);
     return 0 if ( $AdminPass eq "" );
-    $stored = &GetParam( "adminpw", "" );
+    # Only the logged-in user's record: GetParam would also take ?adminpw=
+    # from the request, and the stored hash would then work as a password.
+    $stored = $UserData{'adminpw'} // '';
     return 0 if ( $stored eq "" );
     foreach my $token ( split( /\s+/, $AdminPass ) ) {
         next     if ( $token eq "" );
@@ -3938,7 +3940,7 @@ sub UserIsEditor {
     my ($stored);
     return 1 if ( &UserIsAdmin() );    # Admin includes editor
     return 0 if ( $EditPass eq "" );
-    $stored = &GetParam( "adminpw", "" );
+    $stored = $UserData{'adminpw'} // '';    # never from the request (see UserIsAdmin)
     return 0 if ( $stored eq "" );
     foreach my $token ( split( /\s+/, $EditPass ) ) {
         next     if ( $token eq "" );
@@ -4695,7 +4697,7 @@ name=\"myform\">";
     print PrintCaptcha() if $UseCaptcha;
 
     print $q->submit( -name => 'Save', -id => 'btn_save', -value => T('Save') ), "\n";
-    $userName = &GetParam( "username", "" );
+    $userName = $UserData{'username'} // '';
     if ( $userName ne "" ) {
         print Ts( '(Current user name is %s)', &GetPageLink($userName) );
     } else {
@@ -6099,7 +6101,7 @@ sub DoPost {
         &DoEdit( $id, 0, $pgtime, $string, 1 );
         return;
     }
-    $user = &GetParam( "username", "" );
+    $user = $UserData{'username'} // '';
 
     # If the person doing editing chooses, send out email notification
     if ($EmailNotify) {
