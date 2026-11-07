@@ -213,11 +213,12 @@ sub GetBracketUrlIndex {
 }
 
 # ----------------------------------------------------------------
-# Local-rule pipeline. Each page can optionally carry a body of
-# regex rewrite rules (line-oriented for ApplyRegExpRules, or a
-# structured JSON form for EvalLocalRules) that run BEFORE the wiki
-# syntax pass. ApplyRegExp consults %$namespace to find which
-# rule set applies to a given page id.
+# Local-rule pipeline. Rule pages (.v0/.v1/.e0/.e1) and namespace
+# rule files hold regex rewrite rules, either line-oriented (from/to,
+# ApplyRegExpRules) or a YAML list (ApplyYamlRules). $EarlyRules /
+# $LateRules in the config are a JSON list (EvalLocalRules). The YAML
+# and JSON forms share _ApplyRuleList. ApplyRegExp consults
+# %$namespace to find which rule set applies to a given page id.
 # ----------------------------------------------------------------
 sub ApplyRegExp {
     my ( $id, $pageText, $namespace, $pagepath ) = @_;
@@ -230,16 +231,128 @@ sub ApplyRegExp {
     foreach $name ( keys %$namespace ) {
         if ( $$namespace{$name} ne "" ) {
             if ( $id =~ m/$name/ ) {
-                $pageText = &ApplyRegExpRules( $$namespace{$name}, $pageText, 0 );
+                $pageText = &ApplyRuleText( $$namespace{$name}, $pageText );
                 last
                   ; # find the first rule match the name pattern, apply the rules, then skip the rest
             }
         }
     }
     if ( defined($pagepath) && ref($pagepath) eq 'ARRAY' && @$pagepath ) {
-        $pageText = &ApplyRegExpRules( join( '', @$pagepath ), $pageText, 0 );
+
+        # Ancestor rule pages, outermost first. Consecutive line-format
+        # pages are joined and run as one rule list, as they always were;
+        # a YAML page runs on its own.
+        my @lines;
+        foreach my $rules (@$pagepath) {
+            if ( &IsYamlRules($rules) ) {
+                $pageText = &ApplyRegExpRules( join( '', @lines ), $pageText, 0 ) if (@lines);
+                @lines    = ();
+                $pageText = &ApplyYamlRules( $rules, $pageText );
+            } else {
+                push( @lines, $rules );
+            }
+        }
+        $pageText = &ApplyRegExpRules( join( '', @lines ), $pageText, 0 ) if (@lines);
     }
     return $pageText;
+}
+
+# One rule text, in either page-rule format.
+sub ApplyRuleText {
+    my ( $rules, $text ) = @_;
+    return &IsYamlRules($rules)
+      ? &ApplyYamlRules( $rules, $text )
+      : &ApplyRegExpRules( $rules, $text, 0 );
+}
+
+# A rule page is YAML when its first line that is neither blank nor a
+# # comment is "---" or a list item ("- ..."). Line-format rules never
+# start that way.
+sub IsYamlRules {
+    my ($rules) = @_;
+    return 0 if ( !defined($rules) );
+    foreach my $line ( split( /\r?\n/, $rules ) ) {
+        next if ( $line =~ /^\s*(#.*)?$/ );
+        return ( $line =~ /^(---\s*$|---\s+#|-\s|-$)/ ) ? 1 : 0;
+    }
+    return 0;
+}
+
+# YAML rule page: a list of steps, applied in order.
+#   - from: 'regex'           to: 'text' (\1..\9 / $1..$9)   opt: 'gimsx'
+#   - grep: 'regex'           keep only the lines that match
+#   - head: N                 keep the first N lines
+#   - tail: N                 keep the last N lines
+# Parsed with CPAN::Meta::YAML (core Perl, a YAML subset), never eval'd.
+# That parser flattens the indentation of literal blocks and drops
+# their blank lines, both of which matter in wiki text, so "key: |"
+# blocks are cut out first (_YamlLiftBlocks) and read here with the
+# YAML rules: the first line sets the indent, deeper indentation and
+# blank lines are kept, "|-" drops the final newline, "|+" keeps all.
+sub ApplyYamlRules {
+    my ( $rules, $origText ) = @_;
+    my $data;
+    my ( $yaml, $blocks ) = &_YamlLiftBlocks($rules);
+    eval {
+        require CPAN::Meta::YAML;
+        my $docs = CPAN::Meta::YAML->read_string($yaml);
+        $data = [ map { ref($_) eq 'ARRAY' ? @$_ : () } @$docs ];
+        die T('Rules must be a YAML list of {from, to, opt} entries.') . "\n"
+          if ( !grep { ref($_) eq 'ARRAY' } @$docs );
+    };
+    if ($@) {
+        return $origText . '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml($@);
+    }
+    foreach my $r (@$data) {
+        next if ( ref($r) ne 'HASH' );
+        foreach my $k ( keys %$r ) {
+            $r->{$k} = $blocks->[$1] if ( defined( $r->{$k} ) && $r->{$k} =~ /^__HabitatYamlBlock_(\d+)__$/ );
+        }
+    }
+    return &_ApplyRuleList( $data, $origText, 1 );
+}
+
+# Replace each "key: |" literal block by a placeholder scalar; returns
+# the new YAML text and the list of block strings.
+sub _YamlLiftBlocks {
+    my ($yaml) = @_;
+    my @in = split( /\r?\n/, $yaml, -1 );
+    my ( @out, @blocks );
+    for ( my $i = 0 ; $i < @in ; $i++ ) {
+        my $line = $in[$i];
+        if ( $line !~ /^(\s*(?:-\s+)?)([^\s#'"\-][^:#]*?):\s+\|([1-9]?)([+-]?)([1-9]?)\s*(?:#.*)?$/ ) {
+            push( @out, $line );
+            next;
+        }
+        my ( $lead, $key, $chomp ) = ( $1, $2, $4 );
+        my $keycol = length($lead);
+        my $indent = ( $3 || $5 ) ? $keycol + ( $3 || $5 ) : 0;
+        my @body;
+        my $j = $i + 1;
+        for ( ; $j < @in ; $j++ ) {
+            my $l = $in[$j];
+            if ( $l =~ /^\s*$/ ) { push( @body, $l ); next; }
+            $l =~ /^( *)/;
+            my $n = length($1);
+            last if ( $n <= $keycol );
+            $indent = $n if ( !$indent );
+            last if ( $n < $indent );
+            push( @body, $l );
+        }
+        $indent ||= $keycol + 1;
+        my @trail;
+        unshift( @trail, pop(@body) ) while ( @body && $body[-1] =~ /^\s*$/ );
+        my $text = join( "\n", map { length($_) > $indent ? substr( $_, $indent ) : '' } @body );
+        if ( $chomp eq '+' ) {
+            $text .= "\n" x ( @trail + ( @body ? 1 : 0 ) );
+        } elsif ( $chomp ne '-' && @body ) {
+            $text .= "\n";
+        }
+        push( @blocks, $text );
+        push( @out, $lead . $key . ": '__HabitatYamlBlock_$#blocks\__'" );
+        $i = $j - 1;
+    }
+    return ( join( "\n", @out ), \@blocks );
 }
 
 sub ApplyRegExpRules {
@@ -333,7 +446,6 @@ sub EvalLocalRules {
     my ( $rules, $origText, $isDiff ) = @_;
     return $origText if ( !defined($rules) || $rules eq '' );
 
-    my $text = $origText;
     my $parsed;
     require JSON::PP;    # loaded on demand; outside the eval so a missing module is not reported as a rules error
     eval { $parsed = JSON::PP::decode_json($rules); };
@@ -342,8 +454,41 @@ sub EvalLocalRules {
         return $origText . '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml($err);
     }
 
-    foreach my $r (@$parsed) {
-        next unless ( ref($r) eq 'HASH' && defined( $r->{from} ) && defined( $r->{to} ) );
+    return &_ApplyRuleList( $parsed, $origText, 0 );
+}
+
+# Apply a parsed rule list (JSON config rules or a YAML rule page).
+# Steps that are not hashes, or lack both from/to and grep/head/tail,
+# are skipped. With $pageRule, from ".*" replaces the whole text, as in
+# the line format.
+sub _ApplyRuleList {
+    my ( $list, $text, $pageRule ) = @_;
+    foreach my $r (@$list) {
+        next if ( ref($r) ne 'HASH' );
+        if ( defined( $r->{grep} ) && !ref( $r->{grep} ) ) {
+            my $re = eval { qr/$r->{grep}/ };
+            if ( !defined($re) ) {
+                $text .= '<hr><b>' . T('Local rule error:') . '</b><br>' . &QuoteHtml( $@ || $r->{grep} );
+                next;
+            }
+            $text = join( "\n", grep { /$re/ } split( /\r?\n/, $text ) );
+            next;
+        }
+        if ( defined( $r->{head} ) && $r->{head} =~ /^\d+$/ ) {
+            my @l = split( /\r?\n/, $text );
+            $text = join( "\n", @l > $r->{head} ? @l[ 0 .. $r->{head} - 1 ] : @l );
+            next;
+        }
+        if ( defined( $r->{tail} ) && $r->{tail} =~ /^\d+$/ ) {
+            my @l = split( /\r?\n/, $text );
+            $text = join( "\n", @l > $r->{tail} ? @l[ @l - $r->{tail} .. $#l ] : @l );
+            next;
+        }
+        next unless ( defined( $r->{from} ) && defined( $r->{to} ) && !ref( $r->{from} ) && !ref( $r->{to} ) );
+        if ( $pageRule && $r->{from} eq '.*' ) {
+            $text = &_ExpandBackrefs( $r->{to}, [] );
+            next;
+        }
         my $from = $r->{from};
         my $to   = $r->{to};
         my $opt  = defined( $r->{opt} ) ? $r->{opt} : 'g';

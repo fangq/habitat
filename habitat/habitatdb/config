@@ -270,6 +270,35 @@ page name), <tt><nowiki>&amp;lt;fullpagename&amp;gt;</nowiki></tt>,
 <tt><nowiki>&amp;lt;timenow&amp;gt;</nowiki></tt>. In page text they are written with
 the HTML escapes exactly as shown here.
 
+'''Rules in YAML.''' A rule page whose first line (after any blank or
+<tt>#</tt> comment lines) is <tt>---</tt> or starts with <tt>- </tt> is read
+as a YAML list instead, one entry per rule, applied in order:
+
+!! Entry !! Effect !!
+|| <tt>from:</tt> regex, <tt>to:</tt> text, <tt>opt:</tt> flags || replace; <tt>\1</tt> or <tt>$1</tt> in <tt>to</tt> is the first group; <tt>opt</tt> is any of <tt>gimsx</tt> and defaults to <tt>g</tt> ||
+|| <tt>grep:</tt> regex || keep only the lines that match ||
+|| <tt>head:</tt> n, <tt>tail:</tt> n || keep only the first or last <tt>n</tt> lines ||
+
+Write regular expressions in single quotes, so backslashes stay as typed.
+For replacement text over several lines, write <tt>to: |</tt> (or
+<tt>to: |-</tt>, which drops the final newline) and indent the lines below
+it deeper than <tt>to:</tt>. The first line sets the indent; deeper
+indentation and blank lines are kept. <tt>|2-</tt> sets the indent to 2
+explicitly, for a block whose first line is indented further than the rest.
+Each entry must use the block form shown here; the one-line
+<tt><nowiki>{from: a, to: b}</nowiki></tt> form is not supported. Rules are
+regular-expression replacements only; nothing in them is run as code.
+
+[[test/card/.v0]] turns every page under <tt>test/card</tt> into a table:
+<pre>{(test/card/.v0)}</pre>
+so [[test/card/alice]], whose text is
+<pre>{(test/card/alice)}</pre>
+is shown as
+{{test/card/alice}}
+
+Both formats can be mixed: a page inherits line rules from one ancestor
+and YAML rules from another.
+
 For example, [[test/code/.v0]] holds two rules that wrap the text of every
 page under <tt>test/code</tt> in <tt><nowiki><pre></nowiki></tt>:
 <pre>{(test/code/.v0)}</pre>
@@ -330,6 +359,22 @@ HABITAT_NEWFEATURES
 $BuildinPages{"test/demofun1"} = 'Replaced by the output of DemoContentFromFunc() in the config.';
 $BuildinPages{"test/code/.v0"} = '^/<pre>
 $/<\/pre>';
+$BuildinPages{"test/card/.v0"} = <<'CARD_RULES';
+# Every page under test/card is shown as a card:
+# "Field: value" lines become table rows under a heading.
+- from: '^(\w[\w ]*):\s*(.*)$'
+  to: '|| \1 || \2 ||'
+  opt: gm
+- from: '^'
+  to: |
+    == Contact card ==
+    !! Field !! Value !!
+CARD_RULES
+$BuildinPages{"test/card/alice"} = <<'CARD_ALICE';
+Name: Alice Example
+Phone: 555-0100
+Room: 101
+CARD_ALICE
 $BuildinPages{"test/code/codedemo"} = '// sample C++ code
 class HabitatWikiPage {
     char *name;
