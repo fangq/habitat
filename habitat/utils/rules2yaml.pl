@@ -39,6 +39,7 @@ $ENV{NO_FATALS_TO_BROWSER} = 1;
     require "./index.cgi";
 }
 no warnings 'once';
+&HabitatEngine::InitLinkPatterns();    # sets $FS: the line format joins continued lines with it
 
 my $FSA = "\x{1e}A";    # stands for a joined line, as in ApplyRegExpRules
 
@@ -205,6 +206,7 @@ if ( $opt{config} ) {
     ( $DataDir = $opt{config} ) =~ s{/[^/]+$}{};
     $PageDir = "$DataDir/page";
     do $opt{config} or die "cannot read $opt{config}: " . ( $@ || $! ) . "\n";
+    &InitLinkPatterns();
     ( $dsn, $user, $pass ) = ( $DBName, $DBUser // '', $DBPass // '' );
     $table ||= &DBTable($PageDir);
 }
