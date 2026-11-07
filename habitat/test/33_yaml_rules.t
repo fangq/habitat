@@ -127,4 +127,12 @@ is( HabitatEngine::ApplyRegExp( 'A/B', 'abc', {}, [ "a/x\n", "b/y\n" ] ),
 is( HabitatEngine::ApplyRegExp( 'A/B', 'abc', { '^A/' => "- from: c\n  to: C\n" }, [] ),
     'abC', "namespace rule text may be YAML" );
 
+# ----------------------------------------------------------------
+# Line format GREP / TAIL fixes (the converter proves YAML against these)
+# ----------------------------------------------------------------
+is( HabitatEngine::ApplyRegExpRules( "TAIL 2\n", "a\nb\nc\nd", 0 ), "c\nd", "line TAIL: no empty lines in front" );
+"x" =~ /x/;    # a successful match before GREP used to change what it kept
+is( HabitatEngine::ApplyRegExpRules( "b/B\nGREP o\n", "one\nb two\nthree\nfour", 0 ),
+    "one\nB two\nfour", "line GREP after another rule keeps only matching lines" );
+
 done_testing();

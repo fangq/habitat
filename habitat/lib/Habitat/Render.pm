@@ -373,7 +373,12 @@ sub ApplyRegExpRules {
         if ( $line eq "" ) { next; }
 
         if ( $line =~ /^GREP\s+(.*)/ ) {
-            @newtext = grep( /$1/, split( /\r*\n/, $text ) );
+
+            # Copy the pattern: each match inside grep() resets $1, and an
+            # empty pattern means "the last successful one", so /$1/ kept
+            # every line after the first match.
+            my $pat = $1;
+            @newtext = grep( /(?:$pat)/, split( /\r*\n/, $text ) );
             $text    = join( "\n", @newtext );
             next;
         }
@@ -388,7 +393,7 @@ sub ApplyRegExpRules {
         if ( $line =~ /^TAIL\s+(.*)/ ) {
             @newtext = split( /\r*\n/, $text );
             if ( $#newtext - $1 >= 0 ) {
-                delete @newtext[ 0 .. $#newtext - $1 ];
+                splice( @newtext, 0, @newtext - $1 );    # delete() left empty lines in front
             }
             $text = join( "\n", @newtext );
             next;
