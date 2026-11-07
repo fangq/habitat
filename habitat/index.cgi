@@ -286,13 +286,13 @@ $TrustedProxies      = '';           # Comma-separated list of trusted proxy IPs
                                      # Example: "127.0.0.1,10.0.0.1,192.168.1."
 
 # Names of sites.  (The first entry is used for the number link.)
-@IsbnNames = ( 'bn.com', 'amazon.com', 'search' );
+@IsbnNames = ( 'openlibrary.org', 'amazon.com', 'worldcat.org' );
 
 # Full URL of each site before the ISBN
 @IsbnPre = (
-    'http://shop.barnesandnoble.com/bookSearch/isbnInquiry.asp?isbn=',
-    'http://www.amazon.com/exec/obidos/ISBN=',
-    'http://www.pricescan.com/books/BookDetail.asp?isbn='
+    'https://openlibrary.org/isbn/',
+    'https://www.amazon.com/dp/',
+    'https://search.worldcat.org/search?q=bn:'
 );
 
 # Rest of URL of each site after the ISBN (usually '')
@@ -685,11 +685,13 @@ sub InitCookie {
     if ( defined $UserData{'tzoffset'} && $UserData{'tzoffset'} != 0 ) {
         $TimeZoneOffset = $UserData{'tzoffset'} * ( 60 * 60 );
     }
-    if ( defined $UserData{'lang'} && $UserData{'lang'} ne "" ) {
+    # The language file is run as Perl, so only a plain language code
+    # (never a path) may pick it: from the account, or ?lang=.
+    if ( &SafeLangID( $UserData{'lang'} ) ne '' ) {
         $LangID   = $UserData{'lang'};
         $LangFile = "$DataDir/i18n/lang.$LangID";
     }
-    $tmplang = GetParam( 'lang', '' );
+    $tmplang = &SafeLangID( GetParam( 'lang', '' ) );
     if ( $tmplang ne '' ) {
         $LangFile = "$DataDir/i18n/lang.$tmplang";
     }
@@ -698,6 +700,12 @@ sub InitCookie {
             $LangError = $@;
         }
     }
+}
+
+# A language code such as "en", "cn" or "zh_TW", or '' for anything else.
+sub SafeLangID {
+    my ($lang) = @_;
+    return ( defined $lang && $lang =~ /\A[a-z]{2,3}(?:_[A-Za-z]{2,4})?\z/ ) ? $lang : '';
 }
 
 # Database table behind a data-path setting ($PageDir, $UserDir, $RcFile, ...):
@@ -2159,9 +2167,8 @@ sub GetHtmlHeader {
     $html .=
         '<link rel="alternate" type="application/rss+xml" title="'
       . $SiteName
-      . '" HREF="http://'
-      . ( $ENV{SERVER_NAME} // '' )
-      . ( $ENV{SCRIPT_NAME} // '' )
+      . '" HREF="'
+      . &SelfUrl()
       . &ScriptLinkChar()
       . 'action=rss"/>';
 
@@ -2678,11 +2685,20 @@ sub UrlLinkOrImage {
 
     # Restricted image URLs so that mailto:foo@bar.gif is not an image
     if ( $useImage && &ImageAllowed($url) ) {
-        return "<img src=\"$url\" class=\"wikiimg\">";
+        return "<img src=\"" . &LocalHref($url) . "\" class=\"wikiimg\">";
     }
 
     #  $url=UrlEncode($url);
-    return "<a href=\"$url\">$name</a>";
+    return "<a href=\"" . &LocalHref($url) . "\">$name</a>";
+}
+
+# "http:?Page", "http:/images/x.png" and "http:#anchor" are wiki markup for
+# links to this site. Drop the scheme so the browser resolves them against
+# the current page: an "http:" relative link is invalid on an https page.
+sub LocalHref {
+    my ($url) = @_;
+    $url =~ s{\Ahttps?:(?=[?#]|/(?!/))}{}i;
+    return $url;
 }
 
 sub ImageAllowed {
@@ -2709,13 +2725,11 @@ sub StoreBracketUrl {
         $text = &GetBracketUrlIndex($url);
     }
     if ( $BracketImg && $useImage && &ImageAllowed($text) ) {
-        $text = "<img src=\"$text\" class=\"wikilinkimg\">";
+        $text = "<img src=\"" . &LocalHref($text) . "\" class=\"wikilinkimg\">";
     } else {
         $text = "$text";
     }
-    if ( $url =~ /^http:(#.*)/ ) {
-        $url = $1;
-    }
+    $url = &LocalHref($url);
 
     #  $url=UrlEncode($url);
     return &StoreRaw("<a href=\"$url\" class=\"wikiurllink\">$text</a>");
@@ -2755,7 +2769,7 @@ sub StoreRFC {
 sub RFCLink {
     my ($num) = @_;
 
-    return "<a href=\"http://www.faqs.org/rfcs/rfc${num}.html\">RFC $num</a>";
+    return "<a href=\"https://www.rfc-editor.org/rfc/rfc${num}.html\">RFC $num</a>";
 }
 
 sub StoreUpload {
@@ -5171,8 +5185,8 @@ sub DoUpdatePrefs {
         $UserData{'stylesheet'} = $stylesheet;
         print T('StyleSheet setting saved.'), '<br>';
     }
-    $lang = &GetParam( 'p_lang', $LangID );
-    if ( $LangID ne "" ) {
+    $lang = &SafeLangID( &GetParam( 'p_lang', $LangID ) );
+    if ( $lang ne "" ) {
         $UserData{'lang'} = $lang;
     }
     $UserData{$_} = $profile{$_} for keys %profile;

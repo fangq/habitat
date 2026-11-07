@@ -528,7 +528,9 @@ sub WikiToHTML {
         return $html;
     }
 
-    $pageText =~ s/<nowiki>((.|\n)*?)<\/nowiki>/&StoreRaw($1)/ige;
+    # <nowiki> text is shown as typed: quote it, or HTML typed inside it
+    # would reach the page unscrubbed. (Character references survive.)
+    $pageText =~ s/<nowiki>((.|\n)*?)<\/nowiki>/&StoreRaw(&QuoteHtml($1))/ige;
     $pageText =~ s/\&lt;nowiki\&gt;((.|\n)*?)\&lt;\/nowiki\&gt;/&StoreRaw($1)/ige;
     if ( $hasboard == 2 ) {
         $pageText =~ s/^[ \t]*<board\b[^>\n]*>[ \t]*$/&StoreRaw(&BoardIndexHtml($id))/me;
