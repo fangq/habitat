@@ -36,6 +36,8 @@ is( Habitat::Store::T('page'),           'dev_page',           'T(page)' );
 is( Habitat::Store::T('page_revisions'), 'dev_page_revisions', 'T(page_revisions)' );
 is( Habitat::Store::T('deletedpage'),    'deleteddev_page',    'T(deletedpage) follows the engine "deleted$pagedb" rule' );
 is( HabitatEngine::DBTable($HabitatEngine::UserDir), 'dev_users', 'DBTable($UserDir)' );
+is( HabitatEngine::DBTable('/data/temp/lock'),     'dev_pagelock', 'old $LockDir ".../lock" maps to pagelock' );
+is( HabitatEngine::DBTable('/data/temp/pagelock'), 'dev_pagelock', 'new $LockDir ".../pagelock"' );
 is( HabitatEngine::GetPageDB('Home'),   'dev_page', 'GetPageDB uses the prefix' );
 
 Habitat::Store::init_schema($dbh);

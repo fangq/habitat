@@ -709,10 +709,15 @@ sub SafeLangID {
 }
 
 # Database table behind a data-path setting ($PageDir, $UserDir, $RcFile, ...):
-# its last path component, after $DBTablePrefix.
+# its last path component, after $DBTablePrefix. The lock table was renamed
+# "pagelock" ("lock" is reserved in MariaDB), but older site configs still
+# set $LockDir = "$TempDir/lock"; with "lock" every lock query failed and
+# IsPageLocked always answered no.
 sub DBTable {
     my ($path) = @_;
-    return $DBTablePrefix . ( split( /\//, $path ) )[-1];
+    my $name = ( split( /\//, $path ) )[-1];
+    $name = 'pagelock' if ( $name eq 'lock' );
+    return $DBTablePrefix . $name;
 }
 
 sub GetPageDB {
